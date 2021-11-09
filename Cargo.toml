@@ -1,0 +1,19 @@
+[package]
+name = "drt-tools"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = { version = "0.11", features = ["stream"] }
+futures = "0.3"
+futures-util = "0.3"
+indicatif = "0.15"
+tokio = { version = "1.13", features = ["full"] }
+xz2 = "0.1"
+serde_yaml = "0.8"
+serde_derive = "1.0"
+serde = "1.0"
+debcontrol = "0.1"
+debcontrol_struct = "0.3"
