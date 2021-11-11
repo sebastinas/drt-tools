@@ -280,30 +280,41 @@ impl SourcePackages {
 
         let mut ma_same_sources = HashSet::<String>::new();
         for path in paths {
-            let package_content = fs::read_to_string(path)?;
-            let package_paragraphs = debcontrol::parse_str(&package_content)
-                .map_err(|_| anyhow!("Parsing paragraphs failed"))?;
-            let pb = ProgressBar::new(package_paragraphs.len() as u64);
-            pb.set_style(pb_style.clone());
-            pb.set_message(&format!("Processing {}", path.as_ref().display()));
-            for binary_paragraph in package_paragraphs.iter().progress_with(pb) {
-                let binary_package = BinaryPackage::from_paragraph(binary_paragraph)
-                    .map_err(|_| anyhow!("Parsing paragraph failed"))?;
-                if let Some(ma) = binary_package.multi_arch {
-                    if ma == "same" {
-                        if let Some(source) = binary_package.source {
-                            ma_same_sources
-                                .insert(source.split_whitespace().next().unwrap().into());
-                        } else {
-                            // not Source set, so Source == Package
-                            ma_same_sources.insert(binary_package.package);
-                        }
+            let sources = Self::parse_packages(path, &pb_style);
+            ma_same_sources.extend(sources?);
+        }
+
+        Ok(Self { ma_same_sources })
+    }
+
+    fn parse_packages<P>(path: P, pb_style: &ProgressStyle) -> Result<HashSet<String>>
+    where
+        P: AsRef<Path>,
+    {
+        let mut ma_same_sources = HashSet::<String>::new();
+
+        let package_content = fs::read_to_string(&path)?;
+        let package_paragraphs = debcontrol::parse_str(&package_content)
+            .map_err(|_| anyhow!("Parsing paragraphs failed"))?;
+        let pb = ProgressBar::new(package_paragraphs.len() as u64);
+        pb.set_style(pb_style.clone());
+        pb.set_message(&format!("Processing {}", path.as_ref().display()));
+        for binary_paragraph in package_paragraphs.iter().progress_with(pb) {
+            let binary_package = BinaryPackage::from_paragraph(binary_paragraph)
+                .map_err(|_| anyhow!("Parsing paragraph failed"))?;
+            if let Some(ma) = binary_package.multi_arch {
+                if ma == "same" {
+                    if let Some(source) = binary_package.source {
+                        ma_same_sources.insert(source.split_whitespace().next().unwrap().into());
+                    } else {
+                        // not Source set, so Source == Package
+                        ma_same_sources.insert(binary_package.package);
                     }
                 }
             }
         }
 
-        Ok(Self { ma_same_sources })
+        Ok(ma_same_sources)
     }
 
     fn is_ma_same(&self, source: &str) -> bool {
