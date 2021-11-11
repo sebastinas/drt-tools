@@ -4,81 +4,96 @@ use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Write};
+use std::path::{Path, PathBuf};
 
+use anyhow::{anyhow, Context, Result};
 use debcontrol::{Field, Paragraph};
 use debcontrol_struct::DebControl;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
-use reqwest::Client;
+use reqwest::{Client, Response};
 use serde_derive::Deserialize;
+use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
 
-pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(), String> {
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|_| format!("Failed to GET from '{}'", &url))?;
+async fn download_file_init(
+    client: &Client,
+    url: &str,
+    path: &str,
+) -> Result<Option<(Response, ProgressBar)>> {
+    let res = if let Ok(dst_metadata) = fs::metadata(path) {
+        let date = dst_metadata.modified()?;
+        client.get(url).header(
+            reqwest::header::IF_MODIFIED_SINCE,
+            httpdate::fmt_http_date(date),
+        )
+    } else {
+        client.get(url)
+    }
+    .send()
+    .await
+    .with_context(|| format!("Failed to GET from '{}'", &url))?;
+
+    if res.status() == reqwest::StatusCode::NOT_MODIFIED {
+        return Ok(None);
+    }
+
     let total_size = res
         .content_length()
-        .ok_or_else(|| format!("Failed to get content length from '{}'", &url))?;
+        .ok_or_else(|| anyhow!("Failed to get content length from '{}'", &url))?;
 
     let pb = ProgressBar::new(total_size);
     pb.set_style(ProgressStyle::default_bar()
-        .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+        .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
         .progress_chars("█  "));
     pb.set_message(&format!("Downloading {}", url));
 
-    let mut file = File::create(path).map_err(|_| format!("Failed to create file '{}'", path))?;
-    let mut downloaded: u64 = 0;
-    let mut stream = res.bytes_stream();
-
-    while let Some(item) = stream.next().await {
-        let chunk = item.map_err(|_| "Error while downloading file".to_string())?;
-        file.write_all(&chunk)
-            .map_err(|_| "Error while writing to file".to_string())?;
-        let new = min(downloaded + (chunk.len() as u64), total_size);
-        downloaded = new;
-        pb.set_position(new);
-    }
-
-    pb.finish_with_message(&format!("Downloaded {} to {}", url, path));
-    Ok(())
+    Ok(Some((res, pb)))
 }
 
-pub async fn download_file_unxz(client: &Client, url: &str, path: &str) -> Result<(), String> {
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|_| format!("Failed to GET from '{}'", &url))?;
-    let total_size = res
-        .content_length()
-        .ok_or_else(|| format!("Failed to get content length from '{}'", &url))?;
+async fn download_file(client: &Client, url: &str, path: &str) -> Result<bool> {
+    let res = download_file_init(client, url, path).await?;
+    if let None = res {
+        return Ok(false);
+    }
+    let (res, pb) = res.unwrap();
 
-    let pb = ProgressBar::new(total_size);
-    pb.set_style(ProgressStyle::default_bar()
-        .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
-        .progress_chars("█  "));
-    pb.set_message(&format!("Downloading {}", url));
-
-    let mut file = XzDecoder::new(
-        File::create(path).map_err(|_| format!("Failed to create file '{}'", path))?,
-    );
-    let mut downloaded: u64 = 0;
+    let mut file =
+        File::create(path).with_context(|| format!("Failed to create file '{}'", path))?;
     let mut stream = res.bytes_stream();
 
     while let Some(item) = stream.next().await {
-        let chunk = item.map_err(|_| "Error while downloading file".to_string())?;
+        let chunk = item.with_context(|| "Error while downloading file".to_string())?;
         file.write_all(&chunk)
-            .map_err(|_| "Error while writing to file".to_string())?;
-        let new = min(downloaded + (chunk.len() as u64), total_size);
-        downloaded = new;
-        pb.set_position(new);
+            .with_context(|| "Error while writing to file".to_string())?;
+        pb.inc(chunk.len() as u64);
     }
 
-    pb.finish_with_message(&format!("Downloaded {} to {}", url, path));
-    Ok(())
+    pb.finish_with_message(&format!("Downloaded {}", url));
+    Ok(true)
+}
+
+async fn download_file_unxz(client: &Client, url: &str, path: &str) -> Result<bool> {
+    let res = download_file_init(client, url, path).await?;
+    if let None = res {
+        return Ok(false);
+    }
+    let (res, pb) = res.unwrap();
+
+    let mut file = XzDecoder::new(
+        File::create(path).with_context(|| format!("Failed to create file '{}'", path))?,
+    );
+    let mut stream = res.bytes_stream();
+
+    while let Some(item) = stream.next().await {
+        let chunk = item.with_context(|| "Error while downloading file".to_string())?;
+        file.write_all(&chunk)
+            .with_context(|| "Error while writing to file".to_string())?;
+        pb.inc(chunk.len() as u64);
+    }
+
+    pb.finish_with_message(&format!("Downloaded {}", url));
+    Ok(true)
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -255,23 +270,25 @@ struct SourcePackages {
 }
 
 impl SourcePackages {
-    fn new() -> Self {
+    fn new<P>(paths: &[P]) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
         let pb_style = ProgressStyle::default_bar()
             .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})")
             .progress_chars("█  ");
 
         let mut ma_same_sources = HashSet::<String>::new();
-        for architecture in RELEASE_ARCHITECTURES {
-            let package_content = fs::read_to_string(format!("Packages_{}", architecture))
-                .expect(&format!("Unable to read Packages_{}", architecture));
-            let package_paragraphs = debcontrol::parse_str(package_content.as_str())
-                .expect(&format!("Unable to read Packages_{}", architecture));
+        for path in paths {
+            let package_content = fs::read_to_string(path)?;
+            let package_paragraphs = debcontrol::parse_str(&package_content)
+                .map_err(|_| anyhow!("Parsing paragraphs failed"))?;
             let pb = ProgressBar::new(package_paragraphs.len() as u64);
             pb.set_style(pb_style.clone());
-            pb.set_message(&format!("Processing Packages_{}", architecture));
+            pb.set_message(&format!("Processing {}", path.as_ref().display()));
             for binary_paragraph in package_paragraphs.iter().progress_with(pb) {
                 let binary_package = BinaryPackage::from_paragraph(binary_paragraph)
-                    .expect("Unable to parse Package paragraph");
+                    .map_err(|_| anyhow!("Parsing paragraph failed"))?;
                 if let Some(ma) = binary_package.multi_arch {
                     if ma == "same" {
                         if let Some(source) = binary_package.source {
@@ -286,7 +303,7 @@ impl SourcePackages {
             }
         }
 
-        Self { ma_same_sources }
+        Ok(Self { ma_same_sources })
     }
 
     fn is_ma_same(&self, source: &str) -> bool {
@@ -294,39 +311,81 @@ impl SourcePackages {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    let urls = [(
-        "https://release.debian.org/britney/excuses.yaml",
-        "excuses.yaml",
-    )];
-    for (url, dst) in urls {
-        if download_file(&Client::new(), url, dst).await.is_err() {
-            return;
-        }
+struct ProcessExcuses {
+    base_directory: BaseDirectories,
+}
+
+impl ProcessExcuses {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
+        })
     }
-    for (url, dst) in RELEASE_ARCHITECTURES.iter().map(|architecture| {
-        (
-            format!(
+
+    async fn download_to_cache(&self) -> Result<bool> {
+        let urls = [(
+            "https://release.debian.org/britney/excuses.yaml",
+            "excuses.yaml",
+        )];
+        for (url, dst) in urls {
+            if !download_file(
+                &Client::new(),
+                url,
+                self.get_cache_path(dst)?
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Failed to produce path"))?,
+            )
+            .await?
+            {
+                return Ok(false);
+            }
+        }
+        for architecture in RELEASE_ARCHITECTURES {
+            let url = format!(
                 "https://deb.debian.org/debian/dists/unstable/main/binary-{}/Packages.xz",
                 architecture
-            ),
-            format!("Packages_{}", architecture),
-        )
-    }) {
-        if download_file_unxz(&Client::new(), &url, &dst)
-            .await
-            .is_err()
-        {
-            return;
+            );
+            let dest = format!("Packages_{}", architecture);
+            download_file_unxz(
+                &Client::new(),
+                &url,
+                self.get_cache_path(&dest)?
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Failed to produce path"))?,
+            )
+            .await?;
         }
+
+        Ok(true)
     }
 
-    let source_packages = SourcePackages::new();
+    fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(self.base_directory.place_cache_file(path)?)
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let process_excuses = ProcessExcuses::new()?;
+    if !process_excuses.download_to_cache().await? {
+        // nothing to do
+        return Ok(());
+    }
+
+    let mut all_paths = vec![];
+    for architecture in RELEASE_ARCHITECTURES {
+        all_paths.push(process_excuses.get_cache_path(format!("Packages_{}", architecture))?);
+    }
+    let source_packages = SourcePackages::new(&all_paths)?;
 
     let mut to_binnmu = vec![];
-    let excuses: Excuses =
-        serde_yaml::from_reader(BufReader::new(File::open("excuses.yaml").unwrap())).unwrap();
+    let excuses: Excuses = serde_yaml::from_reader(BufReader::new(
+        File::open(process_excuses.get_cache_path("excuses.yaml")?).unwrap(),
+    ))
+    .unwrap();
     let pb = ProgressBar::new(excuses.sources.len() as u64);
     pb.set_style(ProgressStyle::default_bar()
         .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})")
@@ -402,4 +461,6 @@ async fn main() {
             }
         );
     }
+
+    Ok(())
 }
