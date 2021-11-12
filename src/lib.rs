@@ -28,10 +28,15 @@ impl Downloader {
     ) -> Result<Option<(Response, ProgressBar)>> {
         let res = if let Ok(dst_metadata) = fs::metadata(path) {
             let date = dst_metadata.modified()?;
-            self.client.get(url).header(
-                reqwest::header::IF_MODIFIED_SINCE,
-                httpdate::fmt_http_date(date),
-            )
+            let res = self.client.get(url);
+            if !self.always_download {
+                res.header(
+                    reqwest::header::IF_MODIFIED_SINCE,
+                    httpdate::fmt_http_date(date),
+                )
+            } else {
+                res
+            }
         } else {
             self.client.get(url)
         }
@@ -39,7 +44,7 @@ impl Downloader {
         .await
         .with_context(|| format!("Failed to GET from '{}'", &url))?;
 
-        if self.modified_since && res.status() == reqwest::StatusCode::NOT_MODIFIED {
+        if !self.always_download && res.status() == reqwest::StatusCode::NOT_MODIFIED {
             return Ok(None);
         }
 
@@ -56,10 +61,10 @@ impl Downloader {
         Ok(Some((res, pb)))
     }
 
-    pub async fn download_file(&self, url: &str, path: &str) -> Result<bool> {
+    pub async fn download_file(&self, url: &str, path: &str) -> Result<CacheState> {
         let res = self.download_file_init(url, path).await?;
         if let None = res {
-            return Ok(false);
+            return Ok(CacheState::NoUpdate);
         }
         let (res, pb) = res.unwrap();
 
@@ -75,13 +80,13 @@ impl Downloader {
         }
 
         pb.finish_with_message(&format!("Downloaded {}", url));
-        Ok(true)
+        Ok(CacheState::FreshFiles)
     }
 
-    pub async fn download_file_unxz(&self, url: &str, path: &str) -> Result<bool> {
+    pub async fn download_file_unxz(&self, url: &str, path: &str) -> Result<CacheState> {
         let res = self.download_file_init(url, path).await?;
         if let None = res {
-            return Ok(false);
+            return Ok(CacheState::NoUpdate);
         }
         let (res, pb) = res.unwrap();
 
@@ -98,6 +103,6 @@ impl Downloader {
         }
 
         pb.finish_with_message(&format!("Downloaded {}", url));
-        Ok(true)
+        Ok(CacheState::FreshFiles)
     }
 }

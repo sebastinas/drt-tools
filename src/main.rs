@@ -178,12 +178,13 @@ struct ToBinNMU {
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
     // until https://github.com/Kixunil/rfc822-like/issues/1 is fixed, use an empty string as default value instead of Option<String>
     #[serde(default = "String::new")]
     source: String,
     package: String,
-    #[serde(default = "String::new")]
+    #[serde(default = "String::new", rename = "Multi-Arch")]
     multi_arch: String,
 }
 
