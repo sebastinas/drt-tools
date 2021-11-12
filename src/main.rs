@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use serde::Deserialize;
@@ -270,12 +270,7 @@ impl ProcessExcuses {
         )];
         for (url, dst) in urls {
             if downloader
-                .download_file(
-                    url,
-                    self.get_cache_path(dst)?
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Failed to produce path"))?,
-                )
+                .download_file(url, self.get_cache_path(dst)?)
                 .await?
                 == CacheState::NoUpdate
                 && !self.settings.force_processing
@@ -290,12 +285,7 @@ impl ProcessExcuses {
             );
             let dest = format!("Packages_{}", architecture);
             downloader
-                .download_file_unxz(
-                    &url,
-                    self.get_cache_path(&dest)?
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Failed to produce path"))?,
-                )
+                .download_file_unxz(&url, self.get_cache_path(&dest)?)
                 .await?;
         }
 

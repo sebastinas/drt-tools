@@ -1,6 +1,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
 use futures_util::StreamExt;
@@ -27,11 +28,14 @@ impl Downloader {
         }
     }
 
-    async fn download_file_init(
+    async fn download_file_init<P>(
         &self,
         url: &str,
-        path: &str,
-    ) -> Result<Option<(Response, ProgressBar)>> {
+        path: P,
+    ) -> Result<Option<(Response, ProgressBar)>>
+    where
+        P: AsRef<Path>,
+    {
         let res = if let Ok(dst_metadata) = fs::metadata(path) {
             let date = dst_metadata.modified()?;
             let res = self.client.get(url);
@@ -67,15 +71,18 @@ impl Downloader {
         Ok(Some((res, pb)))
     }
 
-    pub async fn download_file(&self, url: &str, path: &str) -> Result<CacheState> {
-        let res = self.download_file_init(url, path).await?;
+    pub async fn download_file<P>(&self, url: &str, path: P) -> Result<CacheState>
+    where
+        P: AsRef<Path>,
+    {
+        let res = self.download_file_init(url, &path).await?;
         if let None = res {
             return Ok(CacheState::NoUpdate);
         }
         let (res, pb) = res.unwrap();
 
-        let mut file =
-            File::create(path).with_context(|| format!("Failed to create file '{}'", path))?;
+        let mut file = File::create(&path)
+            .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?;
         let mut stream = res.bytes_stream();
 
         while let Some(item) = stream.next().await {
@@ -89,15 +96,19 @@ impl Downloader {
         Ok(CacheState::FreshFiles)
     }
 
-    pub async fn download_file_unxz(&self, url: &str, path: &str) -> Result<CacheState> {
-        let res = self.download_file_init(url, path).await?;
+    pub async fn download_file_unxz<P>(&self, url: &str, path: P) -> Result<CacheState>
+    where
+        P: AsRef<Path>,
+    {
+        let res = self.download_file_init(url, &path).await?;
         if let None = res {
             return Ok(CacheState::NoUpdate);
         }
         let (res, pb) = res.unwrap();
 
         let mut file = XzDecoder::new(
-            File::create(path).with_context(|| format!("Failed to create file '{}'", path))?,
+            File::create(&path)
+                .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?,
         );
         let mut stream = res.bytes_stream();
 
