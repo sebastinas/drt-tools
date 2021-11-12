@@ -3,98 +3,17 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, Write};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
 use debcontrol::{Field, Paragraph};
 use debcontrol_struct::DebControl;
-use futures_util::StreamExt;
+use anyhow::{anyhow, Result};
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
-use reqwest::{Client, Response};
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use xdg::BaseDirectories;
-use xz2::write::XzDecoder;
 
-async fn download_file_init(
-    client: &Client,
-    url: &str,
-    path: &str,
-) -> Result<Option<(Response, ProgressBar)>> {
-    let res = if let Ok(dst_metadata) = fs::metadata(path) {
-        let date = dst_metadata.modified()?;
-        client.get(url).header(
-            reqwest::header::IF_MODIFIED_SINCE,
-            httpdate::fmt_http_date(date),
-        )
-    } else {
-        client.get(url)
-    }
-    .send()
-    .await
-    .with_context(|| format!("Failed to GET from '{}'", &url))?;
-
-    if res.status() == reqwest::StatusCode::NOT_MODIFIED {
-        return Ok(None);
-    }
-
-    let total_size = res
-        .content_length()
-        .ok_or_else(|| anyhow!("Failed to get content length from '{}'", &url))?;
-
-    let pb = ProgressBar::new(total_size);
-    pb.set_style(ProgressStyle::default_bar()
-        .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
-        .progress_chars("█  "));
-    pb.set_message(&format!("Downloading {}", url));
-
-    Ok(Some((res, pb)))
-}
-
-async fn download_file(client: &Client, url: &str, path: &str) -> Result<bool> {
-    let res = download_file_init(client, url, path).await?;
-    if let None = res {
-        return Ok(false);
-    }
-    let (res, pb) = res.unwrap();
-
-    let mut file =
-        File::create(path).with_context(|| format!("Failed to create file '{}'", path))?;
-    let mut stream = res.bytes_stream();
-
-    while let Some(item) = stream.next().await {
-        let chunk = item.with_context(|| "Error while downloading file".to_string())?;
-        file.write_all(&chunk)
-            .with_context(|| "Error while writing to file".to_string())?;
-        pb.inc(chunk.len() as u64);
-    }
-
-    pb.finish_with_message(&format!("Downloaded {}", url));
-    Ok(true)
-}
-
-async fn download_file_unxz(client: &Client, url: &str, path: &str) -> Result<bool> {
-    let res = download_file_init(client, url, path).await?;
-    if let None = res {
-        return Ok(false);
-    }
-    let (res, pb) = res.unwrap();
-
-    let mut file = XzDecoder::new(
-        File::create(path).with_context(|| format!("Failed to create file '{}'", path))?,
-    );
-    let mut stream = res.bytes_stream();
-
-    while let Some(item) = stream.next().await {
-        let chunk = item.with_context(|| "Error while downloading file".to_string())?;
-        file.write_all(&chunk)
-            .with_context(|| "Error while writing to file".to_string())?;
-        pb.inc(chunk.len() as u64);
-    }
-
-    pb.finish_with_message(&format!("Downloaded {}", url));
-    Ok(true)
-}
+use drt_tools::*;
 
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -334,19 +253,21 @@ impl ProcessExcuses {
     }
 
     async fn download_to_cache(&self) -> Result<bool> {
+        let downloader = Downloader::new(true);
+
         let urls = [(
             "https://release.debian.org/britney/excuses.yaml",
             "excuses.yaml",
         )];
         for (url, dst) in urls {
-            if !download_file(
-                &Client::new(),
-                url,
-                self.get_cache_path(dst)?
-                    .to_str()
-                    .ok_or_else(|| anyhow!("Failed to produce path"))?,
-            )
-            .await?
+            if !downloader
+                .download_file(
+                    url,
+                    self.get_cache_path(dst)?
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Failed to produce path"))?,
+                )
+                .await?
             {
                 return Ok(false);
             }
@@ -357,14 +278,14 @@ impl ProcessExcuses {
                 architecture
             );
             let dest = format!("Packages_{}", architecture);
-            download_file_unxz(
-                &Client::new(),
-                &url,
-                self.get_cache_path(&dest)?
-                    .to_str()
-                    .ok_or_else(|| anyhow!("Failed to produce path"))?,
-            )
-            .await?;
+            downloader
+                .download_file_unxz(
+                    &url,
+                    self.get_cache_path(&dest)?
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Failed to produce path"))?,
+                )
+                .await?;
         }
 
         Ok(true)
