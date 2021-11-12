@@ -6,8 +6,6 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use debcontrol::{Field, Paragraph};
-use debcontrol_struct::DebControl;
 use anyhow::{anyhow, Result};
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use serde::Deserialize;
@@ -177,11 +175,14 @@ struct ToBinNMU {
     architectures: Vec<Architecture>,
 }
 
-#[derive(DebControl)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 struct BinaryPackage {
-    source: Option<String>,
+    // until https://github.com/Kixunil/rfc822-like/issues/1 is fixed, use an empty string as default value instead of Option<String>
+    #[serde(default = "String::new")]
+    source: String,
     package: String,
-    multi_arch: Option<String>,
+    #[serde(default = "String::new")]
+    multi_arch: String,
 }
 
 struct SourcePackages {
@@ -213,22 +214,24 @@ impl SourcePackages {
         let mut ma_same_sources = HashSet::<String>::new();
 
         let package_content = fs::read_to_string(&path)?;
-        let package_paragraphs = debcontrol::parse_str(&package_content)
-            .map_err(|_| anyhow!("Parsing paragraphs failed"))?;
-        let pb = ProgressBar::new(package_paragraphs.len() as u64);
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_str(&package_content)?;
+        let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(pb_style.clone());
         pb.set_message(&format!("Processing {}", path.as_ref().display()));
-        for binary_paragraph in package_paragraphs.iter().progress_with(pb) {
-            let binary_package = BinaryPackage::from_paragraph(binary_paragraph)
-                .map_err(|_| anyhow!("Parsing paragraph failed"))?;
-            if let Some(ma) = binary_package.multi_arch {
-                if ma == "same" {
-                    if let Some(source) = binary_package.source {
-                        ma_same_sources.insert(source.split_whitespace().next().unwrap().into());
-                    } else {
-                        // not Source set, so Source == Package
-                        ma_same_sources.insert(binary_package.package);
-                    }
+        for binary_package in binary_packages.iter().progress_with(pb) {
+            if binary_package.multi_arch == "same" {
+                if binary_package.source.len() > 0 {
+                    ma_same_sources.insert(
+                        binary_package
+                            .source
+                            .split_whitespace()
+                            .next()
+                            .unwrap()
+                            .into(),
+                    );
+                } else {
+                    // not Source set, so Source == Package
+                    ma_same_sources.insert(binary_package.package.clone());
                 }
             }
         }
