@@ -164,7 +164,7 @@ fn check_if_binnmu_required(policy_info: &PolicyInfo) -> bool {
         }
     }
 
-    // if they others do not pass, would not migrate even if binNMUed
+    // if the others do not pass, would not migrate even if binNMUed
     policy_info
         .extras
         .values()
@@ -285,7 +285,7 @@ impl ProcessExcuses {
             );
             let dest = format!("Packages_{}", architecture);
             downloader
-                .download_file_unxz(&url, self.get_cache_path(&dest)?)
+                .download_file(&url, self.get_cache_path(&dest)?)
                 .await?;
         }
 
