@@ -32,6 +32,8 @@ enum Verdict {
     RejectedPermanently,
     #[serde(rename = "REJECTED_TEMPORARILY")]
     RejectedTemporarily,
+    #[serde(rename = "REJECTED_CANNOT_DETERMINE_IF_PERMANENT")]
+    RejectedCannotDetermineIfPermanent,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Hash, Eq)]
