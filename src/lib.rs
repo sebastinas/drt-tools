@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::{anyhow, Context, Result};
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use reqwest::{Client, Response};
+use reqwest::{header, Client, Response, StatusCode};
 use xz2::write::XzDecoder;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -15,6 +15,7 @@ pub enum CacheState {
     FreshFiles,
 }
 
+#[derive(Debug)]
 pub struct Downloader {
     always_download: bool,
     client: Client,
@@ -28,11 +29,7 @@ impl Downloader {
         }
     }
 
-    async fn download_file_init<P>(
-        &self,
-        url: &str,
-        path: P,
-    ) -> Result<Option<(Response, ProgressBar)>>
+    async fn download_init<P>(&self, url: &str, path: P) -> Result<Option<(Response, ProgressBar)>>
     where
         P: AsRef<Path>,
     {
@@ -41,7 +38,7 @@ impl Downloader {
             if let Ok(dst_metadata) = fs::metadata(path) {
                 // if always_download was not set and we have local copy, tell the server the date
                 res.header(
-                    reqwest::header::IF_MODIFIED_SINCE,
+                    header::IF_MODIFIED_SINCE,
                     httpdate::fmt_http_date(dst_metadata.modified()?),
                 )
             } else {
@@ -54,7 +51,7 @@ impl Downloader {
         .await
         .with_context(|| format!("Failed to GET from '{}'", &url))?;
 
-        if !self.always_download && res.status() == reqwest::StatusCode::NOT_MODIFIED {
+        if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
             // this will only trigger if always_download is not set and the server reports that the
             // file was not modified
             return Ok(None);
@@ -68,38 +65,20 @@ impl Downloader {
             .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
             .progress_chars("█  "));
         pb.set_message(&format!("Downloading {}", url));
-
         Ok(Some((res, pb)))
     }
 
-    async fn download_file_internal(
+    async fn download_internal(
         &self,
         res: Response,
         pb: &ProgressBar,
-        mut file: File,
+        mut writer: impl Write,
     ) -> Result<()> {
         let mut stream = res.bytes_stream();
         while let Some(item) = stream.next().await {
             let chunk = item.with_context(|| "Error while downloading file".to_string())?;
-            file.write_all(&chunk)
-                .with_context(|| "Error while writing to file".to_string())?;
-            pb.inc(chunk.len() as u64);
-        }
-        Ok(())
-    }
-
-    async fn download_file_internal_unxz(
-        &self,
-        res: Response,
-        pb: &ProgressBar,
-        file: File,
-    ) -> Result<()> {
-        let mut file = XzDecoder::new(file);
-        let mut stream = res.bytes_stream();
-
-        while let Some(item) = stream.next().await {
-            let chunk = item.with_context(|| "Error while downloading file".to_string())?;
-            file.write_all(&chunk)
+            writer
+                .write_all(&chunk)
                 .with_context(|| "Error while writing to file".to_string())?;
             pb.inc(chunk.len() as u64);
         }
@@ -110,7 +89,7 @@ impl Downloader {
     where
         P: AsRef<Path>,
     {
-        let res = self.download_file_init(url, &path).await?;
+        let res = self.download_init(url, &path).await?;
         if res.is_none() {
             return Ok(CacheState::NoUpdate);
         }
@@ -119,9 +98,10 @@ impl Downloader {
         let file = File::create(&path)
             .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?;
         if url.ends_with(".xz") {
-            self.download_file_internal_unxz(res, &pb, file).await?;
+            self.download_internal(res, &pb, XzDecoder::new(file))
+                .await?;
         } else {
-            self.download_file_internal(res, &pb, file).await?;
+            self.download_internal(res, &pb, file).await?;
         }
         pb.finish_with_message(&format!("Downloaded {}", url));
         Ok(CacheState::FreshFiles)

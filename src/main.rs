@@ -54,18 +54,22 @@ enum Architecture {
 
 impl Display for Architecture {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Architecture::All => "all",
-            Architecture::Amd64 => "amd64",
-            Architecture::Arm64 => "arm64",
-            Architecture::Armel => "armel",
-            Architecture::Armhf => "armhf",
-            Architecture::I386 => "i386",
-            Architecture::Mips64el => "mips64el",
-            Architecture::Mipsel => "mipsel",
-            Architecture::Ppc64el => "ppc64el",
-            Architecture::S390x => "s390x",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Architecture::All => "all",
+                Architecture::Amd64 => "amd64",
+                Architecture::Arm64 => "arm64",
+                Architecture::Armel => "armel",
+                Architecture::Armhf => "armhf",
+                Architecture::I386 => "i386",
+                Architecture::Mips64el => "mips64el",
+                Architecture::Mipsel => "mipsel",
+                Architecture::Ppc64el => "ppc64el",
+                Architecture::S390x => "s390x",
+            }
+        )
     }
 }
 
@@ -275,6 +279,7 @@ impl ProcessExcuses {
                 == CacheState::NoUpdate
                 && !self.settings.force_processing
             {
+                // if excuses.yaml did not change, there is nothing new to build
                 return Ok(CacheState::NoUpdate);
             }
         }
