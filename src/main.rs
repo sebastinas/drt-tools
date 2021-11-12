@@ -220,7 +220,7 @@ impl SourcePackages {
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(pb_style.clone());
         pb.set_message(&format!("Processing {}", path.as_ref().display()));
-        for binary_package in binary_packages.iter().progress_with(pb) {
+        for binary_package in binary_packages.into_iter().progress_with(pb) {
             if binary_package.multi_arch == "same" {
                 if binary_package.source.len() > 0 {
                     ma_same_sources.insert(
@@ -233,7 +233,7 @@ impl SourcePackages {
                     );
                 } else {
                     // not Source set, so Source == Package
-                    ma_same_sources.insert(binary_package.package.clone());
+                    ma_same_sources.insert(binary_package.package);
                 }
             }
         }
