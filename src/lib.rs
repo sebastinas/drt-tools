@@ -76,7 +76,7 @@ impl Downloader {
         P: AsRef<Path>,
     {
         let res = self.download_file_init(url, &path).await?;
-        if let None = res {
+        if res.is_none() {
             return Ok(CacheState::NoUpdate);
         }
         let (res, pb) = res.unwrap();
@@ -101,7 +101,7 @@ impl Downloader {
         P: AsRef<Path>,
     {
         let res = self.download_file_init(url, &path).await?;
-        if let None = res {
+        if res.is_none() {
             return Ok(CacheState::NoUpdate);
         }
         let (res, pb) = res.unwrap();

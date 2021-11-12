@@ -224,7 +224,7 @@ impl SourcePackages {
         pb.set_message(&format!("Processing {}", path.as_ref().display()));
         for binary_package in binary_packages.into_iter().progress_with(pb) {
             if binary_package.multi_arch == "same" {
-                if binary_package.source.len() > 0 {
+                if !binary_package.source.is_empty() {
                     ma_same_sources.insert(
                         binary_package
                             .source
