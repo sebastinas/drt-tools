@@ -7,6 +7,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
+use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use serde::Deserialize;
 use xdg::BaseDirectories;
@@ -249,24 +250,26 @@ impl SourcePackages {
 
 struct ProcessExcuses {
     base_directory: BaseDirectories,
+    settings: ProcessExcusesSettings,
 }
 
 impl ProcessExcuses {
-    fn new() -> Result<Self> {
+    fn new(settings: ProcessExcusesSettings) -> Result<Self> {
         Ok(Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
+            settings,
         })
     }
 
-    async fn download_to_cache(&self) -> Result<bool> {
-        let downloader = Downloader::new(true);
+    async fn download_to_cache(&self) -> Result<CacheState> {
+        let downloader = Downloader::new(self.settings.force_download);
 
         let urls = [(
             "https://release.debian.org/britney/excuses.yaml",
             "excuses.yaml",
         )];
         for (url, dst) in urls {
-            if !downloader
+            if downloader
                 .download_file(
                     url,
                     self.get_cache_path(dst)?
@@ -274,8 +277,10 @@ impl ProcessExcuses {
                         .ok_or_else(|| anyhow!("Failed to produce path"))?,
                 )
                 .await?
+                == CacheState::NoUpdate
+                && !self.settings.force_processing
             {
-                return Ok(false);
+                return Ok(CacheState::NoUpdate);
             }
         }
         for architecture in RELEASE_ARCHITECTURES {
@@ -294,7 +299,7 @@ impl ProcessExcuses {
                 .await?;
         }
 
-        Ok(true)
+        Ok(CacheState::FreshFiles)
     }
 
     fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
@@ -305,10 +310,22 @@ impl ProcessExcuses {
     }
 }
 
+#[derive(Debug, Parser)]
+struct ProcessExcusesSettings {
+    /// Force download of files
+    #[clap(long)]
+    force_download: bool,
+
+    /// Force processing of files regardless of their cache state
+    #[clap(long)]
+    force_processing: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let process_excuses = ProcessExcuses::new()?;
-    if !process_excuses.download_to_cache().await? {
+    let process_excuses_settings = ProcessExcusesSettings::parse();
+    let process_excuses = ProcessExcuses::new(process_excuses_settings)?;
+    if process_excuses.download_to_cache().await? == CacheState::NoUpdate {
         // nothing to do
         return Ok(());
     }

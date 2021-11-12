@@ -8,15 +8,21 @@ use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::{Client, Response};
 use xz2::write::XzDecoder;
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum CacheState {
+    NoUpdate,
+    FreshFiles,
+}
+
 pub struct Downloader {
-    modified_since: bool,
+    always_download: bool,
     client: Client,
 }
 
 impl Downloader {
-    pub fn new(modified_since: bool) -> Self {
+    pub fn new(always_download: bool) -> Self {
         Self {
-            modified_since,
+            always_download,
             client: Client::new(),
         }
     }
