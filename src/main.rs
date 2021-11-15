@@ -50,6 +50,7 @@ enum Architecture {
     #[serde(rename = "hurd-i386")]
     HurdI386,
     I386,
+    Ia64,
     #[serde(rename = "kfreebsd-amd64")]
     KFreeBSDAmd64,
     #[serde(rename = "kfreebsd-i386")]
@@ -65,7 +66,6 @@ enum Architecture {
     Sh4,
     Sparc64,
     X32,
-    ia64,
 }
 
 impl Display for Architecture {
@@ -83,6 +83,7 @@ impl Display for Architecture {
                 Architecture::Hppa => "hppa",
                 Architecture::HurdI386 => "hurd-i386",
                 Architecture::I386 => "i386",
+                Architecture::Ia64 => "ia64",
                 Architecture::KFreeBSDAmd64 => "kfreebsd-amd64",
                 Architecture::KFreeBSDI386 => "kfreebsd-i386",
                 Architecture::M86k => "m86k",
@@ -96,7 +97,6 @@ impl Display for Architecture {
                 Architecture::Sh4 => "sh4",
                 Architecture::Sparc64 => "sparc64",
                 Architecture::X32 => "x32",
-                Architecture::ia64 => "ia64",
             }
         )
     }
