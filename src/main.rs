@@ -1,7 +1,6 @@
 use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -250,8 +249,7 @@ impl SourcePackages {
     {
         let mut ma_same_sources = HashSet::<String>::new();
 
-        let package_content = fs::read_to_string(&path)?;
-        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_str(&package_content)?;
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(pb_style.clone());
         pb.set_message(&format!("Processing {}", path.as_ref().display()));
