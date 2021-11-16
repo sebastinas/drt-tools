@@ -139,7 +139,7 @@ struct UnspecfiedPolicyInfo {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 struct BuiltOnBuildd {
-    signed_by: HashMap<Architecture, String>,
+    signed_by: HashMap<Architecture, Option<String>>,
     verdict: Verdict,
 }
 
@@ -180,27 +180,6 @@ struct ExcusesItem {
     missing_builds: Option<MissingBuilds>,
     #[serde(rename = "policy_info")]
     policy_info: Option<PolicyInfo>,
-}
-
-fn check_if_binnmu_required(policy_info: &PolicyInfo) -> bool {
-    if let Some(b) = &policy_info.builtonbuildd {
-        if b.verdict == Verdict::Pass {
-            // nothing to do
-            return false;
-        }
-    }
-    if let Some(a) = &policy_info.age {
-        if a.current_age < min(a.age_requirement / 2, a.age_requirement - 1) {
-            // too young
-            return false;
-        }
-    }
-
-    // if the others do not pass, would not migrate even if binNMUed
-    policy_info
-        .extras
-        .values()
-        .all(|info| info.verdict == Verdict::Pass)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -336,6 +315,137 @@ impl ProcessExcuses {
     {
         Ok(self.base_directory.place_cache_file(path)?)
     }
+
+    fn check_if_binnmu_required(policy_info: &PolicyInfo) -> bool {
+        if let Some(b) = &policy_info.builtonbuildd {
+            if b.verdict == Verdict::Pass {
+                // nothing to do
+                return false;
+            }
+            if b.verdict == Verdict::RejectedCannotDetermineIfPermanent {
+                // missing builds
+                return false;
+            }
+        }
+        if let Some(a) = &policy_info.age {
+            if a.current_age < min(a.age_requirement / 2, a.age_requirement - 1) {
+                // too young
+                return false;
+            }
+        }
+
+        // if the others do not pass, would not migrate even if binNMUed
+        policy_info
+            .extras
+            .values()
+            .all(|info| info.verdict == Verdict::Pass)
+    }
+
+    pub async fn run(&self) -> Result<()> {
+        if self.download_to_cache().await? == CacheState::NoUpdate {
+            // nothing to do
+            return Ok(());
+        }
+
+        let mut all_paths = vec![];
+        for architecture in RELEASE_ARCHITECTURES {
+            all_paths.push(self.get_cache_path(format!("Packages_{}", architecture))?);
+        }
+        let source_packages = SourcePackages::new(&all_paths)?;
+
+        let mut to_binnmu = vec![];
+        let excuses: Excuses = serde_yaml::from_reader(BufReader::new(
+            File::open(self.get_cache_path("excuses.yaml")?).unwrap(),
+        ))
+        .unwrap();
+        let pb = ProgressBar::new(excuses.sources.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+                )
+                .progress_chars("█  "),
+        );
+        pb.set_message("Processing excuses");
+        for item in excuses.sources.iter().progress_with(pb) {
+            if item.new_version == "-" {
+                // skip removals
+                continue;
+            }
+            if item.new_version == item.old_version {
+                // skip binNMUs
+                continue;
+            }
+            if item.item_name.ends_with("_pu") {
+                // skip PU requests
+                continue;
+            }
+            match item.component {
+                Some(Component::Main) | None => {}
+                _ => {
+                    // skip non-free and contrib
+                    continue;
+                }
+            }
+            if let Some(true) = item.invalidated_by_other_package {
+                // skip otherwise blocked packages
+                continue;
+            }
+            if item.missing_builds.is_some() {
+                // skip packages with missing builds
+                continue;
+            }
+
+            if let Some(policy_info) = &item.policy_info {
+                if !Self::check_if_binnmu_required(policy_info) {
+                    continue;
+                }
+
+                let mut archs: Vec<Architecture> = vec![];
+                for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
+                    if let Some(signer) = signer {
+                        if !signer.ends_with("@buildd.debian.org") {
+                            archs.push(arch.to_owned());
+                        }
+                    }
+                }
+                if archs.is_empty() {
+                    // this should not happen, but just to be on the safe side
+                    continue;
+                }
+                if archs.contains(&Architecture::All) {
+                    // cannot binNMU arch:all
+                    continue;
+                }
+
+                to_binnmu.push(ToBinNMU {
+                    source: item.source.clone(),
+                    version: item.new_version.clone(),
+                    architectures: archs,
+                });
+            }
+        }
+
+        println!("# Rebuild on buildds for testing migration");
+        for info in to_binnmu {
+            println!(
+                "nmu {}_{} . {} . unstable . -m \"Rebuild on buildd\"",
+                info.source,
+                info.version,
+                if source_packages.is_ma_same(&info.source) {
+                    "ANY".to_string()
+                } else {
+                    info.architectures
+                        .iter()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                }
+            );
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -347,107 +457,15 @@ struct ProcessExcusesSettings {
     /// Force processing of files regardless of their cache state
     #[clap(long)]
     force_processing: bool,
+
+    /// Do not prepare binNMUs to allow testing migration
+    #[clap(long)]
+    no_rebuilds: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let process_excuses_settings = ProcessExcusesSettings::parse();
     let process_excuses = ProcessExcuses::new(process_excuses_settings)?;
-    if process_excuses.download_to_cache().await? == CacheState::NoUpdate {
-        // nothing to do
-        return Ok(());
-    }
-
-    let mut all_paths = vec![];
-    for architecture in RELEASE_ARCHITECTURES {
-        all_paths.push(process_excuses.get_cache_path(format!("Packages_{}", architecture))?);
-    }
-    let source_packages = SourcePackages::new(&all_paths)?;
-
-    let mut to_binnmu = vec![];
-    let excuses: Excuses = serde_yaml::from_reader(BufReader::new(
-        File::open(process_excuses.get_cache_path("excuses.yaml")?).unwrap(),
-    ))
-    .unwrap();
-    let pb = ProgressBar::new(excuses.sources.len() as u64);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template(
-                "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-            )
-            .progress_chars("█  "),
-    );
-    pb.set_message("Processing excuses");
-    for item in excuses.sources.iter().progress_with(pb) {
-        if item.new_version == "-" {
-            // skip removals
-            continue;
-        }
-        if item.new_version == item.old_version {
-            // skip binNMUs
-            continue;
-        }
-        if item.item_name.ends_with("_pu") {
-            // skip PU requests
-            continue;
-        }
-        match item.component {
-            Some(Component::Main) => {}
-            None => {}
-            _ => {
-                // skip non-free and contrib
-                continue;
-            }
-        }
-        if let Some(true) = item.invalidated_by_other_package {
-            // skip otherwise blocked packages
-            continue;
-        }
-        if item.missing_builds.is_some() {
-            // skip packages with missing builds
-            continue;
-        }
-
-        if let Some(policy_info) = &item.policy_info {
-            if !check_if_binnmu_required(policy_info) {
-                continue;
-            }
-
-            let mut archs: Vec<Architecture> = vec![];
-            for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
-                if !signer.ends_with("@buildd.debian.org") {
-                    archs.push(arch.to_owned());
-                }
-            }
-            if archs.contains(&Architecture::All) {
-                // cannot binNMU arch:all
-                continue;
-            }
-
-            to_binnmu.push(ToBinNMU {
-                source: item.source.clone(),
-                version: item.new_version.clone(),
-                architectures: archs,
-            });
-        }
-    }
-
-    for info in to_binnmu {
-        println!(
-            "nmu {}_{} . {} . unstable . -m \"Rebuild on buildd\"",
-            info.source,
-            info.version,
-            if source_packages.is_ma_same(&info.source) {
-                "ANY".to_string()
-            } else {
-                info.architectures
-                    .iter()
-                    .map(|a| a.to_string())
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            }
-        );
-    }
-
-    Ok(())
+    process_excuses.run().await
 }
