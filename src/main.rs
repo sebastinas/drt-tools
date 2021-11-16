@@ -231,7 +231,9 @@ impl SourcePackages {
         P: AsRef<Path>,
     {
         let pb_style = ProgressStyle::default_bar()
-            .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})")
+            .template(
+                "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+            )
             .progress_chars("█  ");
 
         let mut ma_same_sources = HashSet::<String>::new();
@@ -252,22 +254,26 @@ impl SourcePackages {
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(pb_style.clone());
-        pb.set_message(&format!("Processing {}", path.as_ref().display()));
+        pb.set_message(&format!(
+            "Processing {}",
+            path.as_ref().file_name().unwrap().to_str().unwrap()
+        ));
         for binary_package in binary_packages.into_iter().progress_with(pb) {
-            if binary_package.multi_arch == "same" {
-                if !binary_package.source.is_empty() {
-                    ma_same_sources.insert(
-                        binary_package
-                            .source
-                            .split_whitespace()
-                            .next()
-                            .unwrap()
-                            .into(),
-                    );
-                } else {
-                    // not Source set, so Source == Package
-                    ma_same_sources.insert(binary_package.package);
-                }
+            if binary_package.multi_arch != "same" {
+                continue;
+            }
+            if !binary_package.source.is_empty() {
+                ma_same_sources.insert(
+                    binary_package
+                        .source
+                        .split_whitespace()
+                        .next()
+                        .unwrap()
+                        .into(),
+                );
+            } else {
+                // not Source set, so Source == Package
+                ma_same_sources.insert(binary_package.package);
             }
         }
 
@@ -364,9 +370,13 @@ async fn main() -> Result<()> {
     ))
     .unwrap();
     let pb = ProgressBar::new(excuses.sources.len() as u64);
-    pb.set_style(ProgressStyle::default_bar()
-        .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})")
-        .progress_chars("█  "));
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+            )
+            .progress_chars("█  "),
+    );
     pb.set_message("Processing excuses");
     for item in excuses.sources.iter().progress_with(pb) {
         if item.new_version == "-" {
