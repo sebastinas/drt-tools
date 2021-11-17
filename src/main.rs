@@ -1,6 +1,5 @@
 use std::cmp::min;
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -11,183 +10,12 @@ use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use serde::Deserialize;
 use xdg::BaseDirectories;
 
+use assorted_debian_utils::{
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    excuses::{self, Component, PolicyInfo, Verdict},
+    wb::{BinNMU, BinNMUArchitecture, WBCommandBuilder},
+};
 use drt_tools::*;
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct Excuses {
-    generated_date: String,
-    sources: Vec<ExcusesItem>,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-enum Verdict {
-    #[serde(rename = "PASS")]
-    Pass,
-    #[serde(rename = "PASS_HINTED")]
-    PassHinted,
-    #[serde(rename = "REJECTED_NEEDS_APPROVAL")]
-    RejectedNeedsApproval,
-    #[serde(rename = "REJECTED_PERMANENTLY")]
-    RejectedPermanently,
-    #[serde(rename = "REJECTED_TEMPORARILY")]
-    RejectedTemporarily,
-    #[serde(rename = "REJECTED_CANNOT_DETERMINE_IF_PERMANENT")]
-    RejectedCannotDetermineIfPermanent,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Hash, Eq)]
-#[serde(rename_all = "lowercase")]
-enum Architecture {
-    All,
-    Alpha,
-    Amd64,
-    Arm64,
-    Armel,
-    Armhf,
-    Hppa,
-    #[serde(rename = "hurd-i386")]
-    HurdI386,
-    I386,
-    Ia64,
-    #[serde(rename = "kfreebsd-amd64")]
-    KFreeBSDAmd64,
-    #[serde(rename = "kfreebsd-i386")]
-    KFreeBSDI386,
-    M86k,
-    Mips64el,
-    Mipsel,
-    PowerPC,
-    Ppc64,
-    Ppc64el,
-    Riscv64,
-    S390x,
-    Sh4,
-    Sparc64,
-    X32,
-}
-
-impl Display for Architecture {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Architecture::All => "all",
-                Architecture::Alpha => "alpha",
-                Architecture::Amd64 => "amd64",
-                Architecture::Arm64 => "arm64",
-                Architecture::Armel => "armel",
-                Architecture::Armhf => "armhf",
-                Architecture::Hppa => "hppa",
-                Architecture::HurdI386 => "hurd-i386",
-                Architecture::I386 => "i386",
-                Architecture::Ia64 => "ia64",
-                Architecture::KFreeBSDAmd64 => "kfreebsd-amd64",
-                Architecture::KFreeBSDI386 => "kfreebsd-i386",
-                Architecture::M86k => "m86k",
-                Architecture::Mips64el => "mips64el",
-                Architecture::Mipsel => "mipsel",
-                Architecture::PowerPC => "powerpc",
-                Architecture::Ppc64 => "ppc64",
-                Architecture::Ppc64el => "ppc64el",
-                Architecture::Riscv64 => "risc64",
-                Architecture::S390x => "s390x",
-                Architecture::Sh4 => "sh4",
-                Architecture::Sparc64 => "sparc64",
-                Architecture::X32 => "x32",
-            }
-        )
-    }
-}
-
-const RELEASE_ARCHITECTURES: [Architecture; 9] = [
-    Architecture::Amd64,
-    Architecture::Arm64,
-    Architecture::Armel,
-    Architecture::Armhf,
-    Architecture::I386,
-    Architecture::Ppc64el,
-    Architecture::Mipsel,
-    Architecture::Mips64el,
-    Architecture::S390x,
-];
-
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-enum Component {
-    Main,
-    Contrib,
-    #[serde(rename = "non-free")]
-    NonFree,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct AgeInfo {
-    age_requirement: u32,
-    current_age: u32,
-    verdict: Verdict,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct UnspecfiedPolicyInfo {
-    verdict: Verdict,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct BuiltOnBuildd {
-    signed_by: HashMap<Architecture, Option<String>>,
-    verdict: Verdict,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct PolicyInfo {
-    age: Option<AgeInfo>,
-    builtonbuildd: Option<BuiltOnBuildd>,
-    #[serde(flatten)]
-    extras: HashMap<String, UnspecfiedPolicyInfo>,
-    /*
-        autopkgtest: Option<UnspecfiedPolicyInfo>,
-        block: Option<UnspecfiedPolicyInfo>,
-        build_depends: Option<UnspecfiedPolicyInfo>,
-        built_using:  Option<UnspecfiedPolicyInfo>,
-        depends: Option<UnspecfiedPolicyInfo>,
-        piuparts: Option<UnspecfiedPolicyInfo>,
-        rc_bugs: Option<UnspecfiedPolicyInfo>,
-    */
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct MissingBuilds {
-    on_architectures: Vec<Architecture>,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct ExcusesItem {
-    is_candidate: bool,
-    new_version: String,
-    old_version: String,
-    item_name: String,
-    source: String,
-    invalidated_by_other_package: Option<bool>,
-    component: Option<Component>,
-    missing_builds: Option<MissingBuilds>,
-    #[serde(rename = "policy_info")]
-    policy_info: Option<PolicyInfo>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct ToBinNMU {
-    source: String,
-    version: String,
-    architectures: Vec<Architecture>,
-}
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -354,7 +182,7 @@ impl ProcessExcuses {
         let source_packages = SourcePackages::new(&all_paths)?;
 
         let mut to_binnmu = vec![];
-        let excuses: Excuses = serde_yaml::from_reader(BufReader::new(
+        let excuses = excuses::from_reader(BufReader::new(
             File::open(self.get_cache_path("excuses.yaml")?).unwrap(),
         ))
         .unwrap();
@@ -417,33 +245,28 @@ impl ProcessExcuses {
                     // cannot binNMU arch:all
                     continue;
                 }
+                let archs: Vec<BinNMUArchitecture> = archs
+                    .iter()
+                    .map(|arch| BinNMUArchitecture::Architecture(arch.clone()))
+                    .collect();
 
-                to_binnmu.push(ToBinNMU {
-                    source: item.source.clone(),
-                    version: item.new_version.clone(),
-                    architectures: archs,
-                });
+                to_binnmu.push(
+                    BinNMU::new(&item.source, "Rebuild on buildd")
+                        .with_version(&item.new_version)
+                        .with_architectures(if source_packages.is_ma_same(&item.source) {
+                            &[BinNMUArchitecture::Any]
+                        } else {
+                            &archs
+                        })
+                        .build(),
+                );
             }
         }
 
         println!("# Rebuild on buildds for testing migration");
-        for info in to_binnmu {
-            println!(
-                "nmu {}_{} . {} . unstable . -m \"Rebuild on buildd\"",
-                info.source,
-                info.version,
-                if source_packages.is_ma_same(&info.source) {
-                    "ANY".to_string()
-                } else {
-                    info.architectures
-                        .iter()
-                        .map(|a| a.to_string())
-                        .collect::<Vec<String>>()
-                        .join(" ")
-                }
-            );
+        for binnmu in to_binnmu {
+            println!("{}", binnmu);
         }
-
         Ok(())
     }
 }

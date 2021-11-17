@@ -2,10 +2,10 @@
 name = "drt-tools"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 
 [dependencies]
+assorted-debian-utils = { path = "assorted-debian-utils" }
 anyhow = "1.0"
 clap = "3.0.0-beta.5"
 futures = "0.3"
@@ -15,7 +15,6 @@ indicatif = "0.15"
 reqwest = { version = "0.11", features = ["stream"] }
 rfc822-like = "0.1"
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.8"
 tokio = { version = "1.13", features = ["full"] }
 xdg = "2.4"
 xz2 = "0.1"
