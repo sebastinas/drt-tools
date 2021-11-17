@@ -6,6 +6,8 @@ authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 repository = "https://github.com/sebastinas/drt-tools"
 edition = "2021"
 rust-version = "1.56"
+license = "LGPL-3.0-or-later"
+readme = "README.md"
 keywords = ["debian"]
 
 [dependencies]

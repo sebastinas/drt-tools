@@ -1,3 +1,6 @@
+// Copyright 2021 Sebastian Ramacher
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 use crate::architectures::Architecture;
 use serde::Deserialize;
 use std::{collections::HashMap, io};
