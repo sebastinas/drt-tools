@@ -1,3 +1,6 @@
+// Copyright 2021 Sebastian Ramacher
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fs::File;
