@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 
+[workspace]
+members = ["assorted-debian-utils"]
+
 [dependencies]
 assorted-debian-utils = { path = "assorted-debian-utils" }
 anyhow = "1.0"
