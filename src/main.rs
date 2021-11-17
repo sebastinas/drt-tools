@@ -13,7 +13,7 @@ use xdg::BaseDirectories;
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, PolicyInfo, Verdict},
-    wb::{BinNMU, BinNMUArchitecture, WBCommandBuilder},
+    wb::{BinNMU, WBArchitecture, WBCommandBuilder},
 };
 use drt_tools::*;
 
@@ -245,16 +245,16 @@ impl ProcessExcuses {
                     // cannot binNMU arch:all
                     continue;
                 }
-                let archs: Vec<BinNMUArchitecture> = archs
+                let archs: Vec<WBArchitecture> = archs
                     .iter()
-                    .map(|arch| BinNMUArchitecture::Architecture(arch.clone()))
+                    .map(|arch| WBArchitecture::Architecture(arch.clone()))
                     .collect();
 
                 to_binnmu.push(
                     BinNMU::new(&item.source, "Rebuild on buildd")
                         .with_version(&item.new_version)
                         .with_architectures(if source_packages.is_ma_same(&item.source) {
-                            &[BinNMUArchitecture::Any]
+                            &[WBArchitecture::Any]
                         } else {
                             &archs
                         })

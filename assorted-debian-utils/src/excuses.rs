@@ -1,10 +1,16 @@
 // Copyright 2021 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+//! # Helpers to handle `excuses.yaml` for testing migration
+//!
+//! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
+//! with [serde]. Note however, that this module only handles a biased selection of fields.
+
 use crate::architectures::Architecture;
 use serde::Deserialize;
 use std::{collections::HashMap, io};
 
+/// The excuses.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Excuses {
@@ -15,16 +21,23 @@ pub struct Excuses {
 /// A policy's verdict
 #[derive(Debug, Deserialize, PartialEq)]
 pub enum Verdict {
+    /// Policy passed
     #[serde(rename = "PASS")]
     Pass,
+    /// Policy passed due to a hint
     #[serde(rename = "PASS_HINTED")]
     PassHinted,
+    /// Rejected due to a block hint or because the upload requires explicit approval (e.g.,
+    /// uploads to proposed-updates or testing-proposed-updates)
     #[serde(rename = "REJECTED_NEEDS_APPROVAL")]
     RejectedNeedsApproval,
+    /// Rejected tu to a permanent issue
     #[serde(rename = "REJECTED_PERMANENTLY")]
     RejectedPermanently,
+    /// Rejected due to a transient issue
     #[serde(rename = "REJECTED_TEMPORARILY")]
     RejectedTemporarily,
+    /// Rejected, but not able to determine if the issue is transient
     #[serde(rename = "REJECTED_CANNOT_DETERMINE_IF_PERMANENT")]
     RejectedCannotDetermineIfPermanent,
 }
@@ -62,7 +75,7 @@ pub struct BuiltOnBuildd {
     pub verdict: Verdict,
 }
 
-/// The collectedp olicy infos
+/// Collected policy infos
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PolicyInfo {
@@ -104,6 +117,7 @@ pub struct ExcusesItem {
     pub policy_info: Option<PolicyInfo>,
 }
 
+/// Result type
 pub type Result<T> = serde_yaml::Result<T>;
 
 /// Read excuses from a reader

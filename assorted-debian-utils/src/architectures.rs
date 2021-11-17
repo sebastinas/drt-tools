@@ -1,38 +1,69 @@
 // Copyright 2021 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+//! # Helpers to handle Debian architectures
+//!
+//! This module provides helpers for Debian architectures. This currently involves a list of release
+//! architectures and an enum for release and ports architectures.
+
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
-/// A Debian architecture
+/// Debian architectures
+///
+/// This enum describes architectures that are release architectures or available on Debian ports.
+/// It also provides `All` as special case for binary independent packages.
 #[derive(Clone, Debug, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Architecture {
+    /// The `all` architecture for architecture independent packages
     All,
+    /// The `alpha` architecture
     Alpha,
+    /// The `amd64` architecture
     Amd64,
+    /// The `arm64` architecture
     Arm64,
+    /// The `armel` architecture
     Armel,
+    /// The `armhf` architecture
     Armhf,
+    /// The `hppa` architecture
     Hppa,
+    /// The `hurd-i386` architecture
     #[serde(rename = "hurd-i386")]
     HurdI386,
+    /// The `i386` architecture
     I386,
+    /// The `ia64` architecture
     Ia64,
+    /// The `kfreebsd-amd64` architecture
     #[serde(rename = "kfreebsd-amd64")]
     KFreeBSDAmd64,
+    /// The `kfreebsd-i386` architecture
     #[serde(rename = "kfreebsd-i386")]
     KFreeBSDI386,
+    /// The `m86k` architecture
     M86k,
+    /// The `mips64el` architecture
     Mips64el,
+    /// The `mipsel` architecture
     Mipsel,
+    /// The `powerpc` architecture
     PowerPC,
+    /// The `ppc64` architecture
     Ppc64,
+    /// The `ppc64el` architecture
     Ppc64el,
+    /// The `riscv64` architecture
     Riscv64,
+    /// The `s390x` architecture
     S390x,
+    /// The `sh4` architecture
     Sh4,
+    /// The `sparc64` architecture
     Sparc64,
+    /// The `x32` architecture
     X32,
 }
 
