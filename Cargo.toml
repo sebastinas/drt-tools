@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 license = "GPL-3.0-or-later"
+readme = "README.md"
 
 [workspace]
 members = ["assorted-debian-utils"]
