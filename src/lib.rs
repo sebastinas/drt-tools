@@ -64,7 +64,7 @@ impl Downloader {
         pb.set_style(ProgressStyle::default_bar()
             .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
             .progress_chars("█  "));
-        pb.set_message(&format!("Downloading {}", url));
+        pb.set_message(format!("Downloading {}", url));
         Ok(Some((res, pb)))
     }
 
@@ -103,7 +103,7 @@ impl Downloader {
         } else {
             self.download_internal(res, &pb, file).await?;
         }
-        pb.finish_with_message(&format!("Downloaded {}", url));
+        pb.finish_with_message(format!("Downloaded {}", url));
         Ok(CacheState::FreshFiles)
     }
 }

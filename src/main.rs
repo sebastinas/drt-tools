@@ -61,7 +61,7 @@ impl SourcePackages {
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(pb_style.clone());
-        pb.set_message(&format!(
+        pb.set_message(format!(
             "Processing {}",
             path.as_ref().file_name().unwrap().to_str().unwrap()
         ));
