@@ -15,7 +15,7 @@ use xdg::BaseDirectories;
 
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
-    excuses::{self, Component, PolicyInfo, Verdict},
+    excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, WBArchitecture, WBCommandBuilder},
 };
 use drt_tools::*;
@@ -82,7 +82,7 @@ impl SourcePackages {
                         .into(),
                 );
             } else {
-                // not Source set, so Source == Package
+                // no Source set, so Source == Package
                 ma_same_sources.insert(binary_package.package);
             }
         }
@@ -147,7 +147,7 @@ impl ProcessExcuses {
         Ok(self.base_directory.place_cache_file(path)?)
     }
 
-    fn check_if_binnmu_required(policy_info: &PolicyInfo) -> bool {
+    fn is_binnmu_required(policy_info: &PolicyInfo) -> bool {
         if let Some(b) = &policy_info.builtonbuildd {
             if b.verdict == Verdict::Pass {
                 // nothing to do
@@ -172,7 +172,40 @@ impl ProcessExcuses {
             .all(|info| info.verdict == Verdict::Pass)
     }
 
+    fn is_actionable(item: &ExcusesItem) -> bool {
+        if item.new_version == "-" {
+            // skip removals
+            return false;
+        }
+        if item.new_version == item.old_version {
+            // skip binNMUs
+            return false;
+        }
+        if item.item_name.ends_with("_pu") {
+            // skip PU requests
+            return false;
+        }
+        match item.component {
+            Some(Component::Main) | None => {}
+            _ => {
+                // skip non-free and contrib
+                return false;
+            }
+        }
+        if let Some(true) = item.invalidated_by_other_package {
+            // skip otherwise blocked packages
+            return false;
+        }
+        if item.missing_builds.is_some() {
+            // skip packages with missing builds
+            return false;
+        }
+
+        true
+    }
+
     pub async fn run(&self) -> Result<()> {
+        // download excuses and Package files
         if self.download_to_cache().await? == CacheState::NoUpdate {
             // nothing to do
             return Ok(());
@@ -184,11 +217,12 @@ impl ProcessExcuses {
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
-        let mut to_binnmu = vec![];
-        let excuses = excuses::from_reader(BufReader::new(
-            File::open(self.get_cache_path("excuses.yaml")?).unwrap(),
-        ))
-        .unwrap();
+        // parse excuses
+        let excuses = excuses::from_reader(BufReader::new(File::open(
+            self.get_cache_path("excuses.yaml")?,
+        )?))?;
+
+        // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
         pb.set_style(
             ProgressStyle::default_bar()
@@ -198,37 +232,14 @@ impl ProcessExcuses {
                 .progress_chars("█  "),
         );
         pb.set_message("Processing excuses");
+        let mut to_binnmu = vec![];
         for item in excuses.sources.iter().progress_with(pb) {
-            if item.new_version == "-" {
-                // skip removals
-                continue;
-            }
-            if item.new_version == item.old_version {
-                // skip binNMUs
-                continue;
-            }
-            if item.item_name.ends_with("_pu") {
-                // skip PU requests
-                continue;
-            }
-            match item.component {
-                Some(Component::Main) | None => {}
-                _ => {
-                    // skip non-free and contrib
-                    continue;
-                }
-            }
-            if let Some(true) = item.invalidated_by_other_package {
-                // skip otherwise blocked packages
-                continue;
-            }
-            if item.missing_builds.is_some() {
-                // skip packages with missing builds
+            if !Self::is_actionable(item) {
                 continue;
             }
 
             if let Some(policy_info) = &item.policy_info {
-                if !Self::check_if_binnmu_required(policy_info) {
+                if !Self::is_binnmu_required(policy_info) {
                     continue;
                 }
 
