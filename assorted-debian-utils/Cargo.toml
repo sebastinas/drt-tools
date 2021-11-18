@@ -11,5 +11,6 @@ readme = "README.md"
 keywords = ["debian"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"]}
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"

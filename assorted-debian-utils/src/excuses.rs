@@ -7,14 +7,47 @@
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
 use crate::architectures::Architecture;
+use chrono::{DateTime, TimeZone, Utc};
+use serde::de;
 use serde::Deserialize;
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, fmt, io};
+
+fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct DateTimeVisitor;
+
+    impl<'de> de::Visitor<'de> for DateTimeVisitor {
+        type Value = DateTime<Utc>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                formatter,
+                "a date and time formatted as %Y-%m-%d %H:%M:%S%:f"
+            )
+        }
+
+        fn visit_str<E>(self, s: &str) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            match Utc.datetime_from_str(s, "%Y-%m-%d %H:%M:%S%.f") {
+                Ok(dt) => Ok(dt),
+                Err(_) => Err(de::Error::invalid_value(de::Unexpected::Str(s), &self)),
+            }
+        }
+    }
+
+    deserializer.deserialize_str(DateTimeVisitor)
+}
 
 /// The excuses.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Excuses {
-    pub generated_date: String,
+    #[serde(deserialize_with = "deserialize_datetime")]
+    pub generated_date: DateTime<Utc>,
     pub sources: Vec<ExcusesItem>,
 }
 
