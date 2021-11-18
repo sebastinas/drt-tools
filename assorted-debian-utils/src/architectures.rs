@@ -101,6 +101,45 @@ impl Display for Architecture {
     }
 }
 
+/// Parsing of an architecture failed
+pub enum ParseError {
+    /// Given string is not a valid architecture
+    InvalidArchitecture,
+}
+
+impl TryFrom<&str> for Architecture {
+    type Error = ParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "all" => Ok(Architecture::All),
+            "alpha" => Ok(Architecture::Alpha),
+            "amd64" => Ok(Architecture::Amd64),
+            "arm64" => Ok(Architecture::Arm64),
+            "armel" => Ok(Architecture::Armel),
+            "armhf" => Ok(Architecture::Armhf),
+            "hppa" => Ok(Architecture::Hppa),
+            "hurd-i386" => Ok(Architecture::HurdI386),
+            "i386" => Ok(Architecture::I386),
+            "ia64" => Ok(Architecture::Ia64),
+            "kfreebsd-amd64" => Ok(Architecture::KFreeBSDAmd64),
+            "kfreebsd-i386" => Ok(Architecture::KFreeBSDI386),
+            "m86k" => Ok(Architecture::M86k),
+            "mips64el" => Ok(Architecture::Mips64el),
+            "mipsel" => Ok(Architecture::Mipsel),
+            "powerpc" => Ok(Architecture::PowerPC),
+            "ppc64" => Ok(Architecture::Ppc64),
+            "ppc64el" => Ok(Architecture::Ppc64el),
+            "risc64" => Ok(Architecture::Riscv64),
+            "s390x" => Ok(Architecture::S390x),
+            "sh4" => Ok(Architecture::Sh4),
+            "sparc64" => Ok(Architecture::Sparc64),
+            "x32" => Ok(Architecture::X32),
+            _ => Err(ParseError::InvalidArchitecture),
+        }
+    }
+}
+
 /// Release architectures for bookworm
 pub const RELEASE_ARCHITECTURES: [Architecture; 9] = [
     Architecture::Amd64,
