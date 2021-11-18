@@ -8,8 +8,7 @@
 
 use crate::architectures::Architecture;
 use chrono::{DateTime, TimeZone, Utc};
-use serde::de;
-use serde::Deserialize;
+use serde::{de, Deserialize};
 use std::{collections::HashMap, fmt, io};
 
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
