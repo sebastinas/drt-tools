@@ -45,8 +45,12 @@ where
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Excuses {
+    /// Date of the run that produced `excuses.yaml`
     #[serde(deserialize_with = "deserialize_datetime")]
     pub generated_date: DateTime<Utc>,
+    /// All excuses
+    ///
+    /// While not every excuses item relates to a source package, the field is still named that way in `excuses.yaml`
     pub sources: Vec<ExcusesItem>,
 }
 
@@ -74,11 +78,15 @@ pub enum Verdict {
     RejectedCannotDetermineIfPermanent,
 }
 
+/// Debian archive components
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Component {
+    /// The `main` archive component
     Main,
+    /// The `contrib` archive component
     Contrib,
+    /// The `non-free` archive component
     #[serde(rename = "non-free")]
     NonFree,
 }
