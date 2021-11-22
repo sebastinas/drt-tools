@@ -95,8 +95,11 @@ pub enum Component {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AgeInfo {
+    /// The required age
     pub age_requirement: u32,
+    /// The current age
     pub current_age: u32,
+    /// The verdict
     pub verdict: Verdict,
 }
 
@@ -104,14 +107,17 @@ pub struct AgeInfo {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnspecfiedPolicyInfo {
+    /// The verdict
     pub verdict: Verdict,
 }
 
-/// Built-on-build policy info
+/// Built-on-buildd policy info
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuiltOnBuildd {
+    /// The signers for each architecture
     pub signed_by: HashMap<Architecture, Option<String>>,
+    /// The verdict
     pub verdict: Verdict,
 }
 
@@ -119,8 +125,11 @@ pub struct BuiltOnBuildd {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PolicyInfo {
+    /// The age policy
     pub age: Option<AgeInfo>,
+    /// The buildt-on-buildd policy
     pub builtonbuildd: Option<BuiltOnBuildd>,
+    /// All remaining policies
     #[serde(flatten)]
     pub extras: HashMap<String, UnspecfiedPolicyInfo>,
     /*
@@ -138,6 +147,7 @@ pub struct PolicyInfo {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MissingBuilds {
+    /// Architectures where builds are missing
     pub on_architectures: Vec<Architecture>,
 }
 
@@ -145,14 +155,21 @@ pub struct MissingBuilds {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ExcusesItem {
+    /// The item is a candidate for migration
     pub is_candidate: bool,
     pub new_version: String,
     pub old_version: String,
+    /// Migration item name
     pub item_name: String,
+    /// Source package name
     pub source: String,
+    /// Migration is blocked by another package
     pub invalidated_by_other_package: Option<bool>,
+    /// Component of the source package
     pub component: Option<Component>,
+    /// Missing builds
     pub missing_builds: Option<MissingBuilds>,
+    /// Policy info
     #[serde(rename = "policy_info")]
     pub policy_info: Option<PolicyInfo>,
 }
