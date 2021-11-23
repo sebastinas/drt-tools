@@ -16,7 +16,7 @@ use xdg::BaseDirectories;
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
-    wb::{BinNMU, WBArchitecture, WBCommandBuilder},
+    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
 };
 use drt_tools::*;
 
@@ -265,14 +265,17 @@ impl ProcessExcuses {
                     .collect();
 
                 to_binnmu.push(
-                    BinNMU::new(&item.source, "Rebuild on buildd")
-                        .with_version(&item.new_version)
-                        .with_architectures(if source_packages.is_ma_same(&item.source) {
-                            &[WBArchitecture::Any]
-                        } else {
-                            &archs
-                        })
-                        .build(),
+                    BinNMU::new(
+                        SourceSpecifier::new(&item.source)
+                            .with_version(&item.new_version)
+                            .with_architectures(if source_packages.is_ma_same(&item.source) {
+                                &[WBArchitecture::Any]
+                            } else {
+                                &archs
+                            }),
+                        "Rebuild on buildd",
+                    )
+                    .build(),
                 );
             }
         }
