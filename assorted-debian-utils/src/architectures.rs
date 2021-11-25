@@ -8,6 +8,7 @@
 
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 /// Debian architectures
 ///
@@ -137,6 +138,14 @@ impl TryFrom<&str> for Architecture {
             "x32" => Ok(Architecture::X32),
             _ => Err(ParseError::InvalidArchitecture),
         }
+    }
+}
+
+impl FromStr for Architecture {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Architecture::try_from(s)
     }
 }
 
