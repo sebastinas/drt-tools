@@ -4,8 +4,9 @@
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Result};
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
@@ -208,7 +209,7 @@ impl ProcessExcuses {
         true
     }
 
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(self) -> Result<()> {
         // download excuses and Package files
         if self.download_to_cache().await? == CacheState::NoUpdate {
             // nothing to do
@@ -295,6 +296,90 @@ impl ProcessExcuses {
 }
 
 #[derive(Debug, StructOpt)]
+struct PrepareBinNMUsOptions {
+    #[structopt(short, long)]
+    message: String,
+    #[structopt(long = "bp")]
+    build_priority: Option<i32>,
+    #[structopt(long = "dw")]
+    dep_wait: Option<String>,
+    #[structopt(long)]
+    extra_depends: Option<String>,
+    #[structopt(short, long, default_value = "unstable")]
+    suite: String,
+    #[structopt(short, long)]
+    architecture: Option<Vec<Architecture>>,
+    #[structopt(long)]
+    schedule: bool,
+}
+
+struct PrepareBinNMUs {
+    options: PrepareBinNMUsOptions,
+}
+
+impl PrepareBinNMUs {
+    fn new(options: PrepareBinNMUsOptions) -> Self {
+        Self { options }
+    }
+
+    fn run(self) -> Result<()> {
+        let matcher = regex::Regex::new("([a-z0-9+.-]+)[ \t].* \\(?([0-9][^() \t]*)\\)?")?;
+
+        let mut wb_commands = Vec::new();
+        let stdin = io::stdin();
+        for line in stdin.lock().lines() {
+            if line.is_err() {
+                break;
+            }
+
+            let line = line.unwrap();
+            if let Some(capture) = matcher.captures(&line) {
+                let package = capture.get(1);
+                let version = capture.get(2);
+                if package.is_none() || version.is_none() {
+                    continue;
+                }
+
+                let mut source = SourceSpecifier::new(package.unwrap().as_str());
+                source
+                    .with_version(version.unwrap().as_str())
+                    .with_suite(&self.options.suite);
+                if let Some(architectures) = &self.options.architecture {
+                    source.with_archive_architectures(&architectures);
+                }
+
+                let mut binnmu = BinNMU::new(&source, &self.options.message);
+                if let Some(bp) = self.options.build_priority {
+                    binnmu.with_build_priority(bp);
+                }
+                if let Some(dw) = &self.options.dep_wait {
+                    binnmu.with_dependency_wait(&dw);
+                }
+                if let Some(extra_depends) = &self.options.extra_depends {
+                    binnmu.with_extra_depends(&extra_depends);
+                }
+                wb_commands.push(binnmu.build())
+            }
+        }
+
+        for commands in wb_commands {
+            println!("{}", commands);
+            if self.options.schedule {
+                let mut proc = Command::new("wb").stdin(Stdio::piped()).spawn()?;
+                if let Some(mut stdin) = proc.stdin.take() {
+                    stdin.write_all(commands.to_string().as_bytes())?;
+                } else {
+                    return Err(anyhow!("Unable to get stdin"));
+                }
+                proc.wait_with_output()?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, StructOpt)]
 struct BaseOptions {
     /// Force download of files
     #[structopt(long)]
@@ -323,7 +408,8 @@ struct ProcessExcusesOptions {
 enum DrtToolsCommands {
     /// Process current excuses.yaml and prepare a list of binNMUs to perform testing migration
     ProcessExcuses(ProcessExcusesOptions),
-    PrepareBinNMUs,
+    #[structopt(name = "prepare-binNMUs")]
+    PrepareBinNMUs(PrepareBinNMUsOptions),
 }
 
 #[tokio::main]
@@ -334,6 +420,9 @@ async fn main() -> Result<()> {
             let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;
             process_excuses.run().await
         }
-        _ => Err(anyhow!("Command not implemented.")),
+        DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
+            let prepare_binnmus = PrepareBinNMUs::new(pbm_opts);
+            prepare_binnmus.run()
+        }
     }
 }
