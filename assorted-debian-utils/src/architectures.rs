@@ -103,9 +103,18 @@ impl Display for Architecture {
 }
 
 /// Parsing of an architecture failed
+#[derive(Debug)]
 pub enum ParseError {
     /// Given string is not a valid architecture
     InvalidArchitecture,
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::InvalidArchitecture => write!(f, "invalid architecture"),
+        }
+    }
 }
 
 impl TryFrom<&str> for Architecture {
