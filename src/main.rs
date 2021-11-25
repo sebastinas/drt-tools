@@ -7,10 +7,10 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
-use clap::Parser;
+use anyhow::{anyhow, Result};
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use serde::Deserialize;
+use structopt::StructOpt;
 use xdg::BaseDirectories;
 
 use assorted_debian_utils::{
@@ -97,11 +97,11 @@ impl SourcePackages {
 
 struct ProcessExcuses {
     base_directory: BaseDirectories,
-    settings: ProcessExcusesSettings,
+    settings: BaseOptions,
 }
 
 impl ProcessExcuses {
-    fn new(settings: ProcessExcusesSettings) -> Result<Self> {
+    fn new(settings: BaseOptions, _: ProcessExcusesOptions) -> Result<Self> {
         Ok(Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
             settings,
@@ -288,24 +288,46 @@ impl ProcessExcuses {
     }
 }
 
-#[derive(Debug, Parser)]
-struct ProcessExcusesSettings {
+#[derive(Debug, StructOpt)]
+struct BaseOptions {
     /// Force download of files
-    #[clap(long)]
+    #[structopt(long)]
     force_download: bool,
-
     /// Force processing of files regardless of their cache state
-    #[clap(long)]
+    #[structopt(long)]
     force_processing: bool,
+}
 
+#[derive(Debug, StructOpt)]
+struct DrtToolsOptions {
+    #[structopt(flatten)]
+    base_options: BaseOptions,
+    #[structopt(subcommand)]
+    command: DrtToolsCommands,
+}
+
+#[derive(Debug, StructOpt)]
+struct ProcessExcusesOptions {
     /// Do not prepare binNMUs to allow testing migration
-    #[clap(long)]
+    #[structopt(long)]
     no_rebuilds: bool,
+}
+
+#[derive(Debug, StructOpt)]
+enum DrtToolsCommands {
+    /// Process current excuses.yaml and prepare a list of binNMUs to perform testing migration
+    ProcessExcuses(ProcessExcusesOptions),
+    // PrepareBinNMUs,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let process_excuses_settings = ProcessExcusesSettings::parse();
-    let process_excuses = ProcessExcuses::new(process_excuses_settings)?;
-    process_excuses.run().await
+    let opts = DrtToolsOptions::from_args();
+    match opts.command {
+        DrtToolsCommands::ProcessExcuses(pe_opts) => {
+            let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;
+            process_excuses.run().await
+        }
+        _ => Err(anyhow!("Command not implemented.")),
+    }
 }
