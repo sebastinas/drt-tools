@@ -91,6 +91,16 @@ impl<'a> SourceSpecifier<'a> {
         self.architectures.extend_from_slice(architectures);
         self
     }
+
+    /// Specify architectures. If not set, the `nmu` will be scheduled for `ANY`.
+    pub fn with_archive_architectures(&mut self, architectures: &[Architecture]) -> &mut Self {
+        self.architectures.reserve(architectures.len());
+        for architecture in architectures {
+            self.architectures
+                .push(WBArchitecture::Architecture(architecture.clone()));
+        }
+        self
+    }
 }
 
 impl<'a> Display for SourceSpecifier<'a> {
