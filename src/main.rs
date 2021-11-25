@@ -18,7 +18,9 @@ use assorted_debian_utils::{
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
 };
-use drt_tools::*;
+
+mod downloader;
+use downloader::*;
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -98,13 +100,15 @@ impl SourcePackages {
 struct ProcessExcuses {
     base_directory: BaseDirectories,
     settings: BaseOptions,
+    pe_options: ProcessExcusesOptions,
 }
 
 impl ProcessExcuses {
-    fn new(settings: BaseOptions, _: ProcessExcusesOptions) -> Result<Self> {
+    fn new(settings: BaseOptions, pe_options: ProcessExcusesOptions) -> Result<Self> {
         Ok(Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
             settings,
+            pe_options,
         })
     }
 
@@ -280,9 +284,11 @@ impl ProcessExcuses {
             }
         }
 
-        println!("# Rebuild on buildds for testing migration");
-        for binnmu in to_binnmu {
-            println!("{}", binnmu);
+        if !self.pe_options.no_rebuilds {
+            println!("# Rebuild on buildds for testing migration");
+            for binnmu in to_binnmu {
+                println!("{}", binnmu);
+            }
         }
         Ok(())
     }
@@ -317,7 +323,7 @@ struct ProcessExcusesOptions {
 enum DrtToolsCommands {
     /// Process current excuses.yaml and prepare a list of binNMUs to perform testing migration
     ProcessExcuses(ProcessExcusesOptions),
-    // PrepareBinNMUs,
+    PrepareBinNMUs,
 }
 
 #[tokio::main]
