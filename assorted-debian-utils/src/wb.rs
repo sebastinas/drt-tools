@@ -55,6 +55,24 @@ impl Display for WBArchitecture {
     }
 }
 
+impl TryFrom<&str> for WBArchitecture {
+    type Error = crate::architectures::ParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "ANY" => Ok(WBArchitecture::Any),
+            "ALL" => Ok(WBArchitecture::All),
+            _ => {
+                if let Some(stripped) = value.strip_prefix('-') {
+                    Ok(WBArchitecture::NotArchitecture(stripped.try_into()?))
+                } else {
+                    Ok(WBArchitecture::Architecture(value.try_into()?))
+                }
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceSpecifier<'a> {
     source: &'a str,
@@ -258,6 +276,27 @@ mod test {
     use crate::wb::{
         BinNMU, BuildPriority, DepWait, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
+
+    #[test]
+    fn arch_from_str() {
+        assert_eq!(
+            WBArchitecture::try_from("ANY").unwrap(),
+            WBArchitecture::Any
+        );
+        assert_eq!(
+            WBArchitecture::try_from("ALL").unwrap(),
+            WBArchitecture::All
+        );
+        assert_eq!(
+            WBArchitecture::try_from("amd64").unwrap(),
+            WBArchitecture::Architecture(Architecture::Amd64)
+        );
+        assert_eq!(
+            WBArchitecture::try_from("-amd64").unwrap(),
+            WBArchitecture::NotArchitecture(Architecture::Amd64)
+        );
+        assert!(WBArchitecture::try_from("-ALL").is_err());
+    }
 
     #[test]
     fn binnmu() {
