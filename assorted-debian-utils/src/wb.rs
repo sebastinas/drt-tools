@@ -193,7 +193,7 @@ impl<'a> Display for BinNMU<'a> {
                 f,
                 "\n{}",
                 DepWait {
-                    source: &self.source,
+                    source: self.source,
                     message: dep_wait
                 }
             )?;
@@ -203,7 +203,7 @@ impl<'a> Display for BinNMU<'a> {
                 f,
                 "\n{}",
                 BuildPriority {
-                    source: &self.source,
+                    source: self.source,
                     priority,
                 }
             )?;

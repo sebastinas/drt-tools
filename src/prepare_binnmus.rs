@@ -62,7 +62,7 @@ impl PrepareBinNMUs {
                     .with_version(version.unwrap().as_str())
                     .with_suite(&self.options.suite);
                 if let Some(architectures) = &self.options.architecture {
-                    source.with_archive_architectures(&architectures);
+                    source.with_archive_architectures(architectures);
                 }
 
                 let mut binnmu = BinNMU::new(&source, &self.options.message);
@@ -70,10 +70,10 @@ impl PrepareBinNMUs {
                     binnmu.with_build_priority(bp);
                 }
                 if let Some(dw) = &self.options.dep_wait {
-                    binnmu.with_dependency_wait(&dw);
+                    binnmu.with_dependency_wait(dw);
                 }
                 if let Some(extra_depends) = &self.options.extra_depends {
-                    binnmu.with_extra_depends(&extra_depends);
+                    binnmu.with_extra_depends(extra_depends);
                 }
                 wb_commands.push(binnmu.build())
             }
