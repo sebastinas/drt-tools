@@ -170,3 +170,16 @@ pub const RELEASE_ARCHITECTURES: [Architecture; 9] = [
     Architecture::Mips64el,
     Architecture::S390x,
 ];
+
+#[cfg(test)]
+mod test {
+    use super::Architecture;
+
+    #[test]
+    fn from_str() {
+        assert_eq!(
+            Architecture::try_from("amd64").unwrap(),
+            Architecture::Amd64
+        );
+    }
+}

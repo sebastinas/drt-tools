@@ -50,6 +50,11 @@ impl<'a, T: ToString> WBCommandBuilder for T {
 }
 
 /// Architectures understood by `wb`
+///
+/// In addition to the the architectures from [Architecture], `wb` has two special "architectures"
+/// named `ANY` (all binary-dependent architectures) and `ALL` (all architectures). Also, it
+/// supports negation of architectures, e.g., `ANY -i386` refers to all binary-dependent
+/// architectures without `i386`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum WBArchitecture {
     /// The special `ANY` architecture, i.e., all architectures understood by wb except `all`
@@ -290,10 +295,10 @@ impl<'a> Display for BuildPriority<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::architectures::Architecture;
-    use crate::wb::{
+    use super::{
         BinNMU, BuildPriority, DepWait, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
+    use crate::architectures::Architecture;
 
     #[test]
     fn arch_from_str() {
