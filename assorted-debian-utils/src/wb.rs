@@ -8,10 +8,28 @@
 
 use crate::architectures::Architecture;
 use std::fmt::{Display, Formatter};
+use std::io::Write;
+use std::process::{Command, Stdio};
+
+use anyhow::{anyhow, Result};
 
 /// A command to be executed by `wb`
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WBCommand(String);
+
+impl WBCommand {
+    /// Execute the command via `wb`
+    pub fn execute(&self) -> Result<()> {
+        let mut proc = Command::new("wb").stdin(Stdio::piped()).spawn()?;
+        if let Some(mut stdin) = proc.stdin.take() {
+            stdin.write_all(self.0.as_bytes())?;
+        } else {
+            return Err(anyhow!("Unable to take stdin"));
+        }
+        proc.wait_with_output()?;
+        Ok(())
+    }
+}
 
 impl Display for WBCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

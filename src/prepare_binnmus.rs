@@ -1,10 +1,9 @@
 // Copyright 2021 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::io::{self, BufRead, Write};
-use std::process::{Command, Stdio};
+use std::io::{self, BufRead};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use structopt::StructOpt;
 
 use assorted_debian_utils::{
@@ -82,13 +81,7 @@ impl PrepareBinNMUs {
         for commands in wb_commands {
             println!("{}", commands);
             if self.options.schedule {
-                let mut proc = Command::new("wb").stdin(Stdio::piped()).spawn()?;
-                if let Some(mut stdin) = proc.stdin.take() {
-                    stdin.write_all(commands.to_string().as_bytes())?;
-                } else {
-                    return Err(anyhow!("Unable to get stdin"));
-                }
-                proc.wait_with_output()?;
+                commands.execute()?;
             }
         }
 
