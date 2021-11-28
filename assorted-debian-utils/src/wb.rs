@@ -64,7 +64,7 @@ pub enum WBArchitecture {
     /// Specify an architecture
     Architecture(Architecture),
     /// Exclude a specific architecture
-    NotArchitecture(Architecture),
+    MinusArchitecture(Architecture),
 }
 
 impl Display for WBArchitecture {
@@ -73,7 +73,7 @@ impl Display for WBArchitecture {
             WBArchitecture::Any => write!(f, "ANY"),
             WBArchitecture::All => write!(f, "ALL"),
             WBArchitecture::Architecture(arch) => write!(f, "{}", arch),
-            WBArchitecture::NotArchitecture(arch) => write!(f, "-{}", arch),
+            WBArchitecture::MinusArchitecture(arch) => write!(f, "-{}", arch),
         }
     }
 }
@@ -87,7 +87,7 @@ impl TryFrom<&str> for WBArchitecture {
             "ALL" => Ok(WBArchitecture::All),
             _ => {
                 if let Some(stripped) = value.strip_prefix('-') {
-                    Ok(WBArchitecture::NotArchitecture(stripped.try_into()?))
+                    Ok(WBArchitecture::MinusArchitecture(stripped.try_into()?))
                 } else {
                     Ok(WBArchitecture::Architecture(value.try_into()?))
                 }
@@ -316,7 +316,7 @@ mod test {
         );
         assert_eq!(
             WBArchitecture::try_from("-amd64").unwrap(),
-            WBArchitecture::NotArchitecture(Architecture::Amd64)
+            WBArchitecture::MinusArchitecture(Architecture::Amd64)
         );
         assert!(WBArchitecture::try_from("-ALL").is_err());
     }
@@ -349,7 +349,7 @@ mod test {
             BinNMU::new(
                 SourceSpecifier::new("zathura").with_architectures(&[
                     WBArchitecture::Any,
-                    WBArchitecture::NotArchitecture(Architecture::I386)
+                    WBArchitecture::MinusArchitecture(Architecture::I386)
                 ]),
                 "Rebuild on buildd"
             )
@@ -418,7 +418,7 @@ mod test {
             BuildPriority::new(
                 SourceSpecifier::new("zathura").with_architectures(&[
                     WBArchitecture::Any,
-                    WBArchitecture::NotArchitecture(Architecture::I386)
+                    WBArchitecture::MinusArchitecture(Architecture::I386)
                 ]),
                 10
             )
@@ -455,7 +455,7 @@ mod test {
             DepWait::new(
                 SourceSpecifier::new("zathura").with_architectures(&[
                     WBArchitecture::Any,
-                    WBArchitecture::NotArchitecture(Architecture::I386)
+                    WBArchitecture::MinusArchitecture(Architecture::I386)
                 ]),
                 "libgirara-dev"
             )
