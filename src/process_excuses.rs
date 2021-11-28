@@ -100,6 +100,9 @@ pub(crate) struct ProcessExcusesOptions {
     /// Do not prepare binNMUs to allow testing migration
     #[structopt(long)]
     no_rebuilds: bool,
+    /// Schedule binNMUs
+    #[structopt(long)]
+    schedule: bool,
 }
 
 pub(crate) struct ProcessExcuses {
@@ -293,6 +296,9 @@ impl ProcessExcuses {
             println!("# Rebuild on buildds for testing migration");
             for binnmu in to_binnmu {
                 println!("{}", binnmu);
+                if self.pe_options.schedule {
+                    binnmu.execute()?;
+                }
             }
         }
         Ok(())
