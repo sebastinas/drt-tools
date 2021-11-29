@@ -6,6 +6,7 @@ use std::io::{self, BufRead};
 use anyhow::Result;
 use structopt::StructOpt;
 
+use crate::BaseOptions;
 use assorted_debian_utils::{
     architectures::Architecture,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
@@ -13,29 +14,37 @@ use assorted_debian_utils::{
 
 #[derive(Debug, StructOpt)]
 pub(crate) struct PrepareBinNMUsOptions {
+    /// Message for binNMUs
     #[structopt(short, long)]
     message: String,
+    /// Set a build priority
     #[structopt(long = "bp")]
     build_priority: Option<i32>,
+    /// Set dependency-wait
     #[structopt(long = "dw")]
     dep_wait: Option<String>,
+    /// Set extra dependencies
     #[structopt(long)]
     extra_depends: Option<String>,
+    /// Set the suite
     #[structopt(short, long, default_value = "unstable")]
     suite: String,
+    /// Set architectures for binNMUs
     #[structopt(short, long)]
     architecture: Option<Vec<Architecture>>,
-    #[structopt(long)]
-    schedule: bool,
 }
 
 pub(crate) struct PrepareBinNMUs {
+    base_options: BaseOptions,
     options: PrepareBinNMUsOptions,
 }
 
 impl PrepareBinNMUs {
-    pub(crate) fn new(options: PrepareBinNMUsOptions) -> Self {
-        Self { options }
+    pub(crate) fn new(base_options: BaseOptions, options: PrepareBinNMUsOptions) -> Self {
+        Self {
+            base_options,
+            options,
+        }
     }
 
     pub(crate) fn run(self) -> Result<()> {
@@ -80,7 +89,7 @@ impl PrepareBinNMUs {
 
         for commands in wb_commands {
             println!("{}", commands);
-            if self.options.schedule {
+            if !self.base_options.dry_run {
                 commands.execute()?;
             }
         }

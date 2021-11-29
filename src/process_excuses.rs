@@ -100,28 +100,25 @@ pub(crate) struct ProcessExcusesOptions {
     /// Do not prepare binNMUs to allow testing migration
     #[structopt(long)]
     no_rebuilds: bool,
-    /// Schedule binNMUs
-    #[structopt(long)]
-    schedule: bool,
 }
 
 pub(crate) struct ProcessExcuses {
     base_directory: BaseDirectories,
-    settings: BaseOptions,
-    pe_options: ProcessExcusesOptions,
+    base_options: BaseOptions,
+    options: ProcessExcusesOptions,
 }
 
 impl ProcessExcuses {
-    pub(crate) fn new(settings: BaseOptions, pe_options: ProcessExcusesOptions) -> Result<Self> {
+    pub(crate) fn new(base_options: BaseOptions, options: ProcessExcusesOptions) -> Result<Self> {
         Ok(Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
-            settings,
-            pe_options,
+            base_options,
+            options,
         })
     }
 
     async fn download_to_cache(&self) -> Result<CacheState> {
-        let downloader = Downloader::new(self.settings.force_download);
+        let downloader = Downloader::new(self.base_options.force_download);
 
         let urls = [(
             "https://release.debian.org/britney/excuses.yaml",
@@ -132,7 +129,7 @@ impl ProcessExcuses {
                 .download_file(url, self.get_cache_path(dst)?)
                 .await?
                 == CacheState::NoUpdate
-                && !self.settings.force_processing
+                && !self.base_options.force_processing
             {
                 // if excuses.yaml did not change, there is nothing new to build
                 return Ok(CacheState::NoUpdate);
@@ -292,11 +289,11 @@ impl ProcessExcuses {
             }
         }
 
-        if !self.pe_options.no_rebuilds {
+        if !self.options.no_rebuilds {
             println!("# Rebuild on buildds for testing migration");
             for binnmu in to_binnmu {
                 println!("{}", binnmu);
-                if self.pe_options.schedule {
+                if !self.base_options.dry_run {
                     binnmu.execute()?;
                 }
             }

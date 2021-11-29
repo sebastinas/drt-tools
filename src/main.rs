@@ -16,9 +16,12 @@ pub(crate) struct BaseOptions {
     /// Force download of files
     #[structopt(long)]
     force_download: bool,
-    /// Force processing of files regardless of their cache state
-    #[structopt(long)]
+    /// Force processing
+    #[structopt(short, long = "force")]
     force_processing: bool,
+    /// Only print actions to perform without running any commends
+    #[structopt(short = "n")]
+    dry_run: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -47,7 +50,7 @@ async fn main() -> Result<()> {
             process_excuses.run().await
         }
         DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
-            let prepare_binnmus = PrepareBinNMUs::new(pbm_opts);
+            let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts);
             prepare_binnmus.run()
         }
     }
