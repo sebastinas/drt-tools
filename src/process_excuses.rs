@@ -252,11 +252,12 @@ impl ProcessExcuses {
                     continue;
                 }
 
-                let mut archs: Vec<Architecture> = vec![];
+                // find architectures with maintainer built binaries
+                let mut archs = vec![];
                 for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
                     if let Some(signer) = signer {
                         if !signer.ends_with("@buildd.debian.org") {
-                            archs.push(arch.to_owned());
+                            archs.push(WBArchitecture::Architecture(arch.clone()));
                         }
                     }
                 }
@@ -264,28 +265,17 @@ impl ProcessExcuses {
                     // this should not happen, but just to be on the safe side
                     continue;
                 }
-                if archs.contains(&Architecture::All) {
+                if archs.contains(&WBArchitecture::Architecture(Architecture::All)) {
                     // cannot binNMU arch:all
                     continue;
                 }
-                let archs: Vec<WBArchitecture> = archs
-                    .iter()
-                    .map(|arch| WBArchitecture::Architecture(arch.clone()))
-                    .collect();
 
-                to_binnmu.push(
-                    BinNMU::new(
-                        SourceSpecifier::new(&item.source)
-                            .with_version(&item.new_version)
-                            .with_architectures(if source_packages.is_ma_same(&item.source) {
-                                &[WBArchitecture::Any]
-                            } else {
-                                &archs
-                            }),
-                        "Rebuild on buildd",
-                    )
-                    .build(),
-                );
+                let mut source_specifier = SourceSpecifier::new(&item.source);
+                source_specifier.with_version(&item.new_version);
+                if !source_packages.is_ma_same(&item.source) {
+                    source_specifier.with_architectures(&archs);
+                }
+                to_binnmu.push(BinNMU::new(&source_specifier, "Rebuild on buildd").build());
             }
         }
 
