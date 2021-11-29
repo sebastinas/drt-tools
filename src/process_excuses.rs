@@ -14,6 +14,7 @@ use structopt::StructOpt;
 use xdg::BaseDirectories;
 
 use crate::{downloader::*, BaseOptions};
+use assorted_debian_utils::wb::WBCommand;
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
@@ -181,6 +182,45 @@ impl ProcessExcuses {
             .all(|info| info.verdict == Verdict::Pass)
     }
 
+    fn build_binnmu(item: &ExcusesItem, source_packages: &SourcePackages) -> Option<WBCommand> {
+        if !Self::is_actionable(item) {
+            return None;
+        }
+
+        if let Some(policy_info) = &item.policy_info {
+            if !Self::is_binnmu_required(policy_info) {
+                return None;
+            }
+
+            // find architectures with maintainer built binaries
+            let mut archs = vec![];
+            for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
+                if let Some(signer) = signer {
+                    if !signer.ends_with("@buildd.debian.org") {
+                        archs.push(WBArchitecture::Architecture(arch.clone()));
+                    }
+                }
+            }
+            if archs.is_empty() {
+                // this should not happen, but just to be on the safe side
+                return None;
+            }
+            if archs.contains(&WBArchitecture::Architecture(Architecture::All)) {
+                // cannot binNMU arch:all
+                return None;
+            }
+
+            let mut source_specifier = SourceSpecifier::new(&item.source);
+            source_specifier.with_version(&item.new_version);
+            if !source_packages.is_ma_same(&item.source) {
+                source_specifier.with_architectures(&archs);
+            }
+            Some(BinNMU::new(&source_specifier, "Rebuild on buildd").build())
+        } else {
+            None
+        }
+    }
+
     fn is_actionable(item: &ExcusesItem) -> bool {
         if item.new_version == "-" {
             // skip removals
@@ -241,43 +281,12 @@ impl ProcessExcuses {
                 .progress_chars("█  "),
         );
         pb.set_message("Processing excuses");
-        let mut to_binnmu = vec![];
-        for item in excuses.sources.iter().progress_with(pb) {
-            if !Self::is_actionable(item) {
-                continue;
-            }
-
-            if let Some(policy_info) = &item.policy_info {
-                if !Self::is_binnmu_required(policy_info) {
-                    continue;
-                }
-
-                // find architectures with maintainer built binaries
-                let mut archs = vec![];
-                for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
-                    if let Some(signer) = signer {
-                        if !signer.ends_with("@buildd.debian.org") {
-                            archs.push(WBArchitecture::Architecture(arch.clone()));
-                        }
-                    }
-                }
-                if archs.is_empty() {
-                    // this should not happen, but just to be on the safe side
-                    continue;
-                }
-                if archs.contains(&WBArchitecture::Architecture(Architecture::All)) {
-                    // cannot binNMU arch:all
-                    continue;
-                }
-
-                let mut source_specifier = SourceSpecifier::new(&item.source);
-                source_specifier.with_version(&item.new_version);
-                if !source_packages.is_ma_same(&item.source) {
-                    source_specifier.with_architectures(&archs);
-                }
-                to_binnmu.push(BinNMU::new(&source_specifier, "Rebuild on buildd").build());
-            }
-        }
+        let to_binnmu: Vec<WBCommand> = excuses
+            .sources
+            .iter()
+            .progress_with(pb)
+            .filter_map(|item| Self::build_binnmu(item, &source_packages))
+            .collect();
 
         if !self.options.no_rebuilds {
             println!("# Rebuild on buildds for testing migration");
