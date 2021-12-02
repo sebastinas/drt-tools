@@ -1,7 +1,9 @@
 // Copyright 2021 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::io::{self, BufRead};
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use structopt::StructOpt;
@@ -32,6 +34,9 @@ pub(crate) struct PrepareBinNMUsOptions {
     /// Set architectures for binNMUs
     #[structopt(short, long)]
     architecture: Option<Vec<Architecture>>,
+    /// Input file
+    #[structopt(parse(from_os_str))]
+    input: Option<PathBuf>,
 }
 
 pub(crate) struct PrepareBinNMUs {
@@ -50,9 +55,13 @@ impl PrepareBinNMUs {
     pub(crate) fn run(self) -> Result<()> {
         let matcher = regex::Regex::new("([a-z0-9+.-]+)[ \t].* \\(?([0-9][^() \t]*)\\)?")?;
 
+        let reader: Box<dyn BufRead> = match &self.options.input {
+            None => Box::new(BufReader::new(io::stdin())),
+            Some(filename) => Box::new(BufReader::new(File::open(filename)?)),
+        };
+
         let mut wb_commands = Vec::new();
-        let stdin = io::stdin();
-        for line in stdin.lock().lines() {
+        for line in reader.lines() {
             if line.is_err() {
                 break;
             }
