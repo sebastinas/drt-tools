@@ -41,13 +41,12 @@ enum DrtToolsCommands {
     PrepareBinNMUs(PrepareBinNMUsOptions),
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let opts = DrtToolsOptions::from_args();
     match opts.command {
         DrtToolsCommands::ProcessExcuses(pe_opts) => {
             let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;
-            process_excuses.run().await
+            process_excuses.run()
         }
         DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
             let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts);

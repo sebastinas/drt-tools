@@ -253,6 +253,7 @@ impl ProcessExcuses {
         true
     }
 
+    #[tokio::main]
     pub(crate) async fn run(self) -> Result<()> {
         // download excuses and Package files
         if self.download_to_cache().await? == CacheState::NoUpdate {
