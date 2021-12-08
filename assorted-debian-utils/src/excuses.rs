@@ -23,7 +23,7 @@ where
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             write!(
                 formatter,
-                "a date and time formatted as %Y-%m-%d %H:%M:%S%:f"
+                "a date and time formatted as %Y-%m-%d %H:%M:%S%.f"
             )
         }
 
