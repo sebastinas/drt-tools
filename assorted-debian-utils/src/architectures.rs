@@ -117,6 +117,8 @@ impl Display for ParseError {
     }
 }
 
+impl std::error::Error for ParseError {}
+
 impl TryFrom<&str> for Architecture {
     type Error = ParseError;
 
