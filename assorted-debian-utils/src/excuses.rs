@@ -11,6 +11,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde::{de, Deserialize};
 use std::{collections::HashMap, fmt, io};
 
+/// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -157,7 +158,9 @@ pub struct MissingBuilds {
 pub struct ExcusesItem {
     /// The item is a candidate for migration
     pub is_candidate: bool,
+    /// Version in the source suite, i.e., the version to migrate
     pub new_version: String,
+    /// Version in the target suite
     pub old_version: String,
     /// Migration item name
     pub item_name: String,
