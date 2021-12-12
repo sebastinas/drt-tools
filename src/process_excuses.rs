@@ -13,7 +13,7 @@ use serde::Deserialize;
 use structopt::StructOpt;
 use xdg::BaseDirectories;
 
-use crate::{downloader::*, BaseOptions};
+use crate::{config, downloader::*, BaseOptions};
 use assorted_debian_utils::wb::WBCommand;
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
@@ -41,11 +41,9 @@ impl SourcePackages {
     where
         P: AsRef<Path>,
     {
-        let pb_style = ProgressStyle::default_bar()
-            .template(
-                "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-            )
-            .progress_chars("█  ");
+        let pb_style = config::default_progress_style().template(
+            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+        );
 
         let mut ma_same_sources = HashSet::<String>::new();
         for path in paths {
@@ -274,13 +272,9 @@ impl ProcessExcuses {
 
         // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template(
-                    "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-                )
-                .progress_chars("█  "),
-        );
+        pb.set_style(config::default_progress_style().template(
+            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+        ));
         pb.set_message("Processing excuses");
         let to_binnmu: Vec<WBCommand> = excuses
             .sources

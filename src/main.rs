@@ -4,6 +4,7 @@
 use anyhow::Result;
 use structopt::StructOpt;
 
+mod config;
 pub(crate) mod downloader;
 mod prepare_binnmus;
 mod process_excuses;
