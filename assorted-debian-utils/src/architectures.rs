@@ -6,7 +6,7 @@
 //! This module provides helpers for Debian architectures. This currently involves a list of release
 //! architectures and an enum for release and ports architectures.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -14,7 +14,7 @@ use std::str::FromStr;
 ///
 /// This enum describes architectures that are release architectures or available on Debian ports.
 /// It also provides `All` as special case for binary independent packages.
-#[derive(Clone, Debug, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Architecture {
     /// The `all` architecture for architecture independent packages
