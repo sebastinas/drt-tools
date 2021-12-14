@@ -24,12 +24,10 @@ use assorted_debian_utils::{
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
-    // until https://github.com/Kixunil/rfc822-like/issues/1 is fixed, use an empty string as default value instead of Option<String>
-    #[serde(default = "String::new")]
-    source: String,
+    source: Option<String>,
     package: String,
-    #[serde(default = "String::new", rename = "Multi-Arch")]
-    multi_arch: String,
+    #[serde(rename = "Multi-Arch")]
+    multi_arch: Option<String>,
 }
 
 struct SourcePackages {
@@ -68,18 +66,13 @@ impl SourcePackages {
             path.as_ref().file_name().unwrap().to_str().unwrap()
         ));
         for binary_package in binary_packages.into_iter().progress_with(pb) {
-            if binary_package.multi_arch != "same" {
-                continue;
+            if let Some(multi_arch) = &binary_package.multi_arch {
+                if multi_arch != "same" {
+                    continue;
+                }
             }
-            if !binary_package.source.is_empty() {
-                ma_same_sources.insert(
-                    binary_package
-                        .source
-                        .split_whitespace()
-                        .next()
-                        .unwrap()
-                        .into(),
-                );
+            if let Some(source_package) = &binary_package.source {
+                ma_same_sources.insert(source_package.split_whitespace().next().unwrap().into());
             } else {
                 // no Source set, so Source == Package
                 ma_same_sources.insert(binary_package.package);
