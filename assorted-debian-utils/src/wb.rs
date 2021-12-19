@@ -96,6 +96,7 @@ impl TryFrom<&str> for WBArchitecture {
     }
 }
 
+/// Specifier for a source with version, architecture and suite
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceSpecifier<'a> {
     source: &'a str,
