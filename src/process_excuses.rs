@@ -70,12 +70,13 @@ impl SourcePackages {
                 if multi_arch != "same" {
                     continue;
                 }
-            }
-            if let Some(source_package) = &binary_package.source {
-                ma_same_sources.insert(source_package.split_whitespace().next().unwrap().into());
-            } else {
-                // no Source set, so Source == Package
-                ma_same_sources.insert(binary_package.package);
+                if let Some(source_package) = &binary_package.source {
+                    ma_same_sources
+                        .insert(source_package.split_whitespace().next().unwrap().into());
+                } else {
+                    // no Source set, so Source == Package
+                    ma_same_sources.insert(binary_package.package);
+                }
             }
         }
 
