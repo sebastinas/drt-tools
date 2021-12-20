@@ -21,13 +21,22 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
 };
 
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum MultiArch {
+    Allowed,
+    Foreign,
+    No,
+    Same,
+}
+
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
     source: Option<String>,
     package: String,
     #[serde(rename = "Multi-Arch")]
-    multi_arch: Option<String>,
+    multi_arch: Option<MultiArch>,
 }
 
 struct SourcePackages {
@@ -67,7 +76,7 @@ impl SourcePackages {
         ));
         for binary_package in binary_packages.into_iter().progress_with(pb) {
             if let Some(multi_arch) = &binary_package.multi_arch {
-                if multi_arch != "same" {
+                if *multi_arch != MultiArch::Same {
                     continue;
                 }
                 if let Some(source_package) = &binary_package.source {
