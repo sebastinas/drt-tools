@@ -75,10 +75,7 @@ impl SourcePackages {
             path.as_ref().file_name().unwrap().to_str().unwrap()
         ));
         for binary_package in binary_packages.into_iter().progress_with(pb) {
-            if let Some(multi_arch) = &binary_package.multi_arch {
-                if *multi_arch != MultiArch::Same {
-                    continue;
-                }
+            if binary_package.multi_arch == Some(MultiArch::Same) {
                 if let Some(source_package) = &binary_package.source {
                     ma_same_sources
                         .insert(source_package.split_whitespace().next().unwrap().into());
