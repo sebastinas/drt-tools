@@ -65,8 +65,7 @@ impl SourcePackages {
     where
         P: AsRef<Path>,
     {
-        let mut ma_same_sources = HashSet::<String>::new();
-
+        // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(pb_style.clone());
@@ -74,17 +73,20 @@ impl SourcePackages {
             "Processing {}",
             path.as_ref().file_name().unwrap().to_str().unwrap()
         ));
-        for binary_package in binary_packages.into_iter().progress_with(pb) {
-            if binary_package.multi_arch == Some(MultiArch::Same) {
+        // collect all sources with MA: same binaries
+        let ma_same_sources: HashSet<String> = binary_packages
+            .into_iter()
+            .progress_with(pb)
+            .filter(|binary_package| binary_package.multi_arch == Some(MultiArch::Same))
+            .map(|binary_package| {
                 if let Some(source_package) = &binary_package.source {
-                    ma_same_sources
-                        .insert(source_package.split_whitespace().next().unwrap().into());
+                    source_package.split_whitespace().next().unwrap().into()
                 } else {
                     // no Source set, so Source == Package
-                    ma_same_sources.insert(binary_package.package);
+                    binary_package.package
                 }
-            }
-        }
+            })
+            .collect();
 
         Ok(ma_same_sources)
     }
