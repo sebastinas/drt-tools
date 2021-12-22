@@ -1,9 +1,13 @@
 # Changelog
 
+## 0.2.1 (2021-12-22)
+
+* Bump to rfc822-like 0.2.1 and deserialize `Multi-Arch` as enum.
+
 ## 0.2 (2021-12-12)
 
 * Implement sub-commands:
-  * process-excuses: covers the old functionalit
+  * process-excuses: covers the old functionality
   * prepare-binNMUs: generate a list of binNMUs for a transition
 
 ## 0.1 (2021-11-17)
