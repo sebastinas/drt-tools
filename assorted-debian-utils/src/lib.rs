@@ -11,7 +11,38 @@
 
 #![warn(missing_docs)]
 
+use std::{
+    error::Error,
+    fmt::{Display, Formatter},
+};
+
 pub mod architectures;
 pub mod buildinfo;
 pub mod excuses;
+pub mod version;
 pub mod wb;
+
+#[cfg(feature = "libdpkg-sys")]
+mod cversion;
+
+/// Parsing error
+#[derive(Debug)]
+pub enum ParseError {
+    /// Given string is not a valid architecture
+    InvalidArchitecture,
+    /// Given string is not a valid version
+    InvalidVersion(version::VersionError),
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::InvalidArchitecture => write!(f, "invalid architecture"),
+            ParseError::InvalidVersion(version_error) => {
+                write!(f, "invalid version: {}", version_error)
+            }
+        }
+    }
+}
+
+impl Error for ParseError {}

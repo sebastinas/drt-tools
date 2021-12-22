@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+pub use crate::ParseError;
+
 /// Debian architectures
 ///
 /// This enum describes architectures that are release architectures or available on Debian ports.
@@ -104,23 +106,6 @@ impl Display for Architecture {
         )
     }
 }
-
-/// Parsing of an architecture failed
-#[derive(Debug)]
-pub enum ParseError {
-    /// Given string is not a valid architecture
-    InvalidArchitecture,
-}
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseError::InvalidArchitecture => write!(f, "invalid architecture"),
-        }
-    }
-}
-
-impl std::error::Error for ParseError {}
 
 impl TryFrom<&str> for Architecture {
     type Error = ParseError;
