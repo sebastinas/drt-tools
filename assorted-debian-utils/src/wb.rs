@@ -12,9 +12,10 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 
 /// A command to be executed by `wb`
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WBCommand(String);
 
 impl WBCommand {
