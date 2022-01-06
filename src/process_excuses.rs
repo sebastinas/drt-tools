@@ -8,7 +8,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
+use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 use structopt::StructOpt;
 use xdg::BaseDirectories;
@@ -48,27 +48,25 @@ impl SourcePackages {
     where
         P: AsRef<Path>,
     {
-        let pb_style = config::default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        );
-
         let mut ma_same_sources = HashSet::<String>::new();
         for path in paths {
-            let sources = Self::parse_packages(path, &pb_style);
+            let sources = Self::parse_packages(path);
             ma_same_sources.extend(sources?);
         }
 
         Ok(Self { ma_same_sources })
     }
 
-    fn parse_packages<P>(path: P, pb_style: &ProgressStyle) -> Result<HashSet<String>>
+    fn parse_packages<P>(path: P) -> Result<HashSet<String>>
     where
         P: AsRef<Path>,
     {
         // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(pb_style.clone());
+        pb.set_style(config::default_progress_style().template(
+            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+        ));
         pb.set_message(format!(
             "Processing {}",
             path.as_ref().file_name().unwrap().to_str().unwrap()
