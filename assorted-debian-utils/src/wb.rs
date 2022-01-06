@@ -44,7 +44,7 @@ pub trait WBCommandBuilder {
     fn build(&self) -> WBCommand;
 }
 
-impl<'a, T: ToString> WBCommandBuilder for T {
+impl<T: ToString> WBCommandBuilder for T {
     fn build(&self) -> WBCommand {
         WBCommand(self.to_string())
     }
