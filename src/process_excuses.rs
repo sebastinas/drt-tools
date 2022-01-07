@@ -4,21 +4,20 @@
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressIterator};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use xdg::BaseDirectories;
 
 use crate::{config, downloader::*, BaseOptions};
-use assorted_debian_utils::wb::WBCommand;
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
-    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
+    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -94,6 +93,21 @@ impl SourcePackages {
     }
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct ScheduledBinNMUs {
+    binnmus: Vec<WBCommand>,
+}
+
+impl ScheduledBinNMUs {
+    fn contains(&self, command: &WBCommand) -> bool {
+        self.binnmus.contains(command)
+    }
+
+    fn store(&mut self, command: &WBCommand) {
+        self.binnmus.push(command.clone())
+    }
+}
+
 #[derive(Debug, StructOpt)]
 pub(crate) struct ProcessExcusesOptions {
     /// Do not prepare binNMUs to allow testing migration
@@ -153,6 +167,31 @@ impl ProcessExcuses {
         P: AsRef<Path>,
     {
         Ok(self.base_directory.place_cache_file(path)?)
+    }
+
+    fn get_cache_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(BufReader::new(File::open(self.get_cache_path(path)?)?))
+    }
+
+    fn get_data_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(BufReader::new(File::open(
+            self.base_directory.place_data_file(path)?,
+        )?))
+    }
+
+    fn get_data_bufwriter<P>(&self, path: P) -> Result<BufWriter<File>>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(BufWriter::new(File::create(
+            self.base_directory.place_data_file(path)?,
+        )?))
     }
 
     fn is_binnmu_required(policy_info: &PolicyInfo) -> bool {
@@ -251,6 +290,22 @@ impl ProcessExcuses {
         true
     }
 
+    fn load_scheduled_binnmus(&self) -> ScheduledBinNMUs {
+        if let Ok(reader) = self.get_data_bufreader("scheduled-binnmus.yaml") {
+            serde_yaml::from_reader(reader).unwrap_or_default()
+        } else {
+            Default::default()
+        }
+    }
+
+    fn store_scheduled_binnmus(&self, scheduled_binnmus: ScheduledBinNMUs) -> Result<()> {
+        serde_yaml::to_writer(
+            self.get_data_bufwriter("scheduled-binnmus.yaml")?,
+            &scheduled_binnmus,
+        )?;
+        Ok(())
+    }
+
     #[tokio::main]
     pub(crate) async fn run(self) -> Result<()> {
         // download excuses and Package files
@@ -266,9 +321,7 @@ impl ProcessExcuses {
         let source_packages = SourcePackages::new(&all_paths)?;
 
         // parse excuses
-        let excuses = excuses::from_reader(BufReader::new(File::open(
-            self.get_cache_path("excuses.yaml")?,
-        )?))?;
+        let excuses = excuses::from_reader(self.get_cache_bufreader("excuses.yaml")?)?;
 
         // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
@@ -283,15 +336,25 @@ impl ProcessExcuses {
             .filter_map(|item| Self::build_binnmu(item, &source_packages))
             .collect();
 
+        // load already scheduled binNMUs from cache
+        let mut scheduled_binnmus = self.load_scheduled_binnmus();
+
         if !self.options.no_rebuilds {
             println!("# Rebuild on buildds for testing migration");
             for binnmu in to_binnmu {
-                println!("{}", binnmu);
-                if !self.base_options.dry_run {
-                    binnmu.execute()?;
+                if scheduled_binnmus.contains(&binnmu) {
+                    println!("# already scheduled: {}", binnmu);
+                } else {
+                    println!("{}", binnmu);
+                    if !self.base_options.dry_run {
+                        binnmu.execute()?;
+                        scheduled_binnmus.store(&binnmu);
+                    }
                 }
             }
         }
-        Ok(())
+
+        // store scheduled binNMUs in cache
+        self.store_scheduled_binnmus(scheduled_binnmus)
     }
 }
