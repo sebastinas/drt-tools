@@ -110,7 +110,7 @@ impl BinNMUBuildinfo {
         for commands in wb_commands {
             println!("{}", commands);
             if !self.base_options.dry_run {
-                // commands.execute()?;
+                commands.execute()?;
             }
         }
 
