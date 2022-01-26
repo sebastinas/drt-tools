@@ -4,12 +4,14 @@
 use anyhow::Result;
 use structopt::StructOpt;
 
+mod binnmu_buildinfo;
 mod config;
 pub(crate) mod downloader;
 mod prepare_binnmus;
 mod process_excuses;
 pub(crate) mod source_packages;
 
+use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 
@@ -41,6 +43,9 @@ enum DrtToolsCommands {
     /// Prepare binNMUs for a transition
     #[structopt(name = "prepare-binNMUs")]
     PrepareBinNMUs(PrepareBinNMUsOptions),
+    /// Prepare binNMUs based on a list of buildinfo files
+    #[structopt(name = "binNMU-buildinfo")]
+    BinNMUBuildinfo(BinNMUBuildinfoOptions),
 }
 
 fn main() -> Result<()> {
@@ -53,6 +58,10 @@ fn main() -> Result<()> {
         DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
             let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts);
             prepare_binnmus.run()
+        }
+        DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
+            let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts);
+            binnmus_buildinfo.run()
         }
     }
 }
