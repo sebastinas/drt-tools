@@ -57,7 +57,7 @@ impl BinNMUBuildinfo {
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
-        let matcher = regex::Regex::new("([a-z0-9+.-]+)_([^_]+)_([^-.]+).*")?;
+        let matcher = regex::Regex::new("([a-z0-9+.-]+)_([^_]+)_([^-.]+)-buildd\\.buildinfo")?;
 
         let reader: Box<dyn BufRead> = match &self.options.input {
             None => Box::new(BufReader::new(io::stdin())),
