@@ -80,9 +80,10 @@ impl BinNMUBuildinfo {
                 }
 
                 let package = package.unwrap().as_str();
-                let version = version.unwrap().as_str();
-                let version = version.split("+b").next().unwrap();
+                let mut version_split = version.unwrap().as_str().split("+b");
+                let version = version_split.next().unwrap();
 
+                let mut nmu_version = None;
                 let mut source = SourceSpecifier::new(package);
                 source.with_version(version).with_suite(&self.options.suite);
                 if !source_packages.is_ma_same(package) {
@@ -91,6 +92,12 @@ impl BinNMUBuildinfo {
                         .as_str()
                         .try_into()
                         .unwrap()]);
+                } else {
+                    if let Some(binnmu_version) = version_split.next() {
+                        nmu_version = Some(binnmu_version.parse::<u32>().unwrap() + 1);
+                    } else {
+                        nmu_version = Some(1u32);
+                    }
                 }
 
                 let mut binnmu = BinNMU::new(&source, &self.options.message);
@@ -102,6 +109,9 @@ impl BinNMUBuildinfo {
                 }
                 if let Some(extra_depends) = &self.options.extra_depends {
                     binnmu.with_extra_depends(extra_depends);
+                }
+                if let Some(version) = nmu_version {
+                    binnmu.with_nmu_version(version);
                 }
                 wb_commands.insert(binnmu.build());
             }
