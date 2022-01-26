@@ -15,7 +15,7 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 /// A command to be executed by `wb`
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct WBCommand(String);
 
 impl WBCommand {
