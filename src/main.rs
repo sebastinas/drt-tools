@@ -8,6 +8,7 @@ mod config;
 pub(crate) mod downloader;
 mod prepare_binnmus;
 mod process_excuses;
+pub(crate) mod source_packages;
 
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};

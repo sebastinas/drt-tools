@@ -2,96 +2,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::cmp::min;
-use std::collections::HashSet;
-use std::fs::File;
-use std::io::{BufReader, BufWriter};
-use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use xdg::BaseDirectories;
 
-use crate::{config, downloader::*, BaseOptions};
+use crate::{config, downloader::*, source_packages::SourcePackages, BaseOptions};
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
-
-#[derive(Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
-enum MultiArch {
-    Allowed,
-    Foreign,
-    No,
-    Same,
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-struct BinaryPackage {
-    source: Option<String>,
-    package: String,
-    #[serde(rename = "Multi-Arch")]
-    multi_arch: Option<MultiArch>,
-}
-
-struct SourcePackages {
-    ma_same_sources: HashSet<String>,
-}
-
-impl SourcePackages {
-    fn new<P>(paths: &[P]) -> Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        let mut ma_same_sources = HashSet::<String>::new();
-        for path in paths {
-            let sources = Self::parse_packages(path);
-            ma_same_sources.extend(sources?);
-        }
-
-        Ok(Self { ma_same_sources })
-    }
-
-    fn parse_packages<P>(path: P) -> Result<HashSet<String>>
-    where
-        P: AsRef<Path>,
-    {
-        // read Package file
-        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
-        let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(config::default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        ));
-        pb.set_message(format!(
-            "Processing {}",
-            path.as_ref().file_name().unwrap().to_str().unwrap()
-        ));
-        // collect all sources with MA: same binaries
-        let ma_same_sources: HashSet<String> = binary_packages
-            .into_iter()
-            .progress_with(pb)
-            .filter(|binary_package| binary_package.multi_arch == Some(MultiArch::Same))
-            .map(|binary_package| {
-                if let Some(source_package) = &binary_package.source {
-                    source_package.split_whitespace().next().unwrap().into()
-                } else {
-                    // no Source set, so Source == Package
-                    binary_package.package
-                }
-            })
-            .collect();
-
-        Ok(ma_same_sources)
-    }
-
-    fn is_ma_same(&self, source: &str) -> bool {
-        self.ma_same_sources.contains(source)
-    }
-}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ScheduledBinNMUs {
@@ -116,7 +38,7 @@ pub(crate) struct ProcessExcusesOptions {
 }
 
 pub(crate) struct ProcessExcuses {
-    base_directory: BaseDirectories,
+    cache: config::Cache,
     base_options: BaseOptions,
     options: ProcessExcusesOptions,
 }
@@ -124,7 +46,7 @@ pub(crate) struct ProcessExcuses {
 impl ProcessExcuses {
     pub(crate) fn new(base_options: BaseOptions, options: ProcessExcusesOptions) -> Result<Self> {
         Ok(Self {
-            base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
+            cache: config::Cache::new()?,
             base_options,
             options,
         })
@@ -139,7 +61,7 @@ impl ProcessExcuses {
         )];
         for (url, dst) in urls {
             if downloader
-                .download_file(url, self.get_cache_path(dst)?)
+                .download_file(url, self.cache.get_cache_path(dst)?)
                 .await?
                 == CacheState::NoUpdate
                 && !self.base_options.force_processing
@@ -155,43 +77,11 @@ impl ProcessExcuses {
             );
             let dest = format!("Packages_{}", architecture);
             downloader
-                .download_file(&url, self.get_cache_path(&dest)?)
+                .download_file(&url, self.cache.get_cache_path(&dest)?)
                 .await?;
         }
 
         Ok(CacheState::FreshFiles)
-    }
-
-    fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(self.base_directory.place_cache_file(path)?)
-    }
-
-    fn get_cache_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(BufReader::new(File::open(self.get_cache_path(path)?)?))
-    }
-
-    fn get_data_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(BufReader::new(File::open(
-            self.base_directory.place_data_file(path)?,
-        )?))
-    }
-
-    fn get_data_bufwriter<P>(&self, path: P) -> Result<BufWriter<File>>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(BufWriter::new(File::create(
-            self.base_directory.place_data_file(path)?,
-        )?))
     }
 
     fn is_binnmu_required(policy_info: &PolicyInfo) -> bool {
@@ -291,7 +181,7 @@ impl ProcessExcuses {
     }
 
     fn load_scheduled_binnmus(&self) -> ScheduledBinNMUs {
-        if let Ok(reader) = self.get_data_bufreader("scheduled-binnmus.yaml") {
+        if let Ok(reader) = self.cache.get_data_bufreader("scheduled-binnmus.yaml") {
             serde_yaml::from_reader(reader).unwrap_or_default()
         } else {
             Default::default()
@@ -300,7 +190,7 @@ impl ProcessExcuses {
 
     fn store_scheduled_binnmus(&self, scheduled_binnmus: ScheduledBinNMUs) -> Result<()> {
         serde_yaml::to_writer(
-            self.get_data_bufwriter("scheduled-binnmus.yaml")?,
+            self.cache.get_data_bufwriter("scheduled-binnmus.yaml")?,
             &scheduled_binnmus,
         )?;
         Ok(())
@@ -316,12 +206,15 @@ impl ProcessExcuses {
 
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {
-            all_paths.push(self.get_cache_path(format!("Packages_{}", architecture))?);
+            all_paths.push(
+                self.cache
+                    .get_cache_path(format!("Packages_{}", architecture))?,
+            );
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
         // parse excuses
-        let excuses = excuses::from_reader(self.get_cache_bufreader("excuses.yaml")?)?;
+        let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 
         // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
