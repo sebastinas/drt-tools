@@ -5,7 +5,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::{collections::HashSet, fs::File};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 
 use crate::{config::Cache, source_packages::SourcePackages, BaseOptions};
@@ -50,19 +50,27 @@ impl BinNMUBuildinfo {
         }
     }
 
-    fn process(&self, buildinfo: Buildinfo, source_packages: &SourcePackages) -> WBCommand {
+    fn process(&self, buildinfo: Buildinfo, source_packages: &SourcePackages) -> Result<WBCommand> {
         let mut source_split = buildinfo.source.split_whitespace();
         let source_package = source_split.next().unwrap();
 
         let mut version_split = buildinfo.version.split("+b");
         let version = version_split.next().unwrap();
+        let architectures: Vec<Architecture> = buildinfo
+            .architecture
+            .into_iter()
+            .filter(|arch| *arch == Architecture::All || *arch == Architecture::Source)
+            .collect();
+        if architectures.len() == 0 {
+            return Err(anyhow!("no binNMU-able architecture"));
+        }
 
         // let mut nmu_version = None;
         let mut source = SourceSpecifier::new(source_package);
         source.with_version(version).with_suite(&self.options.suite);
         if !source_packages.is_ma_same(source_package) {
             // binNMU only on the architecture if no MA: same binary packages
-            source.with_archive_architectures(&[buildinfo.architecture]);
+            source.with_archive_architectures(&architectures);
             //  } else {
             //      if let Some(binnmu_version) = version_split.next() {
             //          nmu_version = Some(binnmu_version.parse::<u32>().unwrap() + 1);
@@ -84,7 +92,7 @@ impl BinNMUBuildinfo {
         //  if let Some(version) = nmu_version {
         //      binnmu.with_nmu_version(version);
         //  }
-        binnmu.build()
+        Ok(binnmu.build())
     }
 
     pub(crate) fn run(self) -> Result<()> {
@@ -105,13 +113,16 @@ impl BinNMUBuildinfo {
                     continue;
                 }
                 Ok(bi) => {
-                    if bi.architecture == Architecture::All {
+                    let command = self.process(bi, &source_packages);
+                    if command.is_err() {
                         println!(
-                            "# skipping {}: architecture all not binnumable",
-                            filename.display()
-                        )
+                            "# skipping {}: {}",
+                            filename.display(),
+                            command.unwrap_err()
+                        );
+                        continue;
                     }
-                    wb_commands.insert(self.process(bi, &source_packages));
+                    wb_commands.insert(command.unwrap());
                 }
             }
         }
