@@ -66,6 +66,8 @@ pub enum Architecture {
     Sparc64,
     /// The `x32` architecture
     X32,
+    /// The `source` architecture
+    Source,
 }
 
 impl Display for Architecture {
@@ -97,6 +99,7 @@ impl Display for Architecture {
                 Architecture::Sh4 => "sh4",
                 Architecture::Sparc64 => "sparc64",
                 Architecture::X32 => "x32",
+                Architecture::Source => "source",
             }
         )
     }
@@ -147,6 +150,7 @@ impl TryFrom<&str> for Architecture {
             "sh4" => Ok(Architecture::Sh4),
             "sparc64" => Ok(Architecture::Sparc64),
             "x32" => Ok(Architecture::X32),
+            "source" => Ok(Architecture::Source),
             _ => Err(ParseError::InvalidArchitecture),
         }
     }
