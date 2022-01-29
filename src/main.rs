@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::{Parser, Subcommand};
 
 mod binnmu_buildinfo;
 mod config;
@@ -15,41 +15,41 @@ use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct BaseOptions {
     /// Force download of files
-    #[structopt(long)]
+    #[clap(long)]
     force_download: bool,
     /// Force processing
-    #[structopt(short, long = "force")]
+    #[clap(short, long = "force")]
     force_processing: bool,
     /// Only print actions to perform without running any commends
-    #[structopt(short = "n")]
+    #[clap(short = 'n')]
     dry_run: bool,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct DrtToolsOptions {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     base_options: BaseOptions,
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     command: DrtToolsCommands,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 enum DrtToolsCommands {
     /// Process current excuses.yaml and prepare a list of binNMUs to perform testing migration
     ProcessExcuses(ProcessExcusesOptions),
     /// Prepare binNMUs for a transition
-    #[structopt(name = "prepare-binNMUs")]
+    #[clap(name = "prepare-binNMUs")]
     PrepareBinNMUs(PrepareBinNMUsOptions),
     /// Prepare binNMUs based on a list of buildinfo files
-    #[structopt(name = "binNMU-buildinfo")]
+    #[clap(name = "binNMU-buildinfo")]
     BinNMUBuildinfo(BinNMUBuildinfoOptions),
 }
 
 fn main() -> Result<()> {
-    let opts = DrtToolsOptions::from_args();
+    let opts = DrtToolsOptions::parse();
     match opts.command {
         DrtToolsCommands::ProcessExcuses(pe_opts) => {
             let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;

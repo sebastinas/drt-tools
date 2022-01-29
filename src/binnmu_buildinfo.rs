@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::{collections::HashSet, fs::File};
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use crate::{config::Cache, source_packages::SourcePackages, BaseOptions};
 use assorted_debian_utils::{
@@ -15,25 +15,25 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct BinNMUBuildinfoOptions {
     /// Message for binNMUs
-    #[structopt(short, long)]
+    #[clap(short, long)]
     message: String,
     /// Set a build priority
-    #[structopt(long = "bp")]
+    #[clap(long = "bp")]
     build_priority: Option<i32>,
     /// Set dependency-wait
-    #[structopt(long = "dw")]
+    #[clap(long = "dw")]
     dep_wait: Option<String>,
     /// Set extra dependencies
-    #[structopt(long)]
+    #[clap(long)]
     extra_depends: Option<String>,
     /// Set the suite
-    #[structopt(short, long, default_value = "unstable")]
+    #[clap(short, long, default_value = "unstable")]
     suite: String,
     /// Input files
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     inputs: Vec<PathBuf>,
 }
 

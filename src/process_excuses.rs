@@ -4,9 +4,9 @@
 use std::cmp::min;
 
 use anyhow::Result;
+use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 
 use crate::{config, downloader::*, source_packages::SourcePackages, BaseOptions};
 use assorted_debian_utils::{
@@ -30,10 +30,10 @@ impl ScheduledBinNMUs {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) struct ProcessExcusesOptions {
     /// Do not prepare binNMUs to allow testing migration
-    #[structopt(long)]
+    #[clap(long)]
     no_rebuilds: bool,
 }
 
