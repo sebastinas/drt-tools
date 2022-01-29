@@ -1,7 +1,7 @@
 // Copyright 2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::io::{self, BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::{collections::HashSet, fs::File};
 
@@ -11,6 +11,7 @@ use structopt::StructOpt;
 use crate::{config::Cache, source_packages::SourcePackages, BaseOptions};
 use assorted_debian_utils::{
     architectures::RELEASE_ARCHITECTURES,
+    buildinfo,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
@@ -31,9 +32,9 @@ pub(crate) struct BinNMUBuildinfoOptions {
     /// Set the suite
     #[structopt(short, long, default_value = "unstable")]
     suite: String,
-    /// Input file
+    /// Input files
     #[structopt(parse(from_os_str))]
-    input: Option<PathBuf>,
+    inputs: Vec<PathBuf>,
 }
 
 pub(crate) struct BinNMUBuildinfo {
@@ -57,64 +58,46 @@ impl BinNMUBuildinfo {
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
-        let matcher = regex::Regex::new("([a-z0-9+.-]+)_([^_]+)_([^-.]+)-buildd\\.buildinfo")?;
-
-        let reader: Box<dyn BufRead> = match &self.options.input {
-            None => Box::new(BufReader::new(io::stdin())),
-            Some(filename) => Box::new(BufReader::new(File::open(filename)?)),
-        };
-
         let mut wb_commands = HashSet::new();
-        for line in reader.lines() {
-            if line.is_err() {
-                break;
+        // iterate over all buildinfo files
+        for filename in self.options.inputs {
+            let data = strip_signature(BufReader::new(File::open(filename)?))?;
+            let buildinfo = buildinfo::from_reader(data.as_ref())?;
+
+            let mut source_split = buildinfo.source.split_whitespace();
+            let source_package = source_split.next().unwrap();
+
+            let mut version_split = buildinfo.version.split("+b");
+            let version = version_split.next().unwrap();
+
+            // let mut nmu_version = None;
+            let mut source = SourceSpecifier::new(source_package);
+            source.with_version(version).with_suite(&self.options.suite);
+            if !source_packages.is_ma_same(source_package) {
+                // binNMU only on the architecture if no MA: same binary packages
+                source.with_archive_architectures(&[buildinfo.architecture]);
+                //  } else {
+                //      if let Some(binnmu_version) = version_split.next() {
+                //          nmu_version = Some(binnmu_version.parse::<u32>().unwrap() + 1);
+                //      } else {
+                //          nmu_version = Some(1u32);
+                //      }
             }
 
-            let line = line.unwrap();
-            if let Some(capture) = matcher.captures(&line) {
-                let package = capture.get(1);
-                let version = capture.get(2);
-                let architecture = capture.get(3);
-                if package.is_none() || version.is_none() || architecture.is_none() {
-                    continue;
-                }
-
-                let package = package.unwrap().as_str();
-                let mut version_split = version.unwrap().as_str().split("+b");
-                let version = version_split.next().unwrap();
-
-                let mut nmu_version = None;
-                let mut source = SourceSpecifier::new(package);
-                source.with_version(version).with_suite(&self.options.suite);
-                if !source_packages.is_ma_same(package) {
-                    source.with_archive_architectures(&[architecture
-                        .unwrap()
-                        .as_str()
-                        .try_into()
-                        .unwrap()]);
-                } else {
-                    if let Some(binnmu_version) = version_split.next() {
-                        nmu_version = Some(binnmu_version.parse::<u32>().unwrap() + 1);
-                    } else {
-                        nmu_version = Some(1u32);
-                    }
-                }
-
-                let mut binnmu = BinNMU::new(&source, &self.options.message);
-                if let Some(bp) = self.options.build_priority {
-                    binnmu.with_build_priority(bp);
-                }
-                if let Some(dw) = &self.options.dep_wait {
-                    binnmu.with_dependency_wait(dw);
-                }
-                if let Some(extra_depends) = &self.options.extra_depends {
-                    binnmu.with_extra_depends(extra_depends);
-                }
-                if let Some(version) = nmu_version {
-                    binnmu.with_nmu_version(version);
-                }
-                wb_commands.insert(binnmu.build());
+            let mut binnmu = BinNMU::new(&source, &self.options.message);
+            if let Some(bp) = self.options.build_priority {
+                binnmu.with_build_priority(bp);
             }
+            if let Some(dw) = &self.options.dep_wait {
+                binnmu.with_dependency_wait(dw);
+            }
+            if let Some(extra_depends) = &self.options.extra_depends {
+                binnmu.with_extra_depends(extra_depends);
+            }
+            //  if let Some(version) = nmu_version {
+            //      binnmu.with_nmu_version(version);
+            //  }
+            wb_commands.insert(binnmu.build());
         }
 
         for commands in wb_commands {
@@ -126,4 +109,31 @@ impl BinNMUBuildinfo {
 
         Ok(())
     }
+}
+
+// Strip the signature from a buildinfo file without verifying it
+fn strip_signature(input: impl BufRead) -> Result<Vec<u8>> {
+    let mut data = vec![];
+    for line in input.lines().skip_while(|rline| {
+        if let Ok(line) = rline {
+            // Skip until the beginning of a buildinfo file
+            !line.starts_with("Format: ")
+        } else {
+            true
+        }
+    }) {
+        if line.is_err() {
+            break;
+        }
+
+        let line = line.unwrap();
+        // Read until beginning of the signature block
+        if line.starts_with("-----BEGIN") {
+            return Ok(data);
+        }
+        data.write_all(line.as_bytes())?;
+        data.write_all(b"\n")?;
+    }
+
+    Ok(data)
 }
