@@ -14,44 +14,37 @@ use serde::{
 
 use crate::architectures::Architecture;
 
-fn deserialize_architecture<'de, D>(deserializer: D) -> Result<Architecture, D::Error>
+fn deserialize_architecture<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct StringVisitor;
 
     impl<'de> Visitor<'de> for StringVisitor {
-        type Value = Architecture;
+        type Value = Vec<Architecture>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("an architecture (and possiblly \"source\")")
+            formatter.write_str("one or more architectures")
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            let mut result = None;
+            let mut result = vec![];
             for arch in v.split_whitespace() {
-                if arch == "source" {
-                    continue;
-                }
                 match arch.try_into() {
                     Ok(arch) => {
-                        if result.is_none() {
-                            result = Some(arch);
-                        } else {
-                            return Err(E::custom("more than one architecture specified"));
-                        }
+                        result.push(arch);
                     }
                     Err(_) => {
                         return Err(E::custom(format!("invalid architecture: {}", arch)));
                     }
                 }
             }
-            match result {
-                Some(arch) => Ok(arch),
-                None => Err(E::custom("no architecture found")),
+            match result.len() {
+                0 => Err(E::custom("no architecture found")),
+                _ => Ok(result),
             }
         }
     }
@@ -67,9 +60,9 @@ pub struct Buildinfo {
     pub source: String,
     /// Version of the package
     pub version: String,
-    /// Architecture of the build (ignoring `source`)
+    /// Architectures of the build
     #[serde(deserialize_with = "deserialize_architecture")]
-    pub architecture: Architecture,
+    pub architecture: Vec<Architecture>,
 }
 
 /// Read buildinfo from a reader
@@ -84,7 +77,7 @@ pub fn from_str(data: &str) -> Result<Buildinfo, rfc822_like::de::Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::buildinfo::Buildinfo;
+    use crate::{architectures::Architecture, buildinfo::Buildinfo};
 
     #[test]
     fn deserialize() {
@@ -304,5 +297,9 @@ Environment:
         let buildinfo: Buildinfo = super::from_str(data).unwrap();
         assert_eq!(buildinfo.source, "picnic");
         assert_eq!(buildinfo.version, "3.0.11-1");
+        assert_eq!(
+            buildinfo.architecture,
+            vec![Architecture::I386, Architecture::Source]
+        );
     }
 }
