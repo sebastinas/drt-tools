@@ -1,5 +1,5 @@
 // Copyright 2022 Sebastian Ramacher
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Representation of buildinfos
 //!
