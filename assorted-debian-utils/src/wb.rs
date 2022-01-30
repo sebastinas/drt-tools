@@ -48,6 +48,8 @@ pub struct WBCommand(String);
 
 impl WBCommand {
     /// Execute the command via `wb`
+    ///
+    /// This function runs `wb` and passes the commands on `stdin`.
     pub fn execute(&self) -> Result<(), Error> {
         let mut proc = Command::new("wb")
             .stdin(Stdio::piped())
