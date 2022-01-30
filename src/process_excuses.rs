@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config, downloader::*, source_packages::SourcePackages, BaseOptions};
 use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    architectures::RELEASE_ARCHITECTURES,
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
