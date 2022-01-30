@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 (2022-01-30)
+
+* Implement new sub-command:
+  * binnmu-buildinfo: based on a list of buildinfo files, schedule binNMUs.
+* Migrate from `structopt` to `clap` 3.
+
 ## 0.2.1 (2021-12-22)
 
 * Bump to rfc822-like 0.2.1 and deserialize `Multi-Arch` as enum.
