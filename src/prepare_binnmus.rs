@@ -82,7 +82,7 @@ impl PrepareBinNMUs {
                     source.with_archive_architectures(architectures);
                 }
 
-                let mut binnmu = BinNMU::new(&source, &self.options.message);
+                let mut binnmu = BinNMU::new(&source, &self.options.message)?;
                 if let Some(bp) = self.options.build_priority {
                     binnmu.with_build_priority(bp);
                 }

@@ -61,7 +61,7 @@ impl BinNMUBuildinfo {
             .into_iter()
             .filter(|arch| *arch == Architecture::All || *arch == Architecture::Source)
             .collect();
-        if architectures.len() == 0 {
+        if architectures.is_empty() {
             return Err(anyhow!("no binNMU-able architecture"));
         }
 
@@ -79,7 +79,7 @@ impl BinNMUBuildinfo {
             //      }
         }
 
-        let mut binnmu = BinNMU::new(&source, &self.options.message);
+        let mut binnmu = BinNMU::new(&source, &self.options.message)?;
         if let Some(bp) = self.options.build_priority {
             binnmu.with_build_priority(bp);
         }

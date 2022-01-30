@@ -132,17 +132,17 @@ impl ProcessExcuses {
                 // this should not happen, but just to be on the safe side
                 return None;
             }
-            if archs.contains(&WBArchitecture::Architecture(Architecture::All)) {
-                // cannot binNMU arch:all
-                return None;
-            }
 
             let mut source_specifier = SourceSpecifier::new(&item.source);
             source_specifier.with_version(&item.new_version);
             if !source_packages.is_ma_same(&item.source) {
                 source_specifier.with_architectures(&archs);
             }
-            Some(BinNMU::new(&source_specifier, "Rebuild on buildd").build())
+            match BinNMU::new(&source_specifier, "Rebuild on buildd") {
+                Ok(command) => Some(command.build()),
+                // not binNMU-able
+                Err(_) => None,
+            }
         } else {
             None
         }
