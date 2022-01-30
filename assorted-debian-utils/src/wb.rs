@@ -11,8 +11,36 @@ use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+
+/// Errors when working with `wb`
+#[derive(Debug)]
+pub enum Error {
+    /// An invalid architecture for a command was specified
+    InvalidArchitecture(WBArchitecture, &'static str),
+    /// Execution of `wb` failed
+    ExecutionError(Option<std::io::Error>),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::InvalidArchitecture(arch, command) => write!(
+                f,
+                "invalid architecture {} for wb command '{}'",
+                arch, command
+            ),
+            Error::ExecutionError(None) => write!(f, "unable to execute 'wb'"),
+            Error::ExecutionError(Some(ioerr)) => write!(f, "unable to execute 'wb': {}", ioerr),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+fn map_io_error(ioerr: std::io::Error) -> Error {
+    Error::ExecutionError(Some(ioerr))
+}
 
 /// A command to be executed by `wb`
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
@@ -20,14 +48,17 @@ pub struct WBCommand(String);
 
 impl WBCommand {
     /// Execute the command via `wb`
-    pub fn execute(&self) -> Result<()> {
-        let mut proc = Command::new("wb").stdin(Stdio::piped()).spawn()?;
+    pub fn execute(&self) -> Result<(), Error> {
+        let mut proc = Command::new("wb")
+            .stdin(Stdio::piped())
+            .spawn()
+            .map_err(map_io_error)?;
         if let Some(mut stdin) = proc.stdin.take() {
-            stdin.write_all(self.0.as_bytes())?;
+            stdin.write_all(self.0.as_bytes()).map_err(map_io_error)?;
         } else {
-            return Err(anyhow!("Unable to take stdin"));
+            return Err(Error::ExecutionError(None));
         }
-        proc.wait_with_output()?;
+        proc.wait_with_output().map_err(map_io_error)?;
         Ok(())
     }
 }
@@ -185,15 +216,26 @@ pub struct BinNMU<'a> {
 
 impl<'a> BinNMU<'a> {
     /// Create a new `nmu` command for the given `source`.
-    pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Self {
-        Self {
+    pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
+        for arch in &source.architectures {
+            match arch {
+                // unable to nmu with source, -source, ALL
+                &WBArchitecture::Architecture(Architecture::Source)
+                | &WBArchitecture::MinusArchitecture(Architecture::Source)
+                | &WBArchitecture::All => {
+                    return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
+                }
+                _ => {}
+            }
+        }
+        Ok(Self {
             source,
             message,
             nmu_version: None,
             extra_depends: None,
             priority: None,
             dep_wait: None,
-        }
+        })
     }
 
     /// Specify the binNMU version. If not set, `wb` tries to auto-detect the binNMU version.
@@ -264,8 +306,19 @@ pub struct DepWait<'a> {
 
 impl<'a> DepWait<'a> {
     /// Create a new `dw` command for the given `source`.
-    pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Self {
-        Self { source, message }
+    pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
+        for arch in &source.architectures {
+            match arch {
+                // unable to dw with source, -source
+                &WBArchitecture::Architecture(Architecture::Source)
+                | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
+                    return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Self { source, message })
     }
 }
 
@@ -284,8 +337,19 @@ pub struct BuildPriority<'a> {
 
 impl<'a> BuildPriority<'a> {
     /// Create a new `bp` command for the given `source`.
-    pub fn new(source: &'a SourceSpecifier<'a>, priority: i32) -> Self {
-        Self { source, priority }
+    pub fn new(source: &'a SourceSpecifier<'a>, priority: i32) -> Result<Self, Error> {
+        for arch in &source.architectures {
+            match arch {
+                // unable to bp with source, -source
+                &WBArchitecture::Architecture(Architecture::Source)
+                | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
+                    return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Self { source, priority })
     }
 }
 
@@ -327,12 +391,14 @@ mod test {
     fn binnmu() {
         assert_eq!(
             BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+                .unwrap()
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\""
         );
         assert_eq!(
             BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+                .unwrap()
                 .with_nmu_version(3)
                 .build()
                 .to_string(),
@@ -343,6 +409,7 @@ mod test {
                 SourceSpecifier::new("zathura").with_version("2.3.4"),
                 "Rebuild on buildd"
             )
+            .unwrap()
             .build()
             .to_string(),
             "nmu zathura_2.3.4 . ANY . unstable . -m \"Rebuild on buildd\""
@@ -355,6 +422,7 @@ mod test {
                 ]),
                 "Rebuild on buildd"
             )
+            .unwrap()
             .build()
             .to_string(),
             "nmu zathura . ANY -i386 . unstable . -m \"Rebuild on buildd\""
@@ -364,26 +432,27 @@ mod test {
                 SourceSpecifier::new("zathura").with_suite("testing"),
                 "Rebuild on buildd"
             )
+            .unwrap()
             .build()
             .to_string(),
             "nmu zathura . ANY . testing . -m \"Rebuild on buildd\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd").unwrap()
                 .with_extra_depends("libgirara-dev")
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\" --extra-depends \"libgirara-dev\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd").unwrap()
                 .with_dependency_wait("libgirara-dev")
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\"\ndw zathura . ANY . unstable . -m \"libgirara-dev\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd").unwrap()
                 .with_build_priority(-10)
                 .build()
                 .to_string(),
@@ -394,7 +463,7 @@ mod test {
     #[test]
     fn nmu_builder() {
         let source = SourceSpecifier::new("zathura");
-        let mut builder = BinNMU::new(&source, "Rebuild on buildd");
+        let mut builder = BinNMU::new(&source, "Rebuild on buildd").unwrap();
         builder.with_nmu_version(3);
         assert_eq!(
             builder.build().to_string(),
@@ -406,12 +475,14 @@ mod test {
     fn bp() {
         assert_eq!(
             BuildPriority::new(&SourceSpecifier::new("zathura"), 10)
+                .unwrap()
                 .build()
                 .to_string(),
             "bp 10 zathura . ANY . unstable"
         );
         assert_eq!(
             BuildPriority::new(SourceSpecifier::new("zathura").with_version("2.3.4"), 10)
+                .unwrap()
                 .build()
                 .to_string(),
             "bp 10 zathura_2.3.4 . ANY . unstable"
@@ -424,12 +495,14 @@ mod test {
                 ]),
                 10
             )
+            .unwrap()
             .build()
             .to_string(),
             "bp 10 zathura . ANY -i386 . unstable"
         );
         assert_eq!(
             BuildPriority::new(SourceSpecifier::new("zathura").with_suite("testing"), 10)
+                .unwrap()
                 .build()
                 .to_string(),
             "bp 10 zathura . ANY . testing"
@@ -440,6 +513,7 @@ mod test {
     fn dw() {
         assert_eq!(
             DepWait::new(&SourceSpecifier::new("zathura"), "libgirara-dev")
+                .unwrap()
                 .build()
                 .to_string(),
             "dw zathura . ANY . unstable . -m \"libgirara-dev\""
@@ -449,6 +523,7 @@ mod test {
                 SourceSpecifier::new("zathura").with_version("2.3.4"),
                 "libgirara-dev"
             )
+            .unwrap()
             .build()
             .to_string(),
             "dw zathura_2.3.4 . ANY . unstable . -m \"libgirara-dev\""
@@ -461,6 +536,7 @@ mod test {
                 ]),
                 "libgirara-dev"
             )
+            .unwrap()
             .build()
             .to_string(),
             "dw zathura . ANY -i386 . unstable . -m \"libgirara-dev\""
@@ -470,6 +546,7 @@ mod test {
                 SourceSpecifier::new("zathura").with_suite("testing"),
                 "libgirara-dev"
             )
+            .unwrap()
             .build()
             .to_string(),
             "dw zathura . ANY . testing . -m \"libgirara-dev\""
