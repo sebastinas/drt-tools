@@ -13,7 +13,6 @@ jobs:
         toolchain:
           - stable
           - beta
-          - nightly
     name: Test with ${{matrix.toolchain}} toolchain
     steps:
       - uses: actions/checkout@v2
