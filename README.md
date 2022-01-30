@@ -4,4 +4,4 @@ This crate includes tools to help with typical work of Debian's release team. Cu
 
 ## License
 
-This crate is Copyright 2021 Sebastian Ramacher and licensed under the GPL version 3.0 or later.
+This crate is Copyright 2021-2022 Sebastian Ramacher and licensed under the GPL version 3.0 or later.
