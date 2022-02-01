@@ -316,7 +316,7 @@ impl<'a> DepWait<'a> {
                 // unable to dw with source, -source
                 &WBArchitecture::Architecture(Architecture::Source)
                 | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
-                    return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
+                    return Err(Error::InvalidArchitecture(arch.clone(), "dw"));
                 }
                 _ => {}
             }
@@ -347,7 +347,7 @@ impl<'a> BuildPriority<'a> {
                 // unable to bp with source, -source
                 &WBArchitecture::Architecture(Architecture::Source)
                 | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
-                    return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
+                    return Err(Error::InvalidArchitecture(arch.clone(), "bp"));
                 }
                 _ => {}
             }
