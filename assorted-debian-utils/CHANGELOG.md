@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2022-02-01)
+
+* Fail on binNMUs for `all`.
+
 ## 0.3 (2022-01-30)
 
 * Add parser for `.buildinfo` files.
