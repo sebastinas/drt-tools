@@ -221,9 +221,11 @@ impl<'a> BinNMU<'a> {
     pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
         for arch in &source.architectures {
             match arch {
-                // unable to nmu with source, -source, ALL
+                // unable to nmu with source, -source, ALL, all
                 &WBArchitecture::Architecture(Architecture::Source)
                 | &WBArchitecture::MinusArchitecture(Architecture::Source)
+                | &WBArchitecture::Architecture(Architecture::All)
+                | &WBArchitecture::MinusArchitecture(Architecture::All)
                 | &WBArchitecture::All => {
                     return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
                 }
