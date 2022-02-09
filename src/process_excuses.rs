@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config, downloader::*, source_packages::SourcePackages, BaseOptions};
 use assorted_debian_utils::{
-    architectures::RELEASE_ARCHITECTURES,
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
@@ -130,6 +130,10 @@ impl ProcessExcuses {
             }
             if archs.is_empty() {
                 // this should not happen, but just to be on the safe side
+                return None;
+            }
+            if archs.contains(&WBArchitecture::Architecture(Architecture::All)) {
+                // cannot binNMU arch: all
                 return None;
             }
 
