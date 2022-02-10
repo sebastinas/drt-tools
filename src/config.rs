@@ -78,9 +78,9 @@ impl Downloader {
             .content_length()
             .ok_or_else(|| anyhow!("Failed to get content length from '{}'", &url))?;
         let pb = ProgressBar::new(total_size);
-        pb.set_style(ProgressStyle::default_bar()
+        pb.set_style(default_progress_style()
             .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
-            .progress_chars(PROGRESS_CHARS));
+            );
         pb.set_message(format!("Downloading {}", url));
         Ok(Some((res, pb)))
     }
