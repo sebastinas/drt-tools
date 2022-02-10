@@ -125,6 +125,7 @@ impl Downloader {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
     downloader: Downloader,
@@ -171,9 +172,9 @@ impl Cache {
     pub async fn download(&self, entries: &[CacheEntries]) -> Result<CacheState> {
         let mut state = CacheState::NoUpdate;
         for entry in entries {
-            let new_state = match entry {
-                &CacheEntries::Excuses => self.download_excuses().await?,
-                &CacheEntries::Packages => self.download_packages().await?,
+            let new_state = match *entry {
+                CacheEntries::Excuses => self.download_excuses().await?,
+                CacheEntries::Packages => self.download_packages().await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;
