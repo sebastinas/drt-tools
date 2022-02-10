@@ -2,14 +2,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
-    fs::File,
-    io::{BufReader, BufWriter},
+    fs::{self, File},
+    io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
 };
 
-use anyhow::Result;
-use indicatif::ProgressStyle;
+use anyhow::{anyhow, Context, Result};
+use assorted_debian_utils::architectures::RELEASE_ARCHITECTURES;
+use futures_util::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
+use reqwest::{header, Client, Response, StatusCode};
 use xdg::BaseDirectories;
+use xz2::write::XzDecoder;
 
 const PROGRESS_CHARS: &str = "█  ";
 
@@ -17,15 +21,165 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
     ProgressStyle::default_bar().progress_chars(PROGRESS_CHARS)
 }
 
+pub(crate) enum CacheEntries {
+    Excuses,
+    Packages,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum CacheState {
+    NoUpdate,
+    FreshFiles,
+}
+
+#[derive(Debug)]
+struct Downloader {
+    always_download: bool,
+    client: Client,
+}
+
+impl Downloader {
+    pub fn new(always_download: bool) -> Self {
+        Self {
+            always_download,
+            client: Client::new(),
+        }
+    }
+
+    async fn download_init<P>(&self, url: &str, path: P) -> Result<Option<(Response, ProgressBar)>>
+    where
+        P: AsRef<Path>,
+    {
+        let res = self.client.get(url);
+        let res = if !self.always_download {
+            if let Ok(dst_metadata) = fs::metadata(path) {
+                // if always_download was not set and we have local copy, tell the server the date
+                res.header(
+                    header::IF_MODIFIED_SINCE,
+                    httpdate::fmt_http_date(dst_metadata.modified()?),
+                )
+            } else {
+                res
+            }
+        } else {
+            res
+        }
+        .send()
+        .await
+        .with_context(|| format!("Failed to GET from '{}'", &url))?;
+
+        if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
+            // this will only trigger if always_download is not set and the server reports that the
+            // file was not modified
+            return Ok(None);
+        }
+
+        let total_size = res
+            .content_length()
+            .ok_or_else(|| anyhow!("Failed to get content length from '{}'", &url))?;
+        let pb = ProgressBar::new(total_size);
+        pb.set_style(ProgressStyle::default_bar()
+            .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+            .progress_chars(PROGRESS_CHARS));
+        pb.set_message(format!("Downloading {}", url));
+        Ok(Some((res, pb)))
+    }
+
+    async fn download_internal(
+        &self,
+        res: Response,
+        pb: &ProgressBar,
+        mut writer: impl Write,
+    ) -> Result<()> {
+        let mut stream = res.bytes_stream();
+        while let Some(item) = stream.next().await {
+            let chunk = item.with_context(|| "Error while downloading file".to_string())?;
+            writer
+                .write_all(&chunk)
+                .with_context(|| "Error while writing to file".to_string())?;
+            pb.inc(chunk.len() as u64);
+        }
+        Ok(())
+    }
+
+    pub async fn download_file<P>(&self, url: &str, path: P) -> Result<CacheState>
+    where
+        P: AsRef<Path>,
+    {
+        let res = self.download_init(url, &path).await?;
+        if res.is_none() {
+            return Ok(CacheState::NoUpdate);
+        }
+
+        let (res, pb) = res.unwrap();
+        let file = File::create(&path)
+            .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?;
+        if url.ends_with(".xz") {
+            self.download_internal(res, &pb, XzDecoder::new(file))
+                .await?;
+        } else {
+            self.download_internal(res, &pb, file).await?;
+        }
+        pb.finish_with_message(format!("Downloaded {}", url));
+        Ok(CacheState::FreshFiles)
+    }
+}
+
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
+    downloader: Downloader,
 }
 
 impl Cache {
-    pub fn new() -> Result<Self> {
+    pub fn new(force_download: bool) -> Result<Self> {
         Ok(Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
+            downloader: Downloader::new(force_download),
         })
+    }
+
+    async fn download_excuses(&self) -> Result<CacheState> {
+        Ok(self
+            .downloader
+            .download_file(
+                "https://release.debian.org/britney/excuses.yaml",
+                self.get_cache_path("excuses.yaml")?,
+            )
+            .await?)
+    }
+
+    async fn download_packages(&self) -> Result<CacheState> {
+        let mut state = CacheState::NoUpdate;
+        for architecture in RELEASE_ARCHITECTURES {
+            let url = format!(
+                "https://deb.debian.org/debian/dists/unstable/main/binary-{}/Packages.xz",
+                architecture
+            );
+            let dest = format!("Packages_{}", architecture);
+            if self
+                .downloader
+                .download_file(&url, self.get_cache_path(&dest)?)
+                .await?
+                == CacheState::FreshFiles
+            {
+                state = CacheState::FreshFiles;
+            }
+        }
+        Ok(state)
+    }
+
+    pub async fn download(&self, entries: &[CacheEntries]) -> Result<CacheState> {
+        let mut state = CacheState::NoUpdate;
+        for entry in entries {
+            let new_state = match entry {
+                &CacheEntries::Excuses => self.download_excuses().await?,
+                &CacheEntries::Packages => self.download_packages().await?,
+            };
+            if new_state == CacheState::FreshFiles {
+                state = CacheState::FreshFiles;
+            }
+        }
+        Ok(state)
     }
 
     pub fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>

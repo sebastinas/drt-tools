@@ -8,7 +8,11 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::{Deserialize, Serialize};
 
-use crate::{config, downloader::*, source_packages::SourcePackages, BaseOptions};
+use crate::{
+    config::{self, CacheEntries, CacheState},
+    source_packages::SourcePackages,
+    BaseOptions,
+};
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
@@ -46,41 +50,22 @@ pub(crate) struct ProcessExcuses {
 impl ProcessExcuses {
     pub(crate) fn new(base_options: BaseOptions, options: ProcessExcusesOptions) -> Result<Self> {
         Ok(Self {
-            cache: config::Cache::new()?,
+            cache: config::Cache::new(base_options.force_download)?,
             base_options,
             options,
         })
     }
 
+    #[tokio::main]
     async fn download_to_cache(&self) -> Result<CacheState> {
-        let downloader = Downloader::new(self.base_options.force_download);
-
-        let urls = [(
-            "https://release.debian.org/britney/excuses.yaml",
-            "excuses.yaml",
-        )];
-        for (url, dst) in urls {
-            if downloader
-                .download_file(url, self.cache.get_cache_path(dst)?)
-                .await?
-                == CacheState::NoUpdate
-                && !self.base_options.force_processing
-            {
-                // if excuses.yaml did not change, there is nothing new to build
-                return Ok(CacheState::NoUpdate);
-            }
-        }
-        for architecture in RELEASE_ARCHITECTURES {
-            let url = format!(
-                "https://deb.debian.org/debian/dists/unstable/main/binary-{}/Packages.xz",
-                architecture
-            );
-            let dest = format!("Packages_{}", architecture);
-            downloader
-                .download_file(&url, self.cache.get_cache_path(&dest)?)
-                .await?;
+        if self.cache.download(&[CacheEntries::Excuses]).await? == CacheState::NoUpdate
+            && !self.base_options.force_processing
+        {
+            // if excuses.yaml did not change, there is nothing new to build
+            return Ok(CacheState::NoUpdate);
         }
 
+        self.cache.download(&[CacheEntries::Packages]).await?;
         Ok(CacheState::FreshFiles)
     }
 
@@ -200,10 +185,9 @@ impl ProcessExcuses {
         Ok(())
     }
 
-    #[tokio::main]
-    pub(crate) async fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Result<()> {
         // download excuses and Package files
-        if self.download_to_cache().await? == CacheState::NoUpdate {
+        if self.download_to_cache()? == CacheState::NoUpdate {
             // nothing to do
             return Ok(());
         }

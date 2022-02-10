@@ -5,8 +5,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod binnmu_buildinfo;
-mod config;
-pub(crate) mod downloader;
+pub(crate) mod config;
 mod prepare_binnmus;
 mod process_excuses;
 pub(crate) mod source_packages;
@@ -60,7 +59,7 @@ fn main() -> Result<()> {
             prepare_binnmus.run()
         }
         DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
-            let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts);
+            let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts)?;
             binnmus_buildinfo.run()
         }
     }

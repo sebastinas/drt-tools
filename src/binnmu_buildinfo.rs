@@ -8,7 +8,11 @@ use std::{collections::HashSet, fs::File};
 use anyhow::{anyhow, Result};
 use clap::Parser;
 
-use crate::{config::Cache, source_packages::SourcePackages, BaseOptions};
+use crate::{
+    config::{Cache, CacheEntries, CacheState},
+    source_packages::SourcePackages,
+    BaseOptions,
+};
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     buildinfo::{self, Buildinfo},
@@ -38,16 +42,24 @@ pub(crate) struct BinNMUBuildinfoOptions {
 }
 
 pub(crate) struct BinNMUBuildinfo {
+    cache: Cache,
     base_options: BaseOptions,
     options: BinNMUBuildinfoOptions,
 }
 
 impl BinNMUBuildinfo {
-    pub(crate) fn new(base_options: BaseOptions, options: BinNMUBuildinfoOptions) -> Self {
-        Self {
+    pub(crate) fn new(base_options: BaseOptions, options: BinNMUBuildinfoOptions) -> Result<Self> {
+        Ok(Self {
+            cache: Cache::new(base_options.force_download)?,
             base_options,
             options,
-        }
+        })
+    }
+
+    #[tokio::main]
+    async fn download_to_cache(&self) -> Result<CacheState> {
+        self.cache.download(&[CacheEntries::Packages]).await?;
+        Ok(CacheState::FreshFiles)
     }
 
     fn process(&self, buildinfo: Buildinfo, source_packages: &SourcePackages) -> Result<WBCommand> {
@@ -96,10 +108,14 @@ impl BinNMUBuildinfo {
     }
 
     pub(crate) fn run(self) -> Result<()> {
-        let cache = Cache::new()?;
+        self.download_to_cache()?;
+
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {
-            all_paths.push(cache.get_cache_path(format!("Packages_{}", architecture))?);
+            all_paths.push(
+                self.cache
+                    .get_cache_path(format!("Packages_{}", architecture))?,
+            );
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
