@@ -24,6 +24,7 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
 pub(crate) enum CacheEntries {
     Excuses,
     Packages,
+    // Sources,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -169,12 +170,25 @@ impl Cache {
         Ok(state)
     }
 
+    /*
+    async fn download_sources(&self) -> Result<CacheState> {
+        Ok(self
+            .downloader
+            .download_file(
+                "https://deb.debian.org/debian/dists/unstable/main/source/Sources.xz",
+                self.get_cache_path("Sources")?,
+            )
+            .await?)
+    }
+    */
+
     pub async fn download(&self, entries: &[CacheEntries]) -> Result<CacheState> {
         let mut state = CacheState::NoUpdate;
         for entry in entries {
             let new_state = match *entry {
                 CacheEntries::Excuses => self.download_excuses().await?,
                 CacheEntries::Packages => self.download_packages().await?,
+                // CacheEntries::Sources => self.download_sources().await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;
