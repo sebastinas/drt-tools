@@ -115,10 +115,7 @@ impl PackageVersion {
 
     /// Return epoch of 0 if none set.
     pub fn epoch_or_0(&self) -> u32 {
-        match self.epoch {
-            Some(epoch) => epoch,
-            None => 0,
-        }
+        self.epoch.unwrap_or(0)
     }
 }
 
@@ -175,7 +172,7 @@ impl TryFrom<&str> for PackageVersion {
             None
         };
 
-        Self::new(epoch, value, debian_revision).map_err(|e| ParseError::InvalidVersion(e))
+        Self::new(epoch, value, debian_revision).map_err(ParseError::InvalidVersion)
     }
 }
 
