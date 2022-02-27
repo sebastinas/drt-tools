@@ -119,6 +119,46 @@ impl PackageVersion {
     pub fn epoch_or_0(&self) -> u32 {
         self.epoch.unwrap_or(0)
     }
+
+    /// Return whether this version has a binNMU version, i.e., ends in +bX for some integer X.
+    pub fn has_binnmu_version(&self) -> bool {
+        if let Some(revision) = &self.debian_revision {
+            revision.contains("+b")
+        } else {
+            false
+        }
+    }
+
+    /// Return binNMU version if available.
+    pub fn binnmu_version(&self) -> Option<u32> {
+        if let Some(revision) = &self.debian_revision {
+            let mut split = revision.split("+b");
+            split.next();
+            if let Some(binnmu) = split.next() {
+                binnmu.parse::<u32>().ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Obtain version without the binNMU version.
+    pub fn without_binnmu_version(self) -> Self {
+        if let Some(mut revision) = self.debian_revision {
+            if let Some(index) = revision.find("+b") {
+                revision.truncate(index);
+            }
+            Self {
+                epoch: self.epoch,
+                upstream_version: self.upstream_version,
+                debian_revision: Some(revision),
+            }
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(feature = "libdpkg-sys")]
@@ -286,5 +326,25 @@ mod test {
         let version = PackageVersion::try_from("1.0-2-1").unwrap();
         assert_eq!(version.upstream_version, "1.0-2");
         assert_eq!(version.debian_revision, Some("1".into()));
+    }
+
+    #[test]
+    fn binnum() {
+        let version = PackageVersion::try_from("1.0-1").unwrap();
+        assert!(!version.has_binnmu_version());
+        assert_eq!(version.binnmu_version(), None);
+
+        let version = PackageVersion::try_from("1.0-1+b1").unwrap();
+        assert!(version.has_binnmu_version());
+        assert_eq!(version.binnmu_version(), Some(1u32));
+    }
+
+    #[test]
+    fn strip_binnum() {
+        let version = PackageVersion::try_from("1.0-1+b1").unwrap();
+        let version = version.without_binnmu_version();
+
+        assert!(!version.has_binnmu_version());
+        assert_eq!(version.binnmu_version(), None);
     }
 }
