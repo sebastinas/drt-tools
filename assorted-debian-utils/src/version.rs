@@ -140,14 +140,22 @@ impl Ord for PackageVersion {
 }
 
 #[cfg(feature = "libdpkg-sys")]
-impl Eq for PackageVersion {}
-
-#[cfg(feature = "libdpkg-sys")]
 impl PartialEq for PackageVersion {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
     }
 }
+
+#[cfg(not(feature = "libdpkg-sys"))]
+impl PartialEq for PackageVersion {
+    fn eq(&self, other: &Self) -> bool {
+        self.epoch_or_0() == other.epoch_or_0()
+            && self.upstream_version == other.upstream_version
+            && self.debian_revision == other.debian_revision
+    }
+}
+
+impl Eq for PackageVersion {}
 
 impl TryFrom<&str> for PackageVersion {
     type Error = ParseError;
@@ -212,7 +220,6 @@ mod test {
         assert!(version1 < version2);
     }
 
-    #[cfg(feature = "libdpkg-sys")]
     #[test]
     fn zero_epoch_compare() {
         let version1 = PackageVersion::try_from("2.0-1").unwrap();
