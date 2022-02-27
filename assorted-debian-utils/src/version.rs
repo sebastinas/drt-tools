@@ -27,8 +27,10 @@
 
 use std::{
     error::Error,
-    fmt::{Display, Formatter},
+    fmt::{self, Display},
 };
+
+use serde::{de, Deserialize, Serialize};
 
 pub use crate::ParseError;
 
@@ -44,7 +46,7 @@ pub enum VersionError {
 }
 
 impl Display for VersionError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VersionError::InvalidEpoch => write!(f, "invalid epoch"),
             VersionError::InvalidUpstreamVersion => write!(f, "invalid upstream version"),
@@ -185,7 +187,7 @@ impl TryFrom<&str> for PackageVersion {
 }
 
 impl Display for PackageVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(epoch) = self.epoch {
             write!(f, "{}:", epoch)?;
         }
@@ -194,6 +196,44 @@ impl Display for PackageVersion {
             write!(f, "-{}", debian_revision)?;
         }
         Ok(())
+    }
+}
+
+impl Serialize for PackageVersion {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for PackageVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct VersionVisitor;
+
+        impl<'de> de::Visitor<'de> for VersionVisitor {
+            type Value = PackageVersion;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a version string")
+            }
+
+            fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                match PackageVersion::try_from(s) {
+                    Ok(version) => Ok(version),
+                    Err(_) => Err(de::Error::invalid_value(de::Unexpected::Str(s), &self)),
+                }
+            }
+        }
+
+        deserializer.deserialize_str(VersionVisitor)
     }
 }
 
