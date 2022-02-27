@@ -203,7 +203,7 @@ impl TryFrom<&str> for PackageVersion {
     type Error = ParseError;
 
     fn try_from(mut value: &str) -> Result<Self, Self::Error> {
-        let epoch = if let Some((epoch_str, new_value)) = value.split_once(":") {
+        let epoch = if let Some((epoch_str, new_value)) = value.split_once(':') {
             value = new_value;
             Some(
                 epoch_str
@@ -214,7 +214,7 @@ impl TryFrom<&str> for PackageVersion {
             None
         };
 
-        let debian_revision = if let Some((new_value, debian_revision_str)) = value.rsplit_once("-")
+        let debian_revision = if let Some((new_value, debian_revision_str)) = value.rsplit_once('-')
         {
             value = new_value;
             Some(debian_revision_str)
