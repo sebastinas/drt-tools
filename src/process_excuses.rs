@@ -109,6 +109,10 @@ impl ProcessExcuses {
             for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
                 if let Some(signer) = signer {
                     if !signer.ends_with("@buildd.debian.org") {
+                        if arch == &Architecture::All {
+                            // cannot binNMU arch: all
+                            return None;
+                        }
                         archs.push(WBArchitecture::Architecture(arch.clone()));
                     }
                 }
@@ -117,13 +121,10 @@ impl ProcessExcuses {
                 // this should not happen, but just to be on the safe side
                 return None;
             }
-            if archs.contains(&WBArchitecture::Architecture(Architecture::All)) {
-                // cannot binNMU arch: all
-                return None;
-            }
 
             let mut source_specifier = SourceSpecifier::new(&item.source);
-            source_specifier.with_version(&item.new_version);
+            let version = item.new_version.as_str().try_into().unwrap();
+            source_specifier.with_version(&version);
             if !source_packages.is_ma_same(&item.source) {
                 source_specifier.with_architectures(&archs);
             }

@@ -12,7 +12,7 @@ use serde::{
     Deserialize, Deserializer,
 };
 
-use crate::architectures::Architecture;
+use crate::{architectures::Architecture, version::PackageVersion};
 
 fn deserialize_architecture<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
 where
@@ -59,7 +59,7 @@ pub struct Buildinfo {
     /// Source package
     pub source: String,
     /// Version of the package
-    pub version: String,
+    pub version: PackageVersion,
     /// Architectures of the build
     #[serde(deserialize_with = "deserialize_architecture")]
     pub architecture: Vec<Architecture>,
@@ -77,7 +77,7 @@ pub fn from_str(data: &str) -> Result<Buildinfo, rfc822_like::de::Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::{architectures::Architecture, buildinfo::Buildinfo};
+    use crate::{architectures::Architecture, buildinfo::Buildinfo, version::PackageVersion};
 
     #[test]
     fn deserialize() {
@@ -296,7 +296,10 @@ Environment:
  SOURCE_DATE_EPOCH="1643116722""#;
         let buildinfo: Buildinfo = super::from_str(data).unwrap();
         assert_eq!(buildinfo.source, "picnic");
-        assert_eq!(buildinfo.version, "3.0.11-1");
+        assert_eq!(
+            buildinfo.version,
+            PackageVersion::try_from("3.0.11-1").unwrap()
+        );
         assert_eq!(
             buildinfo.architecture,
             vec![Architecture::I386, Architecture::Source]

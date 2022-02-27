@@ -7,6 +7,7 @@
 //! It currently handles binNMUs only.
 
 use crate::architectures::Architecture;
+use crate::version::PackageVersion;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -134,7 +135,7 @@ impl TryFrom<&str> for WBArchitecture {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceSpecifier<'a> {
     source: &'a str,
-    version: Option<&'a str>,
+    version: Option<&'a PackageVersion>,
     architectures: Vec<WBArchitecture>,
     suite: Option<&'a str>,
 }
@@ -151,7 +152,7 @@ impl<'a> SourceSpecifier<'a> {
     }
 
     /// Specify version of the source package.
-    pub fn with_version(&mut self, version: &'a str) -> &mut Self {
+    pub fn with_version(&mut self, version: &'a PackageVersion) -> &mut Self {
         self.version = Some(version);
         self
     }
@@ -368,7 +369,7 @@ mod test {
     use super::{
         BinNMU, BuildPriority, DepWait, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
-    use crate::architectures::Architecture;
+    use crate::{architectures::Architecture, version::PackageVersion};
 
     #[test]
     fn arch_from_str() {
@@ -410,7 +411,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new("zathura").with_version("2.3.4"),
+                SourceSpecifier::new("zathura").with_version(&"2.3.4".try_into().unwrap()),
                 "Rebuild on buildd"
             )
             .unwrap()
@@ -485,10 +486,13 @@ mod test {
             "bp 10 zathura . ANY . unstable"
         );
         assert_eq!(
-            BuildPriority::new(SourceSpecifier::new("zathura").with_version("2.3.4"), 10)
-                .unwrap()
-                .build()
-                .to_string(),
+            BuildPriority::new(
+                SourceSpecifier::new("zathura").with_version(&"2.3.4".try_into().unwrap()),
+                10
+            )
+            .unwrap()
+            .build()
+            .to_string(),
             "bp 10 zathura_2.3.4 . ANY . unstable"
         );
         assert_eq!(
@@ -524,7 +528,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new("zathura").with_version("2.3.4"),
+                SourceSpecifier::new("zathura").with_version(&"2.3.4".try_into().unwrap()),
                 "libgirara-dev"
             )
             .unwrap()

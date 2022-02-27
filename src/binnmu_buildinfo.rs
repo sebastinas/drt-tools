@@ -66,8 +66,6 @@ impl BinNMUBuildinfo {
         let mut source_split = buildinfo.source.split_whitespace();
         let source_package = source_split.next().unwrap();
 
-        let mut version_split = buildinfo.version.split("+b");
-        let version = version_split.next().unwrap();
         let architectures: Vec<Architecture> = buildinfo
             .architecture
             .into_iter()
@@ -79,7 +77,10 @@ impl BinNMUBuildinfo {
 
         // let mut nmu_version = None;
         let mut source = SourceSpecifier::new(source_package);
-        source.with_version(version).with_suite(&self.options.suite);
+        let version = buildinfo.version.without_binnmu_version();
+        source
+            .with_version(&version)
+            .with_suite(&self.options.suite);
         if !source_packages.is_ma_same(source_package) {
             // binNMU only on the architecture if no MA: same binary packages
             source.with_archive_architectures(&architectures);

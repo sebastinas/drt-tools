@@ -75,8 +75,9 @@ impl PrepareBinNMUs {
                 }
 
                 let mut source = SourceSpecifier::new(package.unwrap().as_str());
+                let version = version.unwrap().as_str().try_into()?;
                 source
-                    .with_version(version.unwrap().as_str())
+                    .with_version(&version)
                     .with_suite(&self.options.suite);
                 if let Some(architectures) = &self.options.architecture {
                     source.with_archive_architectures(architectures);
