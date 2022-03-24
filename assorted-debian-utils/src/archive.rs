@@ -107,9 +107,7 @@ impl TryFrom<&str> for Suite {
             "oldstable" => Ok(Suite::OldStable(None)),
             "experimental" => Ok(Suite::Experimental),
             _ => {
-                let s = value
-                    .split_once('-')
-                    .ok_or_else(|| ParseError::InvalidSuite)?;
+                let s = value.split_once('-').ok_or(ParseError::InvalidSuite)?;
                 let ext = Extension::try_from(s.1)?;
                 match s.0 {
                     "testing" => Ok(Suite::Testing(Some(ext))),
@@ -174,9 +172,7 @@ impl TryFrom<&str> for Codename {
             "stretch" => Ok(Codename::Stretch(None)),
             "rc-buggy" => Ok(Codename::RCBuggy),
             _ => {
-                let s = value
-                    .split_once('-')
-                    .ok_or_else(|| ParseError::InvalidCodename)?;
+                let s = value.split_once('-').ok_or(ParseError::InvalidCodename)?;
                 let ext = Extension::try_from(s.1)?;
                 match s.0 {
                     "bookworm" => Ok(Codename::Bookworm(Some(ext))),
