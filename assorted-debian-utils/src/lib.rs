@@ -17,6 +17,7 @@ use std::{
 };
 
 pub mod architectures;
+pub mod archive;
 pub mod buildinfo;
 pub mod excuses;
 pub mod version;
@@ -32,6 +33,12 @@ pub enum ParseError {
     InvalidArchitecture,
     /// Given string is not a valid version
     InvalidVersion(version::VersionError),
+    /// Given string is not a valid suite
+    InvalidSuite,
+    /// Given string is not a valid suite or codename extension
+    InvalidExtension,
+    /// Given string ins not a valid codename
+    InvalidCodename,
 }
 
 impl Display for ParseError {
@@ -41,6 +48,9 @@ impl Display for ParseError {
             ParseError::InvalidVersion(version_error) => {
                 write!(f, "invalid version: {}", version_error)
             }
+            ParseError::InvalidSuite => write!(f, "invalid suite"),
+            ParseError::InvalidExtension => write!(f, "invalid extension"),
+            ParseError::InvalidCodename => write!(f, "invalid codename"),
         }
     }
 }
