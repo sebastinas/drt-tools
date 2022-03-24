@@ -7,6 +7,7 @@
 //! It currently handles binNMUs only.
 
 use crate::architectures::Architecture;
+use crate::archive::Suite;
 use crate::version::PackageVersion;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
@@ -137,7 +138,7 @@ pub struct SourceSpecifier<'a> {
     source: &'a str,
     version: Option<&'a PackageVersion>,
     architectures: Vec<WBArchitecture>,
-    suite: Option<&'a str>,
+    suite: Option<&'a Suite>,
 }
 
 impl<'a> SourceSpecifier<'a> {
@@ -158,7 +159,7 @@ impl<'a> SourceSpecifier<'a> {
     }
 
     /// Specify suite. If not set, `unstable` is used.
-    pub fn with_suite(&mut self, suite: &'a str) -> &mut Self {
+    pub fn with_suite(&mut self, suite: &'a Suite) -> &mut Self {
         self.suite = Some(suite);
         self
     }
@@ -200,7 +201,7 @@ impl<'a> Display for SourceSpecifier<'a> {
             if let Some(suite) = self.suite {
                 suite
             } else {
-                "unstable"
+                &Suite::Unstable
             },
         )
     }
@@ -369,7 +370,8 @@ mod test {
     use super::{
         BinNMU, BuildPriority, DepWait, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
-    use crate::{architectures::Architecture, version::PackageVersion};
+    use crate::architectures::Architecture;
+    use crate::archive::Suite;
 
     #[test]
     fn arch_from_str() {
@@ -434,7 +436,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new("zathura").with_suite("testing"),
+                SourceSpecifier::new("zathura").with_suite(&Suite::Testing(None)),
                 "Rebuild on buildd"
             )
             .unwrap()
@@ -509,10 +511,13 @@ mod test {
             "bp 10 zathura . ANY -i386 . unstable"
         );
         assert_eq!(
-            BuildPriority::new(SourceSpecifier::new("zathura").with_suite("testing"), 10)
-                .unwrap()
-                .build()
-                .to_string(),
+            BuildPriority::new(
+                SourceSpecifier::new("zathura").with_suite(&Suite::Testing(None)),
+                10
+            )
+            .unwrap()
+            .build()
+            .to_string(),
             "bp 10 zathura . ANY . testing"
         );
     }
@@ -551,7 +556,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new("zathura").with_suite("testing"),
+                SourceSpecifier::new("zathura").with_suite(&Suite::Testing(None)),
                 "libgirara-dev"
             )
             .unwrap()
