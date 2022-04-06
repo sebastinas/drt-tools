@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3 (2022-04-06)
+
+* Update to assorted-debian-utils 0.4.0.
+* `process-excuses`: correctly skip packages that would require a binNMU for arch: all.
+
 ## 0.2.2 (2022-01-30)
 
 * Implement new sub-command:
