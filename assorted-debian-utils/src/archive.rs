@@ -12,6 +12,9 @@ use std::str::FromStr;
 pub use crate::ParseError;
 
 /// "Extensions" to a codename or a suite
+///
+/// This enum covers the archives for backports, security updates, (old)stable
+/// updates and (old)stable proposed-updates.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Extension {
@@ -219,7 +222,7 @@ impl From<Codename> for Suite {
 
 /// Represents either a suite or codename
 ///
-/// This enum is useful whenever it does not matter if we are deadling with suites or codenames.
+/// This enum is useful whenever a suite name or codename works
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub enum SuiteOrCodename {
     /// A suite
@@ -246,9 +249,9 @@ impl TryFrom<&str> for SuiteOrCodename {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match Suite::try_from(value) {
             Ok(suite) => Ok(SuiteOrCodename::Suite(suite)),
-            Err(e) => match Codename::try_from(value) {
+            Err(_) => match Codename::try_from(value) {
                 Ok(codename) => Ok(SuiteOrCodename::Codename(codename)),
-                Err(_) => Err(e),
+                Err(_) => Err(ParseError::InvalidSuiteOrCodename),
             },
         }
     }

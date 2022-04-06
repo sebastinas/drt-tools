@@ -37,8 +37,10 @@ pub enum ParseError {
     InvalidSuite,
     /// Given string is not a valid suite or codename extension
     InvalidExtension,
-    /// Given string ins not a valid codename
+    /// Given string is not a valid codename
     InvalidCodename,
+    /// Given string is not a valid suite or codename
+    InvalidSuiteOrCodename,
 }
 
 impl Display for ParseError {
@@ -51,6 +53,7 @@ impl Display for ParseError {
             ParseError::InvalidSuite => write!(f, "invalid suite"),
             ParseError::InvalidExtension => write!(f, "invalid extension"),
             ParseError::InvalidCodename => write!(f, "invalid codename"),
+            ParseError::InvalidSuiteOrCodename => write!(f, "invalid suite or codename"),
         }
     }
 }
