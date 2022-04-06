@@ -48,13 +48,7 @@ impl Ord for CVersion {
         let ret = unsafe {
             libdpkg_sys::dpkg_version_compare(&self.as_dpkg_version(), &other.as_dpkg_version())
         };
-        if ret < 0 {
-            Ordering::Less
-        } else if ret > 0 {
-            Ordering::Greater
-        } else {
-            Ordering::Equal
-        }
+        ret.cmp(&0)
     }
 }
 
