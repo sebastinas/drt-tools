@@ -11,7 +11,7 @@ use clap::Parser;
 use crate::BaseOptions;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::Suite,
+    archive::SuiteOrCodename,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
@@ -31,7 +31,7 @@ pub(crate) struct PrepareBinNMUsOptions {
     extra_depends: Option<String>,
     /// Set the suite
     #[clap(short, long, default_value = "unstable")]
-    suite: Suite,
+    suite: SuiteOrCodename,
     /// Set architectures for binNMUs
     #[clap(short, long)]
     architecture: Option<Vec<Architecture>>,

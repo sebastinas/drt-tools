@@ -15,7 +15,7 @@ use crate::{
 };
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
-    archive::Suite,
+    archive::SuiteOrCodename,
     buildinfo::{self, Buildinfo},
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
@@ -36,7 +36,7 @@ pub(crate) struct BinNMUBuildinfoOptions {
     extra_depends: Option<String>,
     /// Set the suite
     #[clap(short, long, default_value = "unstable")]
-    suite: Suite,
+    suite: SuiteOrCodename,
     /// Input files
     #[clap(parse(from_os_str))]
     inputs: Vec<PathBuf>,

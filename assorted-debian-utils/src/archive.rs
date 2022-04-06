@@ -217,12 +217,66 @@ impl From<Codename> for Suite {
     }
 }
 
+/// Represents either a suite or codename
+///
+/// This enum is useful whenever it does not matter if we are deadling with suites or codenames.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+pub enum SuiteOrCodename {
+    /// A suite
+    Suite(Suite),
+    /// A codename
+    Codename(Codename),
+}
+
+impl From<Codename> for SuiteOrCodename {
+    fn from(codename: Codename) -> Self {
+        SuiteOrCodename::Codename(codename)
+    }
+}
+
+impl From<Suite> for SuiteOrCodename {
+    fn from(suite: Suite) -> Self {
+        SuiteOrCodename::Suite(suite)
+    }
+}
+
+impl TryFrom<&str> for SuiteOrCodename {
+    type Error = ParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match Suite::try_from(value) {
+            Ok(suite) => Ok(SuiteOrCodename::Suite(suite)),
+            Err(e) => match Codename::try_from(value) {
+                Ok(codename) => Ok(SuiteOrCodename::Codename(codename)),
+                Err(_) => Err(e),
+            },
+        }
+    }
+}
+
+impl FromStr for SuiteOrCodename {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        SuiteOrCodename::try_from(s)
+    }
+}
+
+impl Display for SuiteOrCodename {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SuiteOrCodename::Suite(suite) => suite.fmt(f),
+            SuiteOrCodename::Codename(codename) => codename.fmt(f),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{Codename, Extension, Suite};
+    use super::{Codename, Extension, Suite, SuiteOrCodename};
 
     #[test]
-    fn suite() {
+    fn suite_from_str() {
         assert_eq!(Suite::try_from("unstable").unwrap(), Suite::Unstable);
         assert_eq!(Suite::try_from("stable").unwrap(), Suite::Stable(None));
         assert_eq!(
@@ -232,7 +286,7 @@ mod test {
     }
 
     #[test]
-    fn codename() {
+    fn codename_from_str() {
         assert_eq!(Codename::try_from("sid").unwrap(), Codename::Sid);
         assert_eq!(
             Codename::try_from("bullseye").unwrap(),
@@ -241,6 +295,36 @@ mod test {
         assert_eq!(
             Codename::try_from("bullseye-backports").unwrap(),
             Codename::Bullseye(Some(Extension::Backports))
+        );
+    }
+
+    #[test]
+    fn codename_from_suite() {
+        assert_eq!(Codename::from(Suite::Unstable), Codename::Sid);
+        assert_eq!(
+            Codename::from(Suite::Stable(Some(Extension::Backports))),
+            Codename::Bullseye(Some(Extension::Backports))
+        );
+    }
+
+    #[test]
+    fn suite_from_codename() {
+        assert_eq!(Suite::from(Codename::Sid), Suite::Unstable);
+        assert_eq!(
+            Suite::from(Codename::Bullseye(Some(Extension::Backports))),
+            Suite::Stable(Some(Extension::Backports))
+        );
+    }
+
+    #[test]
+    fn suite_or_codename_from_str() {
+        assert_eq!(
+            SuiteOrCodename::try_from("unstable").unwrap(),
+            SuiteOrCodename::from(Suite::Unstable)
+        );
+        assert_eq!(
+            SuiteOrCodename::try_from("sid").unwrap(),
+            SuiteOrCodename::from(Codename::Sid)
         );
     }
 }
