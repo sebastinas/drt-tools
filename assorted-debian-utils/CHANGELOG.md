@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 (2022-04-06)
+
+* Add initial support for codenames and suites.
+* Provide proper comparison for package versions via `libdpkg-sys`.
+
 ## 0.3.1 (2022-02-01)
 
 * Fail on binNMUs for `all`.
