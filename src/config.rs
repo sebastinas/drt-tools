@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use assorted_debian_utils::architectures::RELEASE_ARCHITECTURES;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -24,6 +24,7 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
 pub(crate) enum CacheEntries {
     Excuses,
     Packages,
+    FTBFSBugs(String),
     // Sources,
 }
 
@@ -75,15 +76,16 @@ impl Downloader {
             return Ok(None);
         }
 
-        let total_size = res
-            .content_length()
-            .ok_or_else(|| anyhow!("Failed to get content length from '{}'", &url))?;
-        let pb = ProgressBar::new(total_size);
-        pb.set_style(default_progress_style()
+        if let Some(total_size) = res.content_length() {
+            let pb = ProgressBar::new(total_size);
+            pb.set_style(default_progress_style()
             .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
             );
-        pb.set_message(format!("Downloading {}", url));
-        Ok(Some((res, pb)))
+            pb.set_message(format!("Downloading {}", url));
+            Ok(Some((res, pb)))
+        } else {
+            Ok(Some((res, ProgressBar::hidden())))
+        }
     }
 
     async fn download_internal(
@@ -170,6 +172,15 @@ impl Cache {
         Ok(state)
     }
 
+    async fn download_ftbfs_bugs(&self, codename: &str) -> Result<CacheState> {
+        let url = format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename);
+        let dest = format!("udd-ftbfs-bugs-{}.yaml", codename);
+        Ok(self
+            .downloader
+            .download_file(&url, self.get_cache_path(dest)?)
+            .await?)
+    }
+
     /*
     async fn download_sources(&self) -> Result<CacheState> {
         Ok(self
@@ -185,10 +196,11 @@ impl Cache {
     pub async fn download(&self, entries: &[CacheEntries]) -> Result<CacheState> {
         let mut state = CacheState::NoUpdate;
         for entry in entries {
-            let new_state = match *entry {
+            let new_state = match entry {
                 CacheEntries::Excuses => self.download_excuses().await?,
                 CacheEntries::Packages => self.download_packages().await?,
                 // CacheEntries::Sources => self.download_sources().await?,
+                CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(&*codename).await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;

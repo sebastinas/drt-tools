@@ -55,7 +55,7 @@ fn main() -> Result<()> {
             process_excuses.run()
         }
         DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
-            let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts);
+            let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts)?;
             prepare_binnmus.run()
         }
         DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
