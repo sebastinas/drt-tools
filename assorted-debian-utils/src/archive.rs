@@ -274,6 +274,24 @@ impl Display for SuiteOrCodename {
     }
 }
 
+impl From<SuiteOrCodename> for Suite {
+    fn from(value: SuiteOrCodename) -> Self {
+        match value {
+            SuiteOrCodename::Suite(suite) => suite,
+            SuiteOrCodename::Codename(codename) => Suite::from(codename),
+        }
+    }
+}
+
+impl From<SuiteOrCodename> for Codename {
+    fn from(value: SuiteOrCodename) -> Self {
+        match value {
+            SuiteOrCodename::Suite(suite) => Codename::from(suite),
+            SuiteOrCodename::Codename(codename) => codename,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{Codename, Extension, Suite, SuiteOrCodename};
