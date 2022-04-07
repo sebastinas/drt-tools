@@ -74,7 +74,7 @@ impl PrepareBinNMUs {
     }
 
     fn load_bugs(&self, codename: &Codename) -> HashMap<String, u32> {
-        if let Err(e) = self.download_to_cache(&codename) {
+        if let Err(e) = self.download_to_cache(codename) {
             println!(
                 "# Unable to download FTBFS bugs for {}: {}",
                 self.options.suite, e
@@ -87,7 +87,7 @@ impl PrepareBinNMUs {
                 .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))
                 .unwrap(),
         )
-        .unwrap_or(Vec::<UDDBug>::new());
+        .unwrap_or_default();
         bugs.into_iter().map(|bug| (bug.source, bug.id)).collect()
     }
 
