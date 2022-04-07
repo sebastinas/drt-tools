@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use assorted_debian_utils::architectures::RELEASE_ARCHITECTURES;
+use assorted_debian_utils::{architectures::RELEASE_ARCHITECTURES, archive::Codename};
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::{header, Client, Response, StatusCode};
@@ -24,7 +24,7 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
 pub(crate) enum CacheEntries {
     Excuses,
     Packages,
-    FTBFSBugs(String),
+    FTBFSBugs(Codename),
     // Sources,
 }
 
@@ -172,7 +172,7 @@ impl Cache {
         Ok(state)
     }
 
-    async fn download_ftbfs_bugs(&self, codename: &str) -> Result<CacheState> {
+    async fn download_ftbfs_bugs(&self, codename: &Codename) -> Result<CacheState> {
         let url = format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename);
         let dest = format!("udd-ftbfs-bugs-{}.yaml", codename);
         Ok(self
@@ -200,7 +200,7 @@ impl Cache {
                 CacheEntries::Excuses => self.download_excuses().await?,
                 CacheEntries::Packages => self.download_packages().await?,
                 // CacheEntries::Sources => self.download_sources().await?,
-                CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(&*codename).await?,
+                CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(codename).await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;

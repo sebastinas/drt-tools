@@ -68,7 +68,7 @@ impl PrepareBinNMUs {
     #[tokio::main]
     async fn download_to_cache(&self, codename: &Codename) -> Result<()> {
         self.cache
-            .download(&[CacheEntries::FTBFSBugs(codename.to_string())])
+            .download(&[CacheEntries::FTBFSBugs(codename.clone())])
             .await?;
         Ok(())
     }
