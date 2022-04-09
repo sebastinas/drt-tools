@@ -6,6 +6,7 @@ use std::{cmp::Ordering, ffi::CString};
 use crate::version::PackageVersion;
 
 /// A helper struct storing C-compatible strings for `dpkg_version`
+#[derive(Debug)]
 pub(crate) struct CVersion {
     epoch: u32,
     upstream_version: CString,
