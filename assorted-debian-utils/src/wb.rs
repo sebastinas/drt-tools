@@ -79,12 +79,6 @@ pub trait WBCommandBuilder {
     fn build(&self) -> WBCommand;
 }
 
-impl<T: ToString> WBCommandBuilder for T {
-    fn build(&self) -> WBCommand {
-        WBCommand(self.to_string())
-    }
-}
-
 /// Architectures understood by `wb`
 ///
 /// In addition to the the architectures from [Architecture], `wb` has two special "architectures"
@@ -303,6 +297,12 @@ impl<'a> Display for BinNMU<'a> {
     }
 }
 
+impl<'a> WBCommandBuilder for BinNMU<'a> {
+    fn build(&self) -> WBCommand {
+        WBCommand(self.to_string())
+    }
+}
+
 /// Builder for the `dw` command
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DepWait<'a> {
@@ -334,6 +334,12 @@ impl<'a> Display for DepWait<'a> {
     }
 }
 
+impl<'a> WBCommandBuilder for DepWait<'a> {
+    fn build(&self) -> WBCommand {
+        WBCommand(self.to_string())
+    }
+}
+
 /// Builder for the `bp` command
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BuildPriority<'a> {
@@ -362,6 +368,12 @@ impl<'a> BuildPriority<'a> {
 impl<'a> Display for BuildPriority<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "bp {} {}", self.priority, self.source)
+    }
+}
+
+impl<'a> WBCommandBuilder for BuildPriority<'a> {
+    fn build(&self) -> WBCommand {
+        WBCommand(self.to_string())
     }
 }
 
