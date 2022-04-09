@@ -134,20 +134,17 @@ impl PackageVersion {
         if let Some(revision) = &self.debian_revision {
             let mut split = revision.split("+b");
             split.next();
-            if let Some(binnmu) = split.next() {
-                binnmu.parse::<u32>().ok()
-            } else {
-                None
+            if let Some(binnmu) = split.last() {
+                return binnmu.parse::<u32>().ok();
             }
-        } else {
-            None
         }
+        None
     }
 
     /// Obtain version without the binNMU version.
     pub fn without_binnmu_version(self) -> Self {
         if let Some(mut revision) = self.debian_revision {
-            if let Some(index) = revision.find("+b") {
+            if let Some(index) = revision.rfind("+b") {
                 revision.truncate(index);
             }
             Self {
@@ -343,6 +340,7 @@ mod test {
     fn strip_binnum() {
         let version = PackageVersion::try_from("1.0-1+b1").unwrap();
         let version = version.without_binnmu_version();
+        assert_eq!(version, PackageVersion::try_from("1.0-1").unwrap());
 
         assert!(!version.has_binnmu_version());
         assert_eq!(version.binnmu_version(), None);
