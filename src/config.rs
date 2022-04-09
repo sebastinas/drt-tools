@@ -143,13 +143,12 @@ impl Cache {
     }
 
     async fn download_excuses(&self) -> Result<CacheState> {
-        Ok(self
-            .downloader
+        self.downloader
             .download_file(
                 "https://release.debian.org/britney/excuses.yaml",
                 self.get_cache_path("excuses.yaml")?,
             )
-            .await?)
+            .await
     }
 
     async fn download_packages(&self) -> Result<CacheState> {
@@ -175,10 +174,9 @@ impl Cache {
     async fn download_ftbfs_bugs(&self, codename: &Codename) -> Result<CacheState> {
         let url = format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename);
         let dest = format!("udd-ftbfs-bugs-{}.yaml", codename);
-        Ok(self
-            .downloader
+        self.downloader
             .download_file(&url, self.get_cache_path(dest)?)
-            .await?)
+            .await
     }
 
     /*
