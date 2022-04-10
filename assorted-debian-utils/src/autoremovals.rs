@@ -6,38 +6,18 @@
 //! This module provides helpers to deserialize [autoremovals.yaml](https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi)
 //! with [serde].
 
-use chrono::{DateTime, TimeZone, Utc};
-use serde::{de, Deserialize};
-use std::{collections::HashMap, fmt, io};
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
+use std::{collections::HashMap, io};
 
-use crate::version::PackageVersion;
+use crate::{utils::DateTimeVisitor, version::PackageVersion};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    struct DateTimeVisitor;
-
-    impl<'de> de::Visitor<'de> for DateTimeVisitor {
-        type Value = DateTime<Utc>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            write!(formatter, "a date and time formatted as %Y-%m-%d %H:%M:%S")
-        }
-
-        fn visit_str<E>(self, s: &str) -> std::result::Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match Utc.datetime_from_str(s, "%Y-%m-%d %H:%M:%S") {
-                Ok(dt) => Ok(dt),
-                Err(_) => Err(de::Error::invalid_value(de::Unexpected::Str(s), &self)),
-            }
-        }
-    }
-
-    deserializer.deserialize_str(DateTimeVisitor)
+    deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S"))
 }
 
 /// All autoremovals

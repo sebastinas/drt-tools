@@ -1,4 +1,4 @@
-// Copyright 2021 Sebastian Ramacher
+// Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Helpers to handle `excuses.yaml` for testing migration
@@ -6,40 +6,17 @@
 //! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
-use crate::architectures::Architecture;
-use chrono::{DateTime, TimeZone, Utc};
-use serde::{de, Deserialize};
-use std::{collections::HashMap, fmt, io};
+use crate::{architectures::Architecture, utils::DateTimeVisitor};
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
+use std::{collections::HashMap, io};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    struct DateTimeVisitor;
-
-    impl<'de> de::Visitor<'de> for DateTimeVisitor {
-        type Value = DateTime<Utc>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            write!(
-                formatter,
-                "a date and time formatted as %Y-%m-%d %H:%M:%S%.f"
-            )
-        }
-
-        fn visit_str<E>(self, s: &str) -> std::result::Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match Utc.datetime_from_str(s, "%Y-%m-%d %H:%M:%S%.f") {
-                Ok(dt) => Ok(dt),
-                Err(_) => Err(de::Error::invalid_value(de::Unexpected::Str(s), &self)),
-            }
-        }
-    }
-
-    deserializer.deserialize_str(DateTimeVisitor)
+    deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S%.f"))
 }
 
 /// The excuses.
@@ -156,6 +133,8 @@ pub struct MissingBuilds {
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ExcusesItem {
+    /// Maintainer of the package
+    pub maintainer: Option<String>,
     /// The item is a candidate for migration
     pub is_candidate: bool,
     /// Version in the source suite, i.e., the version to migrate
@@ -175,6 +154,8 @@ pub struct ExcusesItem {
     /// Policy info
     #[serde(rename = "policy_info")]
     pub policy_info: Option<PolicyInfo>,
+    /// The excuses
+    pub excuses: Vec<String>,
 }
 
 /// Result type
