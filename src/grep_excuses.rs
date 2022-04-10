@@ -49,10 +49,10 @@ impl GrepExcuses {
             excuse.source, excuse.old_version, excuse.new_version
         );
         if let Some(maintainer) = &excuse.maintainer {
-            println!("\tMaintainer: {}", maintainer);
+            println!("  Maintainer: {}", maintainer);
         }
         for line in &excuse.excuses {
-            println!("\t{}", line);
+            println!("  {}", voca_rs::strip::strip_tags(line));
         }
     }
 
