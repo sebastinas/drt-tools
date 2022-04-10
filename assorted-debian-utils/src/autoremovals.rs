@@ -123,7 +123,6 @@ mplayer-blue:
 
         assert!(autoremovals.contains_key("mplayer-blue"));
         let mplayer_blue = autoremovals.get("mplayer-blue").unwrap();
-        println!("{:?}", &mplayer_blue);
         assert_eq!(mplayer_blue.source, "mplayer-blue");
         assert_eq!(mplayer_blue.version.to_string(), "1.13-2");
         assert_eq!(mplayer_blue.bugs.len(), 0);
@@ -135,6 +134,6 @@ mplayer-blue:
             mplayer_blue.bugs_dependencies.as_ref().unwrap(),
             &vec!["1005899"]
         );
-        assert!(mplayer.dependencies_only);
+        assert!(mplayer_blue.dependencies_only);
     }
 }
