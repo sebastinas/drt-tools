@@ -21,6 +21,7 @@ use std::{
 
 pub mod architectures;
 pub mod archive;
+pub mod autoremovals;
 pub mod buildinfo;
 pub mod excuses;
 pub mod version;
