@@ -16,6 +16,7 @@ members = ["assorted-debian-utils"]
 [dependencies]
 anyhow = "1.0"
 assorted-debian-utils = { version = "0.4", path = "assorted-debian-utils" }
+chrono = "0.4"
 clap = { version = "3", features = ["derive"] }
 futures = "0.3"
 futures-util = "0.3"

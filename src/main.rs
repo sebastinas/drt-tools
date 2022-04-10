@@ -6,11 +6,13 @@ use clap::{Parser, Subcommand};
 
 mod binnmu_buildinfo;
 pub(crate) mod config;
+mod grep_excuses;
 mod prepare_binnmus;
 mod process_excuses;
 pub(crate) mod source_packages;
 
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
+use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 
@@ -45,6 +47,9 @@ enum DrtToolsCommands {
     /// Prepare binNMUs based on a list of buildinfo files
     #[clap(name = "binNMU-buildinfo")]
     BinNMUBuildinfo(BinNMUBuildinfoOptions),
+    /// Grep excuses
+    #[clap(name = "grep-excuses")]
+    GrepExcuses(GrepExcusesOptions),
 }
 
 fn main() -> Result<()> {
@@ -61,6 +66,10 @@ fn main() -> Result<()> {
         DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
             let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts)?;
             binnmus_buildinfo.run()
+        }
+        DrtToolsCommands::GrepExcuses(ge_opts) => {
+            let grep_excuses = GrepExcuses::new(opts.base_options, ge_opts)?;
+            grep_excuses.run()
         }
     }
 }

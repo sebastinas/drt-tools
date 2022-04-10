@@ -25,6 +25,7 @@ pub(crate) enum CacheEntries {
     Excuses,
     Packages,
     FTBFSBugs(Codename),
+    AutoRemovals,
     // Sources,
 }
 
@@ -179,6 +180,15 @@ impl Cache {
             .await
     }
 
+    async fn download_auto_removals(&self) -> Result<CacheState> {
+        self.downloader
+            .download_file(
+                "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi",
+                self.get_cache_path("autoremovals.yaml")?,
+            )
+            .await
+    }
+
     /*
     async fn download_sources(&self) -> Result<CacheState> {
         Ok(self
@@ -199,6 +209,7 @@ impl Cache {
                 CacheEntries::Packages => self.download_packages().await?,
                 // CacheEntries::Sources => self.download_sources().await?,
                 CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(codename).await?,
+                CacheEntries::AutoRemovals => self.download_auto_removals().await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;
