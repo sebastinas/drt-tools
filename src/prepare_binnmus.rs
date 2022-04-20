@@ -1,4 +1,4 @@
-// Copyright 2021 Sebastian Ramacher
+// Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::io::{self, BufRead, BufReader};

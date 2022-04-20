@@ -7,12 +7,14 @@ use clap::{Parser, Subcommand};
 mod binnmu_buildinfo;
 pub(crate) mod config;
 mod grep_excuses;
+mod nmu_eso;
 mod prepare_binnmus;
 mod process_excuses;
 pub(crate) mod source_packages;
 
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};
+use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 
@@ -50,6 +52,9 @@ enum DrtToolsCommands {
     /// Grep excuses
     #[clap(name = "grep-excuses")]
     GrepExcuses(GrepExcusesOptions),
+    /// Prepare binNMUs to rebuild for outdated Built-Using
+    #[clap(name = "nmu-eso")]
+    NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
 }
 
 fn main() -> Result<()> {
@@ -70,6 +75,10 @@ fn main() -> Result<()> {
         DrtToolsCommands::GrepExcuses(ge_opts) => {
             let grep_excuses = GrepExcuses::new(opts.base_options, ge_opts)?;
             grep_excuses.run()
+        }
+        DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => {
+            let nmu_eso = NMUOutdatedBuiltUsing::new(opts.base_options, eso_opts)?;
+            nmu_eso.run()
         }
     }
 }

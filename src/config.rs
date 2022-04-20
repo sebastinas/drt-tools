@@ -26,6 +26,7 @@ pub(crate) enum CacheEntries {
     Packages,
     FTBFSBugs(Codename),
     AutoRemovals,
+    OutdatedBuiltUsing,
     // Sources,
 }
 
@@ -189,6 +190,15 @@ impl Cache {
             .await
     }
 
+    async fn download_outdated_builtusing(&self) -> Result<CacheState> {
+        self.downloader
+            .download_file(
+                "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt",
+                self.get_cache_path("outdated-built-using.txt")?,
+            )
+            .await
+    }
+
     /*
     async fn download_sources(&self) -> Result<CacheState> {
         Ok(self
@@ -210,6 +220,7 @@ impl Cache {
                 // CacheEntries::Sources => self.download_sources().await?,
                 CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(codename).await?,
                 CacheEntries::AutoRemovals => self.download_auto_removals().await?,
+                CacheEntries::OutdatedBuiltUsing => self.download_outdated_builtusing().await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;
