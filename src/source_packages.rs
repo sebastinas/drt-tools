@@ -5,19 +5,11 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::Result;
+use assorted_debian_utils::archive::MultiArch;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
 use crate::config;
-
-#[derive(Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
-enum MultiArch {
-    Allowed,
-    Foreign,
-    No,
-    Same,
-}
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]

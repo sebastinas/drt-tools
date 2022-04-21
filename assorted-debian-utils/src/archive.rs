@@ -349,3 +349,17 @@ mod test {
         );
     }
 }
+
+/// Allowed values of the multi-arch field
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum MultiArch {
+    /// MA: allowed
+    Allowed,
+    /// MA: foreign
+    Foreign,
+    /// MA: no
+    No,
+    /// MA: same
+    Same,
+}
