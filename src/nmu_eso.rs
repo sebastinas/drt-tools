@@ -1,20 +1,32 @@
 // Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{collections::HashSet, io::BufRead};
+use std::{collections::HashSet, io::BufRead, path::Path};
 
 use anyhow::Result;
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressIterator};
+use serde::Deserialize;
 
 use crate::{
-    config::{self, CacheEntries},
+    config::{self, CacheEntries, CacheState},
     BaseOptions,
 };
 use assorted_debian_utils::{
-    architectures::Architecture,
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
     archive::{Suite, SuiteOrCodename},
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+struct BinaryPackage {
+    source: Option<String>,
+    package: String,
+    architecture: Architecture,
+    #[serde(rename = "Built-Using")]
+    built_using: Option<String>,
+}
 
 #[derive(Debug, Parser)]
 pub(crate) struct NMUOutdatedBuiltUsingOptions {
@@ -57,15 +69,64 @@ impl NMUOutdatedBuiltUsing {
     }
 
     #[tokio::main]
-    async fn download_to_cache(&self) -> Result<()> {
+    async fn download_to_cache(&self) -> Result<CacheState> {
+        self.cache.download(&[CacheEntries::Packages]).await?;
         self.cache
             .download(&[CacheEntries::OutdatedBuiltUsing])
-            .await?;
-        Ok(())
+            .await
+    }
+
+    fn parse_packages<P>(path: P) -> Result<HashSet<String>>
+    where
+        P: AsRef<Path>,
+    {
+        // read Package file
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
+        let pb = ProgressBar::new(binary_packages.len() as u64);
+        pb.set_style(config::default_progress_style().template(
+            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+        ));
+        pb.set_message(format!(
+            "Processing {}",
+            path.as_ref().file_name().unwrap().to_str().unwrap()
+        ));
+        // collect all sources with arch dependendent binaries having Built-Using set
+        Ok(binary_packages
+            .into_iter()
+            .progress_with(pb)
+            .filter(|binary_package| {
+                binary_package.built_using.is_some()
+                    && binary_package.architecture != Architecture::All
+            })
+            .map(|binary_package| {
+                if let Some(source_package) = &binary_package.source {
+                    source_package.split_whitespace().next().unwrap().into()
+                } else {
+                    // no Source set, so Source == Package
+                    binary_package.package
+                }
+            })
+            .collect())
     }
 
     fn load_eso(&self, suite: &Suite) -> Result<HashSet<String>> {
-        self.download_to_cache()?;
+        if self.download_to_cache()? == CacheState::NoUpdate && !self.base_options.force_processing
+        {
+            return Ok(HashSet::new());
+        }
+
+        let mut all_paths = vec![];
+        for architecture in RELEASE_ARCHITECTURES {
+            all_paths.push(
+                self.cache
+                    .get_cache_path(format!("Packages_{}", architecture))?,
+            );
+        }
+        let mut actionable_sources = HashSet::<String>::new();
+        for path in all_paths {
+            let sources = Self::parse_packages(path);
+            actionable_sources.extend(sources?);
+        }
 
         let mut result = HashSet::new();
         let reader = self.cache.get_cache_bufreader("outdated-built-using.txt")?;
@@ -83,14 +144,20 @@ impl NMUOutdatedBuiltUsing {
 
             // check if suite matches
             match Suite::try_from(split[0].trim()) {
-                Ok(ref source_suite) => {
-                    if source_suite != suite {
-                        continue;
-                    }
-                }
+                Ok(ref source_suite) if source_suite == suite => {}
                 _ => {
                     continue;
                 }
+            }
+
+            let source = split[1].trim().to_owned();
+            // not-binNMUable as the Built-Using package is binary-independent
+            if !actionable_sources.contains(&source) {
+                continue;
+            }
+            // skip some packages that either make no sense to binNMU or fail to be binNMUed
+            if source.starts_with("gcc-") || source.starts_with("binutils") {
+                continue;
             }
 
             result.insert(split[1].trim().to_owned());
