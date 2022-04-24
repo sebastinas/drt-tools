@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 (2022-04-24)
+
+* Add parser for auto-removals.
+* Add enum for Multi-Arch fields.
+
 ## 0.4.0 (2022-04-06)
 
 * Add initial support for codenames and suites.
