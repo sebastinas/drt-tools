@@ -149,7 +149,6 @@ impl NMUOutdatedBuiltUsing {
         let suite = self.options.suite.clone().into();
         let eso_sources = self.load_eso(&suite)?;
 
-        let mut wb_commands = Vec::new();
         for source in eso_sources {
             let mut source = SourceSpecifier::new(&source);
             source.with_suite(&self.options.suite);
@@ -167,13 +166,11 @@ impl NMUOutdatedBuiltUsing {
             if let Some(extra_depends) = &self.options.extra_depends {
                 binnmu.with_extra_depends(extra_depends);
             }
-            wb_commands.push(binnmu.build())
-        }
 
-        for commands in wb_commands {
-            println!("{}", commands);
+            let command = binnmu.build();
+            println!("{}", command);
             if !self.base_options.dry_run {
-                commands.execute()?;
+                command.execute()?;
             }
         }
 
