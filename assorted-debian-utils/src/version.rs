@@ -28,6 +28,7 @@
 use std::{
     error::Error,
     fmt::{self, Display},
+    hash::{Hash, Hasher},
 };
 
 use serde::{de, Deserialize, Serialize};
@@ -271,6 +272,14 @@ impl<'de> Deserialize<'de> for PackageVersion {
         }
 
         deserializer.deserialize_str(VersionVisitor)
+    }
+}
+
+impl Hash for PackageVersion {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.epoch_or_0().hash(state);
+        self.upstream_version.hash(state);
+        self.debian_revision.hash(state);
     }
 }
 
