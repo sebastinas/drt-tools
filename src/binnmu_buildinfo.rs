@@ -11,32 +11,18 @@ use clap::Parser;
 use crate::{
     config::{Cache, CacheEntries, CacheState},
     source_packages::SourcePackages,
-    BaseOptions,
+    BaseOptions, BinNMUsOptions,
 };
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
-    archive::SuiteOrCodename,
     buildinfo::{self, Buildinfo},
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
 
 #[derive(Debug, Parser)]
 pub(crate) struct BinNMUBuildinfoOptions {
-    /// Message for binNMUs
-    #[clap(short, long)]
-    message: String,
-    /// Set a build priority
-    #[clap(long = "bp")]
-    build_priority: Option<i32>,
-    /// Set dependency-wait
-    #[clap(long = "dw")]
-    dep_wait: Option<String>,
-    /// Set extra dependencies
-    #[clap(long)]
-    extra_depends: Option<String>,
-    /// Set the suite
-    #[clap(short, long, default_value = "unstable")]
-    suite: SuiteOrCodename,
+    #[clap(flatten)]
+    binnmu_options: BinNMUsOptions,
     /// Input files
     #[clap(parse(from_os_str))]
     inputs: Vec<PathBuf>,
@@ -81,7 +67,7 @@ impl BinNMUBuildinfo {
         let version = buildinfo.version.without_binnmu_version();
         source
             .with_version(&version)
-            .with_suite(&self.options.suite);
+            .with_suite(&self.options.binnmu_options.suite);
         if !source_packages.is_ma_same(source_package) {
             // binNMU only on the architecture if no MA: same binary packages
             source.with_archive_architectures(&architectures);
@@ -93,14 +79,14 @@ impl BinNMUBuildinfo {
             //      }
         }
 
-        let mut binnmu = BinNMU::new(&source, &self.options.message)?;
-        if let Some(bp) = self.options.build_priority {
+        let mut binnmu = BinNMU::new(&source, &self.options.binnmu_options.message)?;
+        if let Some(bp) = self.options.binnmu_options.build_priority {
             binnmu.with_build_priority(bp);
         }
-        if let Some(dw) = &self.options.dep_wait {
+        if let Some(dw) = &self.options.binnmu_options.dep_wait {
             binnmu.with_dependency_wait(dw);
         }
-        if let Some(extra_depends) = &self.options.extra_depends {
+        if let Some(extra_depends) = &self.options.binnmu_options.extra_depends {
             binnmu.with_extra_depends(extra_depends);
         }
         //  if let Some(version) = nmu_version {

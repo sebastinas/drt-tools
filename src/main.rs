@@ -1,7 +1,8 @@
-// Copyright 2021 Sebastian Ramacher
+// Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use anyhow::Result;
+use assorted_debian_utils::{architectures::Architecture, archive::SuiteOrCodename};
 use clap::{Parser, Subcommand};
 
 mod binnmu_buildinfo;
@@ -32,6 +33,28 @@ pub(crate) struct BaseOptions {
 }
 
 #[derive(Debug, Parser)]
+pub(crate) struct BinNMUsOptions {
+    /// Message for binNMUs
+    #[clap(short, long)]
+    message: String,
+    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
+    #[clap(long = "bp")]
+    build_priority: Option<i32>,
+    /// Dependency-wait. If specified, the builds will wait until the given dependency relation is satisfied.
+    #[clap(long = "dw")]
+    dep_wait: Option<String>,
+    /// Extra dependencies. If specified, the given dependency will be installed during the build.
+    #[clap(long)]
+    extra_depends: Option<String>,
+    /// Suite for binNMUs.
+    #[clap(short, long, default_value = "unstable")]
+    suite: SuiteOrCodename,
+    /// Set architectures for binNMUs. If no archictures are specified, the binNMUs are scheduled with ANY.
+    #[clap(short, long)]
+    architecture: Option<Vec<Architecture>>,
+}
+
+#[derive(Debug, Parser)]
 struct DrtToolsOptions {
     #[clap(flatten)]
     base_options: BaseOptions,
@@ -41,9 +64,21 @@ struct DrtToolsOptions {
 
 #[derive(Debug, Subcommand)]
 enum DrtToolsCommands {
-    /// Process current excuses.yaml and prepare a list of binNMUs to perform testing migration
+    /// Process current excuses.yaml and prepare a list of binNMUs required for testing migration.
     ProcessExcuses(ProcessExcusesOptions),
-    /// Prepare binNMUs for a transition
+    /// Prepare and schedule binNMUs for a transition.
+    ///
+    /// This command expects a list of packages with their respective versions
+    /// from ben. Each line should look like this:
+    ///
+    /// haskell-pandoc-citeproc    [build logs] (0.17.0.1-1)    ✘    ✘    ✘    ✘    ✘    ✘    ✘    ✘    ✘
+    ///
+    /// Note that any information from ben except the source package and the
+    /// version are ignored. Per default, binNMUs are scheduled with ANY
+    /// in unstable.
+    ///
+    /// The list of packages can be either given on the standard input or they
+    /// are aread from a file.
     #[clap(name = "prepare-binNMUs")]
     PrepareBinNMUs(PrepareBinNMUsOptions),
     /// Prepare binNMUs based on a list of buildinfo files

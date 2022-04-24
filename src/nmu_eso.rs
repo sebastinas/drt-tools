@@ -4,17 +4,16 @@
 use std::{collections::HashSet, io::BufRead, path::Path};
 
 use anyhow::Result;
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
 use crate::{
     config::{self, CacheEntries, CacheState},
-    BaseOptions,
+    BaseOptions, BinNMUsOptions,
 };
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
-    archive::{Suite, SuiteOrCodename},
+    archive::Suite,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
@@ -28,27 +27,7 @@ struct BinaryPackage {
     built_using: Option<String>,
 }
 
-#[derive(Debug, Parser)]
-pub(crate) struct NMUOutdatedBuiltUsingOptions {
-    /// Message for binNMUs
-    #[clap(short, long, default_value = "Rebuild for outdated Built-Using")]
-    message: String,
-    /// Set a build priority
-    #[clap(long = "bp")]
-    build_priority: Option<i32>,
-    /// Set dependency-wait
-    #[clap(long = "dw")]
-    dep_wait: Option<String>,
-    /// Set extra dependencies
-    #[clap(long)]
-    extra_depends: Option<String>,
-    /// Set the suite
-    #[clap(short, long, default_value = "unstable")]
-    suite: SuiteOrCodename,
-    /// Set architectures for binNMUs
-    #[clap(short, long)]
-    architecture: Option<Vec<Architecture>>,
-}
+pub(crate) type NMUOutdatedBuiltUsingOptions = BinNMUsOptions;
 
 pub(crate) struct NMUOutdatedBuiltUsing {
     cache: config::Cache,
