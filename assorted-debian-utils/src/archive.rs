@@ -3,7 +3,7 @@
 
 //! # Helpers to handle Debian archives
 //!
-//! These helpers includes enums to handle suites and codenames.
+//! These helpers includes enums to handle suites, codenames, and other fields found in Debian archive files.
 
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -292,6 +292,53 @@ impl From<SuiteOrCodename> for Codename {
     }
 }
 
+/// Allowed values of the multi-arch field
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum MultiArch {
+    /// MA: allowed
+    Allowed,
+    /// MA: foreign
+    Foreign,
+    /// MA: no
+    No,
+    /// MA: same
+    Same,
+}
+
+impl Display for MultiArch {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MultiArch::Allowed => write!(f, "allowed"),
+            MultiArch::Foreign => write!(f, "foreign"),
+            MultiArch::No => write!(f, "no"),
+            MultiArch::Same => write!(f, "same"),
+        }
+    }
+}
+
+impl TryFrom<&str> for MultiArch {
+    type Error = ParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "allowed" => Ok(MultiArch::Allowed),
+            "foreign" => Ok(MultiArch::Foreign),
+            "no" => Ok(MultiArch::No),
+            "same" => Ok(MultiArch::Same),
+            _ => Err(ParseError::InvalidMultiArch),
+        }
+    }
+}
+
+impl FromStr for MultiArch {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        MultiArch::try_from(s)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{Codename, Extension, Suite, SuiteOrCodename};
@@ -348,18 +395,4 @@ mod test {
             SuiteOrCodename::from(Codename::Sid)
         );
     }
-}
-
-/// Allowed values of the multi-arch field
-#[derive(Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum MultiArch {
-    /// MA: allowed
-    Allowed,
-    /// MA: foreign
-    Foreign,
-    /// MA: no
-    No,
-    /// MA: same
-    Same,
 }
