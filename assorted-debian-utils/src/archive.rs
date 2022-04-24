@@ -341,7 +341,7 @@ impl FromStr for MultiArch {
 
 #[cfg(test)]
 mod test {
-    use super::{Codename, Extension, Suite, SuiteOrCodename};
+    use super::{Codename, Extension, MultiArch, Suite, SuiteOrCodename};
 
     #[test]
     fn suite_from_str() {
@@ -394,5 +394,10 @@ mod test {
             SuiteOrCodename::try_from("sid").unwrap(),
             SuiteOrCodename::from(Codename::Sid)
         );
+    }
+
+    #[test]
+    fn multi_arch_from_str() {
+        assert_eq!(MultiArch::try_from("foreign").unwrap(), MultiArch::Foreign);
     }
 }
