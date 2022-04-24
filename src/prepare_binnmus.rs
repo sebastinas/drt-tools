@@ -93,7 +93,11 @@ impl PrepareBinNMUs {
 
     pub(crate) fn run(self) -> Result<()> {
         let codename: Codename = self.options.suite.clone().into();
-        let ftbfs_bugs = self.load_bugs(&codename);
+        let ftbfs_bugs = if !self.base_options.force_processing {
+            self.load_bugs(&codename)
+        } else {
+            HashMap::new()
+        };
 
         let matcher = regex::Regex::new("([a-z0-9+.-]+)[ \t].* \\(?([0-9][^() \t]*)\\)?")?;
 
