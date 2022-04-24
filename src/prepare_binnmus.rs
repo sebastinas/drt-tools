@@ -73,14 +73,8 @@ impl PrepareBinNMUs {
         Ok(())
     }
 
-    fn load_bugs(&self, codename: &Codename) -> HashMap<String, u32> {
-        if let Err(e) = self.download_to_cache(codename) {
-            println!(
-                "# Unable to download FTBFS bugs for {}: {}",
-                self.options.suite, e
-            );
-            return HashMap::new();
-        }
+    fn load_bugs(&self, codename: &Codename) -> Result<HashMap<String, u32>> {
+        self.download_to_cache(codename)?;
 
         let bugs: Vec<UDDBug> = serde_yaml::from_reader(
             self.cache
@@ -88,13 +82,13 @@ impl PrepareBinNMUs {
                 .unwrap(),
         )
         .unwrap_or_default();
-        bugs.into_iter().map(|bug| (bug.source, bug.id)).collect()
+        Ok(bugs.into_iter().map(|bug| (bug.source, bug.id)).collect())
     }
 
     pub(crate) fn run(self) -> Result<()> {
         let codename: Codename = self.options.suite.clone().into();
         let ftbfs_bugs = if !self.base_options.force_processing {
-            self.load_bugs(&codename)
+            self.load_bugs(&codename)?
         } else {
             HashMap::new()
         };
