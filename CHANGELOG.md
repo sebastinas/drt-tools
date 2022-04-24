@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 (2022-04-25)
+
+* Implement new sub-command:
+  * grep-excuses: similar to `grep-excuses(1)`.
+  * `nmu-eso`: Rebuild packages with outdated Built-Using.
+* `prepare-binNMUs`: skip packages with FTBFS bugs.
+
 ## 0.2.3 (2022-04-06)
 
 * Update to assorted-debian-utils 0.4.0.
