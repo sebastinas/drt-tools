@@ -1,16 +1,16 @@
 // Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
-use std::{collections::HashMap, fs::File};
 
 use anyhow::Result;
 use clap::Parser;
 
 use crate::{
     config::{self, CacheEntries},
-    udd_bugs::load_hashmap_bugs_from_reader,
+    udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, BinNMUsOptions,
 };
 use assorted_debian_utils::{
@@ -50,9 +50,9 @@ impl PrepareBinNMUs {
         Ok(())
     }
 
-    fn load_bugs(&self, codename: &Codename) -> Result<HashMap<String, u32>> {
+    fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
         self.download_to_cache(codename)?;
-        load_hashmap_bugs_from_reader(
+        load_bugs_from_reader(
             self.cache
                 .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
         )
@@ -63,7 +63,7 @@ impl PrepareBinNMUs {
         let ftbfs_bugs = if !self.base_options.force_processing {
             self.load_bugs(&codename)?
         } else {
-            HashMap::new()
+            UDDBugs::new(vec![])
         };
 
         let matcher = regex::Regex::new("([a-z0-9+.-]+)[ \t].* \\(?([0-9][^() \t]*)\\)?")?;
@@ -88,8 +88,11 @@ impl PrepareBinNMUs {
                 }
 
                 let source = package.unwrap().as_str();
-                if let Some(bug) = ftbfs_bugs.get(source) {
-                    println!("# Skipping {} due to FTBFS bug #{}", source, bug);
+                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
+                    println!("# Skipping {} due to FTBFS bugs ...", source);
+                    for bug in bugs {
+                        println!("#\t {} ({}): {}", bug.id, bug.severity, bug.title);
+                    }
                     continue;
                 }
 

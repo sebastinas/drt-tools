@@ -1,11 +1,7 @@
 // Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{
-    collections::{HashMap, HashSet},
-    io::BufRead,
-    path::Path,
-};
+use std::{collections::HashSet, io::BufRead, path::Path};
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressIterator};
@@ -13,7 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     config::{self, CacheEntries, CacheState},
-    udd_bugs::load_hashmap_bugs_from_reader,
+    udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, BinNMUsOptions,
 };
 use assorted_debian_utils::{
@@ -65,8 +61,8 @@ impl NMUOutdatedBuiltUsing {
             .await
     }
 
-    fn load_bugs(&self, codename: &Codename) -> Result<HashMap<String, u32>> {
-        load_hashmap_bugs_from_reader(
+    fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
+        load_bugs_from_reader(
             self.cache
                 .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
         )
@@ -159,8 +155,11 @@ impl NMUOutdatedBuiltUsing {
                 continue;
             }
             // check if package FTBFS
-            if let Some(bug) = ftbfs_bugs.get(&source) {
-                println!("# Skipping {} due to FTBFS bug #{}", source, bug);
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
+                println!("# Skipping {} due to FTBFS bugs ...", source);
+                for bug in bugs {
+                    println!("#\t {} ({}): {}", bug.id, bug.severity, bug.title);
+                }
                 continue;
             }
 
