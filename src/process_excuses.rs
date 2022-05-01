@@ -113,7 +113,7 @@ impl ProcessExcuses {
                             // cannot binNMU arch: all
                             return None;
                         }
-                        archs.push(WBArchitecture::Architecture(arch.clone()));
+                        archs.push(WBArchitecture::Architecture(*arch));
                     }
                 }
             }

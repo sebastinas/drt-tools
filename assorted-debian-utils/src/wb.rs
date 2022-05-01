@@ -169,7 +169,7 @@ impl<'a> SourceSpecifier<'a> {
         self.architectures.reserve(architectures.len());
         for architecture in architectures {
             self.architectures
-                .push(WBArchitecture::Architecture(architecture.clone()));
+                .push(WBArchitecture::Architecture(*architecture));
         }
         self
     }

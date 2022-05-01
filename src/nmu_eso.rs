@@ -51,10 +51,7 @@ impl NMUOutdatedBuiltUsing {
     #[tokio::main]
     async fn download_to_cache(&self, codename: &Codename) -> Result<CacheState> {
         self.cache
-            .download(&[
-                CacheEntries::Packages,
-                CacheEntries::FTBFSBugs(codename.clone()),
-            ])
+            .download(&[CacheEntries::Packages, CacheEntries::FTBFSBugs(*codename)])
             .await?;
         self.cache
             .download(&[CacheEntries::OutdatedBuiltUsing])
@@ -102,7 +99,7 @@ impl NMUOutdatedBuiltUsing {
     }
 
     fn load_eso(&self, suite: &Suite) -> Result<Vec<String>> {
-        let codename = suite.clone().into();
+        let codename = (*suite).into();
         if self.download_to_cache(&codename)? == CacheState::NoUpdate
             && !self.base_options.force_processing
         {
@@ -172,7 +169,7 @@ impl NMUOutdatedBuiltUsing {
     }
 
     pub(crate) fn run(self) -> Result<()> {
-        let suite = self.options.suite.clone().into();
+        let suite = self.options.suite.into();
         let eso_sources = self.load_eso(&suite)?;
 
         for source in eso_sources {

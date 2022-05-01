@@ -45,7 +45,7 @@ impl PrepareBinNMUs {
     #[tokio::main]
     async fn download_to_cache(&self, codename: &Codename) -> Result<()> {
         self.cache
-            .download(&[CacheEntries::FTBFSBugs(codename.clone())])
+            .download(&[CacheEntries::FTBFSBugs(*codename)])
             .await?;
         Ok(())
     }
@@ -59,7 +59,7 @@ impl PrepareBinNMUs {
     }
 
     pub(crate) fn run(self) -> Result<()> {
-        let codename: Codename = self.options.binnmu_options.suite.clone().into();
+        let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if !self.base_options.force_processing {
             self.load_bugs(&codename)?
         } else {
