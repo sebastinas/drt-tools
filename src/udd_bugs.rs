@@ -71,10 +71,10 @@ impl UDDBugs {
         udd_bugs
     }
 
-    pub fn bugs_for_source(&self, source: &str) -> Option<Vec<UDDBug>> {
+    pub fn bugs_for_source(&self, source: &str) -> Option<Vec<&UDDBug>> {
         self.source_index
             .get(source)
-            .map(|indices| indices.iter().map(|idx| self.bugs[*idx].clone()).collect())
+            .map(|indices| indices.iter().map(|idx| &self.bugs[*idx]).collect())
     }
 }
 
