@@ -91,7 +91,7 @@ impl PrepareBinNMUs {
                 if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
                     println!("# Skipping {} due to FTBFS bugs ...", source);
                     for bug in bugs {
-                        println!("#\t {} ({}): {}", bug.id, bug.severity, bug.title);
+                        println!("#   {} ({}): {}", bug.id, bug.severity, bug.title);
                     }
                     continue;
                 }
