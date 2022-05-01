@@ -15,7 +15,7 @@ pub use crate::ParseError;
 ///
 /// This enum covers the archives for backports, security updates, (old)stable
 /// updates and (old)stable proposed-updates.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Extension {
     /// The backports extension
@@ -69,7 +69,7 @@ impl FromStr for Extension {
 /// Debian archive suites
 ///
 /// This enum describes the suite names found in the Debian archive.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Suite {
     /// The unstable suite
@@ -134,7 +134,7 @@ impl FromStr for Suite {
 /// Debian archive codenames
 ///
 /// This enum describes the codenames names found in the Debian archive.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Codename {
     /// The unstable suite
@@ -223,7 +223,7 @@ impl From<Codename> for Suite {
 /// Represents either a suite or codename
 ///
 /// This enum is useful whenever a suite name or codename works
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub enum SuiteOrCodename {
     /// A suite
     Suite(Suite),
@@ -293,7 +293,7 @@ impl From<SuiteOrCodename> for Codename {
 }
 
 /// Allowed values of the multi-arch field
-#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum MultiArch {
     /// MA: allowed

@@ -16,7 +16,7 @@ pub use crate::ParseError;
 ///
 /// This enum describes architectures that are release architectures or available on Debian ports.
 /// It also provides `All` as special case for binary independent packages.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Architecture {
     /// The `all` architecture for architecture independent packages

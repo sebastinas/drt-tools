@@ -36,7 +36,7 @@ use serde::{de, Deserialize, Serialize};
 pub use crate::ParseError;
 
 /// Version errors
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum VersionError {
     /// Epoch is invalid
     InvalidEpoch,

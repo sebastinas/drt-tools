@@ -32,7 +32,7 @@ pub mod wb;
 mod cversion;
 
 /// Parsing error
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum ParseError {
     /// Given string is not a valid architecture
     InvalidArchitecture,
