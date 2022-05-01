@@ -1,7 +1,11 @@
 // Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{collections::HashSet, io::BufRead, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    io::BufRead,
+    path::Path,
+};
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressIterator};
@@ -9,11 +13,12 @@ use serde::Deserialize;
 
 use crate::{
     config::{self, CacheEntries, CacheState},
+    udd_bugs::load_hashmap_bugs_from_reader,
     BaseOptions, BinNMUsOptions,
 };
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
-    archive::Suite,
+    archive::{Codename, Suite},
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
@@ -48,11 +53,23 @@ impl NMUOutdatedBuiltUsing {
     }
 
     #[tokio::main]
-    async fn download_to_cache(&self) -> Result<CacheState> {
-        self.cache.download(&[CacheEntries::Packages]).await?;
+    async fn download_to_cache(&self, codename: &Codename) -> Result<CacheState> {
+        self.cache
+            .download(&[
+                CacheEntries::Packages,
+                CacheEntries::FTBFSBugs(codename.clone()),
+            ])
+            .await?;
         self.cache
             .download(&[CacheEntries::OutdatedBuiltUsing])
             .await
+    }
+
+    fn load_bugs(&self, codename: &Codename) -> Result<HashMap<String, u32>> {
+        load_hashmap_bugs_from_reader(
+            self.cache
+                .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
+        )
     }
 
     fn parse_packages<P>(path: P) -> Result<HashSet<String>>
@@ -89,11 +106,14 @@ impl NMUOutdatedBuiltUsing {
     }
 
     fn load_eso(&self, suite: &Suite) -> Result<HashSet<String>> {
-        if self.download_to_cache()? == CacheState::NoUpdate && !self.base_options.force_processing
+        let codename = suite.clone().into();
+        if self.download_to_cache(&codename)? == CacheState::NoUpdate
+            && !self.base_options.force_processing
         {
             return Ok(HashSet::new());
         }
 
+        let ftbfs_bugs = self.load_bugs(&codename)?;
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {
             all_paths.push(
@@ -136,6 +156,11 @@ impl NMUOutdatedBuiltUsing {
             }
             // skip some packages that either make no sense to binNMU or fail to be binNMUed
             if source.starts_with("gcc-") || source.starts_with("binutils") {
+                continue;
+            }
+            // check if package FTBFS
+            if let Some(bug) = ftbfs_bugs.get(&source) {
+                println!("# Skipping {} due to FTBFS bug #{}", source, bug);
                 continue;
             }
 

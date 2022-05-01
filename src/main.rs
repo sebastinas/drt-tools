@@ -12,6 +12,7 @@ mod nmu_eso;
 mod prepare_binnmus;
 mod process_excuses;
 pub(crate) mod source_packages;
+pub(crate) mod udd_bugs;
 
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};

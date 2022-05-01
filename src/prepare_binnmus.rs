@@ -7,22 +7,16 @@ use std::{collections::HashMap, fs::File};
 
 use anyhow::Result;
 use clap::Parser;
-use serde::Deserialize;
 
 use crate::{
     config::{self, CacheEntries},
+    udd_bugs::load_hashmap_bugs_from_reader,
     BaseOptions, BinNMUsOptions,
 };
 use assorted_debian_utils::{
     archive::Codename,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
-
-#[derive(Debug, Deserialize)]
-struct UDDBug {
-    id: u32,
-    source: String,
-}
 
 #[derive(Debug, Parser)]
 pub(crate) struct PrepareBinNMUsOptions {
@@ -58,14 +52,10 @@ impl PrepareBinNMUs {
 
     fn load_bugs(&self, codename: &Codename) -> Result<HashMap<String, u32>> {
         self.download_to_cache(codename)?;
-
-        let bugs: Vec<UDDBug> = serde_yaml::from_reader(
+        load_hashmap_bugs_from_reader(
             self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))
-                .unwrap(),
+                .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
         )
-        .unwrap_or_default();
-        Ok(bugs.into_iter().map(|bug| (bug.source, bug.id)).collect())
     }
 
     pub(crate) fn run(self) -> Result<()> {
