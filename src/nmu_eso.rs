@@ -105,12 +105,12 @@ impl NMUOutdatedBuiltUsing {
             .collect())
     }
 
-    fn load_eso(&self, suite: &Suite) -> Result<HashSet<String>> {
+    fn load_eso(&self, suite: &Suite) -> Result<Vec<String>> {
         let codename = suite.clone().into();
         if self.download_to_cache(&codename)? == CacheState::NoUpdate
             && !self.base_options.force_processing
         {
-            return Ok(HashSet::new());
+            return Ok(Vec::new());
         }
 
         let ftbfs_bugs = self.load_bugs(&codename)?;
@@ -167,6 +167,8 @@ impl NMUOutdatedBuiltUsing {
             result.insert(split[1].trim().to_owned());
         }
 
+        let mut result: Vec<String> = result.into_iter().collect();
+        result.sort();
         Ok(result)
     }
 
