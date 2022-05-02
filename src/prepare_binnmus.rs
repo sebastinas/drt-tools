@@ -6,16 +6,16 @@ use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 
 use anyhow::Result;
+use assorted_debian_utils::{
+    archive::Codename,
+    wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
+};
 use clap::Parser;
 
 use crate::{
     config::{self, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, BinNMUsOptions,
-};
-use assorted_debian_utils::{
-    archive::Codename,
-    wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
 #[derive(Debug, Parser)]

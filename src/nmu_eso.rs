@@ -4,6 +4,11 @@
 use std::{collections::HashSet, io::BufRead, path::Path};
 
 use anyhow::Result;
+use assorted_debian_utils::{
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    archive::{Codename, Suite},
+    wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
+};
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
@@ -11,11 +16,6 @@ use crate::{
     config::{self, CacheEntries, CacheState},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, BinNMUsOptions,
-};
-use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
-    archive::{Codename, Suite},
-    wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
