@@ -166,11 +166,12 @@ impl<'a> SourceSpecifier<'a> {
 
     /// Specify architectures. If not set, the `nmu` will be scheduled for `ANY`.
     pub fn with_archive_architectures(&mut self, architectures: &[Architecture]) -> &mut Self {
-        self.architectures.reserve(architectures.len());
-        for architecture in architectures {
-            self.architectures
-                .push(WBArchitecture::Architecture(*architecture));
-        }
+        self.architectures.extend(
+            architectures
+                .iter()
+                .copied()
+                .map(WBArchitecture::Architecture),
+        );
         self
     }
 }
@@ -193,9 +194,9 @@ impl<'a> Display for SourceSpecifier<'a> {
             f,
             ". {}",
             if let Some(suite) = self.suite {
-                suite
+                *suite
             } else {
-                &SuiteOrCodename::Suite(Suite::Unstable)
+                SuiteOrCodename::Suite(Suite::Unstable)
             },
         )
     }
@@ -216,13 +217,13 @@ impl<'a> BinNMU<'a> {
     /// Create a new `nmu` command for the given `source`.
     pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
         for arch in &source.architectures {
-            match arch {
+            match *arch {
                 // unable to nmu with source, -source, ALL, all
-                &WBArchitecture::Architecture(Architecture::Source)
-                | &WBArchitecture::MinusArchitecture(Architecture::Source)
-                | &WBArchitecture::Architecture(Architecture::All)
-                | &WBArchitecture::MinusArchitecture(Architecture::All)
-                | &WBArchitecture::All => {
+                WBArchitecture::Architecture(Architecture::Source)
+                | WBArchitecture::MinusArchitecture(Architecture::Source)
+                | WBArchitecture::Architecture(Architecture::All)
+                | WBArchitecture::MinusArchitecture(Architecture::All)
+                | WBArchitecture::All => {
                     return Err(Error::InvalidArchitecture(*arch, "nmu"));
                 }
                 _ => {}
@@ -314,10 +315,10 @@ impl<'a> DepWait<'a> {
     /// Create a new `dw` command for the given `source`.
     pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
         for arch in &source.architectures {
-            match arch {
+            match *arch {
                 // unable to dw with source, -source
-                &WBArchitecture::Architecture(Architecture::Source)
-                | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
+                WBArchitecture::Architecture(Architecture::Source)
+                | WBArchitecture::MinusArchitecture(Architecture::Source) => {
                     return Err(Error::InvalidArchitecture(*arch, "dw"));
                 }
                 _ => {}
@@ -351,10 +352,10 @@ impl<'a> BuildPriority<'a> {
     /// Create a new `bp` command for the given `source`.
     pub fn new(source: &'a SourceSpecifier<'a>, priority: i32) -> Result<Self, Error> {
         for arch in &source.architectures {
-            match arch {
+            match *arch {
                 // unable to bp with source, -source
-                &WBArchitecture::Architecture(Architecture::Source)
-                | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
+                WBArchitecture::Architecture(Architecture::Source)
+                | WBArchitecture::MinusArchitecture(Architecture::Source) => {
                     return Err(Error::InvalidArchitecture(*arch, "bp"));
                 }
                 _ => {}
