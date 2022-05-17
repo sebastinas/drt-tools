@@ -85,7 +85,7 @@ pub trait WBCommandBuilder {
 /// named `ANY` (all binary-dependent architectures) and `ALL` (all architectures). Also, it
 /// supports negation of architectures, e.g., `ANY -i386` refers to all binary-dependent
 /// architectures without `i386`.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WBArchitecture {
     /// The special `ANY` architecture, i.e., all architectures understood by wb except `all`
     Any,
@@ -223,7 +223,7 @@ impl<'a> BinNMU<'a> {
                 | &WBArchitecture::Architecture(Architecture::All)
                 | &WBArchitecture::MinusArchitecture(Architecture::All)
                 | &WBArchitecture::All => {
-                    return Err(Error::InvalidArchitecture(arch.clone(), "nmu"));
+                    return Err(Error::InvalidArchitecture(*arch, "nmu"));
                 }
                 _ => {}
             }
@@ -318,7 +318,7 @@ impl<'a> DepWait<'a> {
                 // unable to dw with source, -source
                 &WBArchitecture::Architecture(Architecture::Source)
                 | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
-                    return Err(Error::InvalidArchitecture(arch.clone(), "dw"));
+                    return Err(Error::InvalidArchitecture(*arch, "dw"));
                 }
                 _ => {}
             }
@@ -355,7 +355,7 @@ impl<'a> BuildPriority<'a> {
                 // unable to bp with source, -source
                 &WBArchitecture::Architecture(Architecture::Source)
                 | &WBArchitecture::MinusArchitecture(Architecture::Source) => {
-                    return Err(Error::InvalidArchitecture(arch.clone(), "bp"));
+                    return Err(Error::InvalidArchitecture(*arch, "bp"));
                 }
                 _ => {}
             }

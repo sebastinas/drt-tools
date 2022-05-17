@@ -64,7 +64,7 @@ impl Error for VersionError {}
 /// * an optional epoch
 /// * the upstream version
 /// * an optional debian revision
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct PackageVersion {
     /// The (optional) epoch
     pub(crate) epoch: Option<u32>,

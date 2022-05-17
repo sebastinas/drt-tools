@@ -33,7 +33,7 @@ pub struct Excuses {
 }
 
 /// A policy's verdict
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 pub enum Verdict {
     /// Policy passed
     #[serde(rename = "PASS")]
@@ -57,7 +57,7 @@ pub enum Verdict {
 }
 
 /// Debian archive components
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Component {
     /// The `main` archive component
