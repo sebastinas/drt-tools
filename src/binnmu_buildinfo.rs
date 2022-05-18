@@ -6,17 +6,17 @@ use std::path::PathBuf;
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{anyhow, Result};
+use assorted_debian_utils::{
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    buildinfo::{self, Buildinfo},
+    wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
+};
 use clap::Parser;
 
 use crate::{
     config::{Cache, CacheEntries, CacheState},
     source_packages::SourcePackages,
     BaseOptions, BinNMUsOptions,
-};
-use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
-    buildinfo::{self, Buildinfo},
-    wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
 
 #[derive(Debug, Parser)]

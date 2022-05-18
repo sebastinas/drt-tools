@@ -6,9 +6,10 @@
 //! This module provides helpers for Debian architectures. This currently involves a list of release
 //! architectures and an enum for release and ports architectures.
 
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
 
 pub use crate::ParseError;
 

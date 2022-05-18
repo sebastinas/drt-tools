@@ -6,9 +6,10 @@
 //! This module provides helpers to deserialize [autoremovals.yaml](https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi)
 //! with [serde].
 
+use std::{collections::HashMap, io};
+
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use std::{collections::HashMap, io};
 
 use crate::{utils::DateTimeVisitor, version::PackageVersion};
 

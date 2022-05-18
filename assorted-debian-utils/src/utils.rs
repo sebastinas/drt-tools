@@ -3,9 +3,10 @@
 
 //! # Utils used by other modules.
 
+use std::fmt;
+
 use chrono::{DateTime, TimeZone, Utc};
 use serde::de;
-use std::fmt;
 
 #[derive(Debug)]
 pub(crate) struct DateTimeVisitor<'a>(pub &'a str);

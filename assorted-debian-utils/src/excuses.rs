@@ -6,10 +6,12 @@
 //! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
-use crate::{architectures::Architecture, utils::DateTimeVisitor};
+use std::{collections::HashMap, io};
+
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use std::{collections::HashMap, io};
+
+use crate::{architectures::Architecture, utils::DateTimeVisitor};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>

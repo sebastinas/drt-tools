@@ -5,9 +5,10 @@
 //!
 //! These helpers includes enums to handle suites, codenames, and other fields found in Debian archive files.
 
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
 
 pub use crate::ParseError;
 

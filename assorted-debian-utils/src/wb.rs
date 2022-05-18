@@ -6,14 +6,15 @@
 //! This module provides builders to generate commands for [wanna-build](https://release.debian.org/wanna-build.txt).
 //! It currently handles binNMUs only.
 
-use crate::architectures::Architecture;
-use crate::archive::{Suite, SuiteOrCodename};
-use crate::version::PackageVersion;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
+
+use crate::architectures::Architecture;
+use crate::archive::{Suite, SuiteOrCodename};
+use crate::version::PackageVersion;
 
 /// Errors when working with `wb`
 #[derive(Debug)]
