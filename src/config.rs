@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use assorted_debian_utils::{architectures::RELEASE_ARCHITECTURES, archive::Codename};
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
+use log::debug;
 use reqwest::{header, Client, Response, StatusCode};
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
@@ -55,6 +56,7 @@ impl Downloader {
     where
         P: AsRef<Path>,
     {
+        debug!("Starting download of {} to {:?}", url, path.as_ref());
         let res = self.client.get(url);
         let res = if !self.always_download {
             if let Ok(dst_metadata) = fs::metadata(path) {
@@ -76,6 +78,10 @@ impl Downloader {
         if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
             // this will only trigger if always_download is not set and the server reports that the
             // file was not modified
+            debug!(
+                "Skipping {}: always_download is not set and the file was not modified",
+                url
+            );
             return Ok(None);
         }
 
@@ -127,6 +133,7 @@ impl Downloader {
             self.download_internal(res, &pb, file).await?;
         }
         pb.finish_with_message(format!("Downloaded {}", url));
+        debug!("Download of {} to {:?} done", url, path.as_ref());
         Ok(CacheState::FreshFiles)
     }
 }

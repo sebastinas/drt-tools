@@ -10,6 +10,7 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use indicatif::{ProgressBar, ProgressIterator};
+use log::{debug, trace};
 use serde::Deserialize;
 
 use crate::{
@@ -122,6 +123,7 @@ impl NMUOutdatedBuiltUsing {
             }
 
             let line = line.unwrap();
+            trace!("Processing line: {}", line);
             let split: Vec<&str> = line.split(" | ").collect();
             if split.len() != 5 {
                 continue;
@@ -138,17 +140,22 @@ impl NMUOutdatedBuiltUsing {
             let source = split[1].trim().to_owned();
             // not-binNMUable as the Built-Using package is binary-independent
             if !actionable_sources.contains(&source) {
+                debug!("Skipping {}: not actionable", source);
                 continue;
             }
             // skip some packages that either make no sense to binNMU or fail to be binNMUed
             if source.starts_with("gcc-") || source.starts_with("binutils") {
+                debug!("Skipping {}: either gcc or binuitls", source);
                 continue;
             }
             // check if package FTBFS
             if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
                 println!("# Skipping {} due to FTBFS bugs ...", source);
                 for bug in bugs {
-                    println!("#   {} ({}): {}", bug.id, bug.severity, bug.title);
+                    debug!(
+                        "Skipping {}: #{} - {}: {}",
+                        source, bug.id, bug.severity, bug.title
+                    );
                 }
                 continue;
             }

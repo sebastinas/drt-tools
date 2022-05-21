@@ -6,6 +6,7 @@ use std::cmp::min;
 use anyhow::Result;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
+use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -73,34 +74,47 @@ impl ProcessExcuses {
         if let Some(b) = &policy_info.builtonbuildd {
             if b.verdict == Verdict::Pass {
                 // nothing to do
+                trace!("no binmu required: passing");
                 return false;
             }
             if b.verdict == Verdict::RejectedCannotDetermineIfPermanent {
                 // missing builds
+                trace!("no binnmu possible: missing builds");
                 return false;
             }
         }
         if let Some(a) = &policy_info.age {
             if a.current_age < min(a.age_requirement / 2, a.age_requirement - 1) {
                 // too young
+                trace!(
+                    "no binnmu possible: too young: {} days (required: {} days)",
+                    a.current_age,
+                    a.age_requirement
+                );
                 return false;
             }
         }
 
         // if the others do not pass, would not migrate even if binNMUed
-        policy_info
-            .extras
-            .values()
-            .all(|info| info.verdict == Verdict::Pass)
+        policy_info.extras.values().all(|info| {
+            if info.verdict != Verdict::Pass {
+                trace!("no binnmu possible: verdict not passing: {:?}", info);
+                false
+            } else {
+                true
+            }
+        })
     }
 
     fn build_binnmu(item: &ExcusesItem, source_packages: &SourcePackages) -> Option<WBCommand> {
         if !Self::is_actionable(item) {
+            debug!("{}: not actionable", item.source);
             return None;
         }
 
         if let Some(policy_info) = &item.policy_info {
             if !Self::is_binnmu_required(policy_info) {
+                debug!("{}: binNMU not required", item.source);
                 return None;
             }
 
@@ -111,6 +125,7 @@ impl ProcessExcuses {
                     if !signer.ends_with("@buildd.debian.org") {
                         if arch == &Architecture::All {
                             // cannot binNMU arch: all
+                            debug!("{}: cannot binNMU arch: all", item.source);
                             return None;
                         }
                         archs.push(WBArchitecture::Architecture(*arch));
@@ -119,6 +134,11 @@ impl ProcessExcuses {
             }
             if archs.is_empty() {
                 // this should not happen, but just to be on the safe side
+                warn!(
+                    "{}: considered candiate, but no architecture with missing build",
+                    item.source
+                );
+                trace!("{:?}", item);
                 return None;
             }
 
@@ -131,7 +151,10 @@ impl ProcessExcuses {
             match BinNMU::new(&source_specifier, "Rebuild on buildd") {
                 Ok(command) => Some(command.build()),
                 // not binNMU-able
-                Err(_) => None,
+                Err(_) => {
+                    error!("{}: failed to construct nmu command", item.source);
+                    None
+                }
             }
         } else {
             None
@@ -141,29 +164,35 @@ impl ProcessExcuses {
     fn is_actionable(item: &ExcusesItem) -> bool {
         if item.new_version == "-" {
             // skip removals
+            trace!("{} not actionable: removal", item.source);
             return false;
         }
         if item.new_version == item.old_version {
             // skip binNMUs
+            trace!("{} not actionable: binNMU", item.source);
             return false;
         }
         if item.item_name.ends_with("_pu") {
             // skip PU requests
+            trace!("{} not actionable: pu request", item.source);
             return false;
         }
         match item.component {
             Some(Component::Main) | None => {}
             _ => {
                 // skip non-free and contrib
+                trace!("{} not actionable: in {:?}", item.source, item.component);
                 return false;
             }
         }
         if let Some(true) = item.invalidated_by_other_package {
             // skip otherwise blocked packages
+            trace!("{} not actionable: invalided by other package", item.source);
             return false;
         }
         if item.missing_builds.is_some() {
             // skip packages with missing builds
+            trace!("{} not actionable: missing builds", item.source);
             return false;
         }
 
@@ -190,6 +219,7 @@ impl ProcessExcuses {
         // download excuses and Package files
         if self.download_to_cache()? == CacheState::NoUpdate {
             // nothing to do
+            trace!("Cached excuses.yml is up-to-date; nothing to do");
             return Ok(());
         }
 
@@ -217,7 +247,7 @@ impl ProcessExcuses {
             println!("# Rebuild on buildds for testing migration");
             for binnmu in to_binnmu {
                 if scheduled_binnmus.contains(&binnmu) {
-                    println!("# already scheduled: {}", binnmu);
+                    info!("{}: skipping, already scheduled", binnmu);
                 } else {
                     println!("{}", binnmu);
                     if !self.base_options.dry_run {

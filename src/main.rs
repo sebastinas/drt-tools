@@ -4,6 +4,7 @@
 use anyhow::Result;
 use assorted_debian_utils::{architectures::Architecture, archive::SuiteOrCodename};
 use clap::{Parser, Subcommand};
+use log::trace;
 
 mod binnmu_buildinfo;
 pub(crate) mod config;
@@ -31,6 +32,12 @@ pub(crate) struct BaseOptions {
     /// Only print actions to perform without running any commends
     #[clap(short = 'n')]
     dry_run: bool,
+    /// Quiet mode
+    #[clap(short = 'q', long)]
+    quiet: bool,
+    /// Verbose mode (-v, -vv, -vvv, etc)
+    #[clap(short = 'v', long, parse(from_occurrences))]
+    verbose: usize,
 }
 
 #[derive(Debug, Parser)]
@@ -79,7 +86,7 @@ enum DrtToolsCommands {
     /// in unstable.
     ///
     /// The list of packages can be either given on the standard input or they
-    /// are aread from a file.
+    /// are read from a file.
     #[clap(name = "prepare-binNMUs")]
     PrepareBinNMUs(PrepareBinNMUsOptions),
     /// Prepare binNMUs based on a list of buildinfo files
@@ -95,6 +102,14 @@ enum DrtToolsCommands {
 
 fn main() -> Result<()> {
     let opts = DrtToolsOptions::parse();
+
+    stderrlog::new()
+        .quiet(opts.base_options.quiet)
+        .verbosity(opts.base_options.verbose)
+        .init()?;
+    trace!("base options {:?}", opts.base_options);
+    trace!("command: {:?}", opts.command);
+
     match opts.command {
         DrtToolsCommands::ProcessExcuses(pe_opts) => {
             let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;
