@@ -1,10 +1,9 @@
 // Copyright 2021 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-//! # Helpers to generate commands for wanna-build
+//! # Helpers to generate commands for Debian's wanna-build service
 //!
 //! This module provides builders to generate commands for [wanna-build](https://release.debian.org/wanna-build.txt).
-//! It currently handles binNMUs only.
 
 use std::fmt::{Display, Formatter};
 use std::io::Write;
@@ -379,10 +378,47 @@ impl<'a> WBCommandBuilder for BuildPriority<'a> {
     }
 }
 
+/// Builder for the `fail` command
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Fail<'a> {
+    source: &'a SourceSpecifier<'a>,
+    message: &'a str,
+}
+
+impl<'a> Fail<'a> {
+    /// Create a new `fail` command for the given `source`.
+    pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
+        for arch in &source.architectures {
+            match *arch {
+                // unable to fail with source, -source
+                WBArchitecture::Architecture(Architecture::Source)
+                | WBArchitecture::ExcludeArchitecture(Architecture::Source) => {
+                    return Err(Error::InvalidArchitecture(*arch, "fail"));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Self { source, message })
+    }
+}
+
+impl<'a> Display for Fail<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "fail {} . -m \"{}\"", self.source, self.message)
+    }
+}
+
+impl<'a> WBCommandBuilder for Fail<'a> {
+    fn build(&self) -> WBCommand {
+        WBCommand(self.to_string())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{
-        BinNMU, BuildPriority, DepWait, SourceSpecifier, WBArchitecture, WBCommandBuilder,
+        BinNMU, BuildPriority, DepWait, Fail, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
     use crate::architectures::Architecture;
     use crate::archive::{Suite, SuiteOrCodename};
@@ -576,6 +612,17 @@ mod test {
             .build()
             .to_string(),
             "dw zathura . ANY . testing . -m \"libgirara-dev\""
+        );
+    }
+
+    #[test]
+    fn fail() {
+        assert_eq!(
+            Fail::new(&SourceSpecifier::new("zathura"), "#1234")
+                .unwrap()
+                .build()
+                .to_string(),
+            "fail zathura . ANY . unstable . -m \"#1234\""
         );
     }
 }
