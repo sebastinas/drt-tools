@@ -116,18 +116,15 @@ impl BinNMUBuildinfo {
                     println!("# skipping {}: {}", filename.display(), e);
                     continue;
                 }
-                Ok(bi) => {
-                    let command = self.process(bi, &source_packages);
-                    if command.is_err() {
-                        println!(
-                            "# skipping {}: {}",
-                            filename.display(),
-                            command.unwrap_err()
-                        );
+                Ok(bi) => match self.process(bi, &source_packages) {
+                    Err(e) => {
+                        println!("# skipping {}: {}", filename.display(), e,);
                         continue;
                     }
-                    wb_commands.insert(command.unwrap());
-                }
+                    Ok(command) => {
+                        wb_commands.insert(command);
+                    }
+                },
             }
         }
 

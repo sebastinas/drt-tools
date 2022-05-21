@@ -83,11 +83,12 @@ impl PrepareBinNMUs {
             if let Some(capture) = matcher.captures(&line) {
                 let package = capture.get(1);
                 let version = capture.get(2);
-                if package.is_none() || version.is_none() {
-                    continue;
-                }
 
-                let source = package.unwrap().as_str();
+                let (source, version) = match (package, version) {
+                    (Some(package), Some(version)) => (package.as_str(), version.as_str()),
+                    _ => continue,
+                };
+
                 if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
                     println!("# Skipping {} due to FTBFS bugs ...", source);
                     for bug in bugs {
@@ -97,7 +98,7 @@ impl PrepareBinNMUs {
                 }
 
                 let mut source = SourceSpecifier::new(source);
-                let version = version.unwrap().as_str().try_into()?;
+                let version = version.try_into()?;
                 source
                     .with_version(&version)
                     .with_suite(&self.options.binnmu_options.suite);
