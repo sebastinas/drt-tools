@@ -95,7 +95,7 @@ pub enum WBArchitecture {
     /// Specify an architecture
     Architecture(Architecture),
     /// Exclude a specific architecture
-    MinusArchitecture(Architecture),
+    ExcludeArchitecture(Architecture),
 }
 
 impl Display for WBArchitecture {
@@ -104,7 +104,7 @@ impl Display for WBArchitecture {
             WBArchitecture::Any => write!(f, "ANY"),
             WBArchitecture::All => write!(f, "ALL"),
             WBArchitecture::Architecture(arch) => write!(f, "{}", arch),
-            WBArchitecture::MinusArchitecture(arch) => write!(f, "-{}", arch),
+            WBArchitecture::ExcludeArchitecture(arch) => write!(f, "-{}", arch),
         }
     }
 }
@@ -118,7 +118,7 @@ impl TryFrom<&str> for WBArchitecture {
             "ALL" => Ok(WBArchitecture::All),
             _ => {
                 if let Some(stripped) = value.strip_prefix('-') {
-                    Ok(WBArchitecture::MinusArchitecture(stripped.try_into()?))
+                    Ok(WBArchitecture::ExcludeArchitecture(stripped.try_into()?))
                 } else {
                     Ok(WBArchitecture::Architecture(value.try_into()?))
                 }
@@ -221,9 +221,9 @@ impl<'a> BinNMU<'a> {
             match *arch {
                 // unable to nmu with source, -source, ALL, all
                 WBArchitecture::Architecture(Architecture::Source)
-                | WBArchitecture::MinusArchitecture(Architecture::Source)
+                | WBArchitecture::ExcludeArchitecture(Architecture::Source)
                 | WBArchitecture::Architecture(Architecture::All)
-                | WBArchitecture::MinusArchitecture(Architecture::All)
+                | WBArchitecture::ExcludeArchitecture(Architecture::All)
                 | WBArchitecture::All => {
                     return Err(Error::InvalidArchitecture(*arch, "nmu"));
                 }
@@ -319,7 +319,7 @@ impl<'a> DepWait<'a> {
             match *arch {
                 // unable to dw with source, -source
                 WBArchitecture::Architecture(Architecture::Source)
-                | WBArchitecture::MinusArchitecture(Architecture::Source) => {
+                | WBArchitecture::ExcludeArchitecture(Architecture::Source) => {
                     return Err(Error::InvalidArchitecture(*arch, "dw"));
                 }
                 _ => {}
@@ -356,7 +356,7 @@ impl<'a> BuildPriority<'a> {
             match *arch {
                 // unable to bp with source, -source
                 WBArchitecture::Architecture(Architecture::Source)
-                | WBArchitecture::MinusArchitecture(Architecture::Source) => {
+                | WBArchitecture::ExcludeArchitecture(Architecture::Source) => {
                     return Err(Error::InvalidArchitecture(*arch, "bp"));
                 }
                 _ => {}
@@ -405,7 +405,7 @@ mod test {
         );
         assert_eq!(
             WBArchitecture::try_from("-amd64").unwrap(),
-            WBArchitecture::MinusArchitecture(Architecture::Amd64)
+            WBArchitecture::ExcludeArchitecture(Architecture::Amd64)
         );
         assert!(WBArchitecture::try_from("-ALL").is_err());
     }
@@ -441,7 +441,7 @@ mod test {
             BinNMU::new(
                 SourceSpecifier::new("zathura").with_architectures(&[
                     WBArchitecture::Any,
-                    WBArchitecture::MinusArchitecture(Architecture::I386)
+                    WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
                 "Rebuild on buildd"
             )
@@ -517,7 +517,7 @@ mod test {
             BuildPriority::new(
                 SourceSpecifier::new("zathura").with_architectures(&[
                     WBArchitecture::Any,
-                    WBArchitecture::MinusArchitecture(Architecture::I386)
+                    WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
                 10
             )
@@ -558,7 +558,7 @@ mod test {
             DepWait::new(
                 SourceSpecifier::new("zathura").with_architectures(&[
                     WBArchitecture::Any,
-                    WBArchitecture::MinusArchitecture(Architecture::I386)
+                    WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
                 "libgirara-dev"
             )
