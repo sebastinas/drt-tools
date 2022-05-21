@@ -21,6 +21,7 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
     ProgressStyle::default_bar().progress_chars(PROGRESS_CHARS)
 }
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum CacheEntries {
     Excuses,
     Packages,
@@ -30,7 +31,7 @@ pub(crate) enum CacheEntries {
     // Sources,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum CacheState {
     NoUpdate,
     FreshFiles,
@@ -173,7 +174,7 @@ impl Cache {
         Ok(state)
     }
 
-    async fn download_ftbfs_bugs(&self, codename: &Codename) -> Result<CacheState> {
+    async fn download_ftbfs_bugs(&self, codename: Codename) -> Result<CacheState> {
         let url = format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename);
         let dest = format!("udd-ftbfs-bugs-{}.yaml", codename);
         self.downloader
