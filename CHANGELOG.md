@@ -1,21 +1,25 @@
 # Changelog
 
+## 0.2.5 (2022-05-22)
+
+* `nmu-eso`: Skip packages that FTBFS.
+
 ## 0.2.4 (2022-04-25)
 
 * Implement new sub-command:
-  * grep-excuses: similar to `grep-excuses(1)`.
+  * grep-excuses: Similar to `grep-excuses(1)`.
   * `nmu-eso`: Rebuild packages with outdated Built-Using.
-* `prepare-binNMUs`: skip packages with FTBFS bugs.
+* `prepare-binNMUs`: Skip packages with FTBFS bugs.
 
 ## 0.2.3 (2022-04-06)
 
 * Update to assorted-debian-utils 0.4.0.
-* `process-excuses`: correctly skip packages that would require a binNMU for arch: all.
+* `process-excuses`: Correctly skip packages that would require a binNMU for arch: all.
 
 ## 0.2.2 (2022-01-30)
 
 * Implement new sub-command:
-  * binnmu-buildinfo: based on a list of buildinfo files, schedule binNMUs.
+  * binnmu-buildinfo: Based on a list of buildinfo files, schedule binNMUs.
 * Migrate from `structopt` to `clap` 3.
 
 ## 0.2.1 (2021-12-22)
@@ -25,8 +29,8 @@
 ## 0.2 (2021-12-12)
 
 * Implement sub-commands:
-  * process-excuses: covers the old functionality
-  * prepare-binNMUs: generate a list of binNMUs for a transition
+  * process-excuses: Covers the old functionality
+  * prepare-binNMUs: Generate a list of binNMUs for a transition
 
 ## 0.1 (2021-11-17)
 
