@@ -4,6 +4,12 @@
 use std::cmp::min;
 
 use anyhow::Result;
+use assorted_debian_utils::{
+    architectures::Architecture,
+    archive::Component,
+    excuses::{self, ExcusesItem, PolicyInfo, Verdict},
+    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
+};
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, info, trace, warn};
@@ -13,11 +19,6 @@ use crate::{
     config::{self, CacheEntries, CacheState},
     source_packages::SourcePackages,
     BaseOptions,
-};
-use assorted_debian_utils::{
-    architectures::Architecture,
-    excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
-    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
 
 #[derive(Debug, Default, Serialize, Deserialize)]

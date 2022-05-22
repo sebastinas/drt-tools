@@ -48,6 +48,8 @@ pub enum ParseError {
     InvalidSuiteOrCodename,
     /// Given string is not a valid multi-arch value
     InvalidMultiArch,
+    /// Given string is not a valid compoment
+    InvalidComponent,
 }
 
 impl Display for ParseError {
@@ -62,6 +64,7 @@ impl Display for ParseError {
             ParseError::InvalidCodename => write!(f, "invalid codename"),
             ParseError::InvalidSuiteOrCodename => write!(f, "invalid suite or codename"),
             ParseError::InvalidMultiArch => write!(f, "invalid multi-arch"),
+            ParseError::InvalidComponent => write!(f, "invalid component"),
         }
     }
 }

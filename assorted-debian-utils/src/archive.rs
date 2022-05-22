@@ -340,9 +340,53 @@ impl FromStr for MultiArch {
     }
 }
 
+/// Debian archive components
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Component {
+    /// The `main` archive component
+    Main,
+    /// The `contrib` archive component
+    Contrib,
+    /// The `non-free` archive component
+    #[serde(rename = "non-free")]
+    NonFree,
+}
+
+impl Display for Component {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Component::Main => write!(f, "main"),
+            Component::Contrib => write!(f, "contrib"),
+            Component::NonFree => write!(f, "non-free"),
+        }
+    }
+}
+
+impl TryFrom<&str> for Component {
+    type Error = ParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "main" => Ok(Component::Main),
+            "contrib" => Ok(Component::Contrib),
+            "non-free" => Ok(Component::NonFree),
+            _ => Err(ParseError::InvalidComponent),
+        }
+    }
+}
+
+impl FromStr for Component {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Component::try_from(s)
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{Codename, Extension, MultiArch, Suite, SuiteOrCodename};
+    use super::*;
 
     #[test]
     fn suite_from_str() {
@@ -400,5 +444,10 @@ mod test {
     #[test]
     fn multi_arch_from_str() {
         assert_eq!(MultiArch::try_from("foreign").unwrap(), MultiArch::Foreign);
+    }
+
+    #[test]
+    fn compoment_from_str() {
+        assert_eq!(Component::try_from("main").unwrap(), Component::Main);
     }
 }

@@ -6,12 +6,12 @@
 //! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
-use std::{collections::HashMap, fmt::Display, io};
+use std::{collections::HashMap, io};
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::{architectures::Architecture, utils::DateTimeVisitor};
+use crate::{architectures::Architecture, archive::Component, utils::DateTimeVisitor};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
@@ -56,29 +56,6 @@ pub enum Verdict {
     /// Rejected, but not able to determine if the issue is transient
     #[serde(rename = "REJECTED_CANNOT_DETERMINE_IF_PERMANENT")]
     RejectedCannotDetermineIfPermanent,
-}
-
-/// Debian archive components
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum Component {
-    /// The `main` archive component
-    Main,
-    /// The `contrib` archive component
-    Contrib,
-    /// The `non-free` archive component
-    #[serde(rename = "non-free")]
-    NonFree,
-}
-
-impl Display for Component {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Component::Main => write!(f, "main"),
-            Component::Contrib => write!(f, "contrib"),
-            Component::NonFree => write!(f, "non-free"),
-        }
-    }
 }
 
 /// Age policy info
