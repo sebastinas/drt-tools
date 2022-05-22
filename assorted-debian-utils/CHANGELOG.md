@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5 (2022-05-22)
+
+* Implement Clone and Copy consistently for enums.
+* wb: Rename MinusArchitecture to ExcludeArchitecture.
+* wb: Add builder for `wb fail`.
+* excuses: Move Component to archive.
+
 ## 0.4.1 (2022-04-24)
 
 * Add parser for auto-removals.
