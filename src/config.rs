@@ -226,7 +226,7 @@ impl Cache {
                 CacheEntries::Excuses => self.download_excuses().await?,
                 CacheEntries::Packages => self.download_packages().await?,
                 // CacheEntries::Sources => self.download_sources().await?,
-                CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(codename).await?,
+                CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(*codename).await?,
                 CacheEntries::AutoRemovals => self.download_auto_removals().await?,
                 CacheEntries::OutdatedBuiltUsing => self.download_outdated_builtusing().await?,
             };
