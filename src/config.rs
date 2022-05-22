@@ -261,4 +261,12 @@ impl Cache {
             self.base_directory.place_data_file(path)?,
         )?))
     }
+
+    pub fn get_package_paths(&self) -> Result<Vec<PathBuf>> {
+        let mut all_paths = vec![];
+        for architecture in RELEASE_ARCHITECTURES {
+            all_paths.push(self.get_cache_path(format!("Packages_{}", architecture))?);
+        }
+        Ok(all_paths)
+    }
 }

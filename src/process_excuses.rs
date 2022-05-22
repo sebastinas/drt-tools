@@ -14,7 +14,7 @@ use crate::{
     BaseOptions,
 };
 use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    architectures::Architecture,
     excuses::{self, Component, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
@@ -193,15 +193,7 @@ impl ProcessExcuses {
             return Ok(());
         }
 
-        let mut all_paths = vec![];
-        for architecture in RELEASE_ARCHITECTURES {
-            all_paths.push(
-                self.cache
-                    .get_cache_path(format!("Packages_{}", architecture))?,
-            );
-        }
-        let source_packages = SourcePackages::new(&all_paths)?;
-
+        let source_packages = SourcePackages::new(&self.cache.get_package_paths()?)?;
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 

@@ -5,7 +5,7 @@ use std::{collections::HashSet, io::BufRead, path::Path};
 
 use anyhow::Result;
 use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    architectures::Architecture,
     archive::{Codename, Suite},
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
@@ -107,15 +107,8 @@ impl NMUOutdatedBuiltUsing {
         }
 
         let ftbfs_bugs = self.load_bugs(&codename)?;
-        let mut all_paths = vec![];
-        for architecture in RELEASE_ARCHITECTURES {
-            all_paths.push(
-                self.cache
-                    .get_cache_path(format!("Packages_{}", architecture))?,
-            );
-        }
         let mut actionable_sources = HashSet::<String>::new();
-        for path in all_paths {
+        for path in self.cache.get_package_paths()? {
             let sources = Self::parse_packages(path);
             actionable_sources.extend(sources?);
         }
