@@ -6,7 +6,7 @@
 //! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, fmt::Display, io};
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -69,6 +69,16 @@ pub enum Component {
     /// The `non-free` archive component
     #[serde(rename = "non-free")]
     NonFree,
+}
+
+impl Display for Component {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Component::Main => write!(f, "main"),
+            Component::Contrib => write!(f, "contrib"),
+            Component::NonFree => write!(f, "non-free"),
+        }
+    }
 }
 
 /// Age policy info
