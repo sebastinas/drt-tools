@@ -34,3 +34,5 @@ voca_rs = "1.14"
 log = "0.4"
 stderrlog = "0.5"
 flate2 = { version = "1.0", default-features = false, features = ["zlib"] }
+smartstring = "1.0"
+smallvec = "1.0"

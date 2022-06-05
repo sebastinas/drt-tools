@@ -11,13 +11,15 @@ use assorted_debian_utils::archive::Suite;
 use clap::Parser;
 // use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, info, warn};
+use smallvec::SmallVec;
+use smartstring::{LazyCompact, SmartString};
 
 use crate::{
     config::{self, CacheEntries},
     BaseOptions,
 };
 
-fn strip_section(package: &str) -> String {
+fn strip_section(package: &str) -> SmartString<LazyCompact> {
     package.split_once('/').map_or(package, |(_, p)| p).into()
 }
 
@@ -25,8 +27,8 @@ fn load_contents(
     cache: &config::Cache,
     suite: Suite,
     arch: Architecture,
-) -> Result<HashMap<String, HashSet<String>>> {
-    let mut file_map: HashMap<String, HashSet<String>> = HashMap::new();
+) -> Result<HashMap<String, SmallVec<[SmartString<LazyCompact>; 4]>>> {
+    let mut file_map: HashMap<String, SmallVec<[SmartString<LazyCompact>; 4]>> = HashMap::new();
 
     for (architecture, path) in cache.get_content_paths(suite)? {
         if arch != architecture {
@@ -130,7 +132,11 @@ impl UsrMerged {
                     None => continue,
                 };
 
-                if stable_packages == testing_packages {
+                let stable_packages_set: HashSet<&str> =
+                    HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
+                let testing_packages_set: HashSet<&str> =
+                    HashSet::from_iter(testing_packages.iter().map(|v| v.as_str()));
+                if stable_packages_set == testing_packages_set {
                     info!(
                         "Renamed {} to {} (packages {:?})",
                         path, path_to_test, testing_packages,
