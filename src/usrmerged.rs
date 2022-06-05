@@ -20,19 +20,18 @@ use crate::{
 };
 
 type SmallString = SmartString<LazyCompact>;
+// if there is a file in more than one package, the most common case are two packages
+type LoadIterator = dyn Iterator<Item = (SmallString, SmallVec<[SmallString; 2]>)>;
 
 fn strip_section(package: &str) -> SmallString {
     package.split_once('/').map_or(package, |(_, p)| p).into()
 }
 
-fn load_contents(
+fn load_contents_iter(
     cache: &config::Cache,
     suite: Suite,
     arch: Architecture,
-) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
-    // if there is a file in more than one package, the most common case are two packages
-    let mut file_map: HashMap<SmallString, SmallVec<[SmallString; 2]>> = HashMap::new();
-
+) -> Result<Box<LoadIterator>> {
     for (architecture, path) in cache.get_content_paths(suite)? {
         if arch != architecture {
             continue;
@@ -46,10 +45,12 @@ fn load_contents(
         );
 
         let reader = BufReader::new(File::open(path)?);
-        for line in reader.lines() {
+        return Ok(Box::new(reader.lines().filter_map(|line| {
             let line = match line {
-                Ok(inner_line) => inner_line,
-                Err(_) => break,
+                Ok(line) => line,
+                _ => {
+                    return None;
+                }
             };
 
             let mut split = line.split_whitespace();
@@ -57,15 +58,24 @@ fn load_contents(
                 (Some(path), Some(packages)) => (path, packages),
                 _ => {
                     warn!("Unable to process line: {}", line);
-                    continue;
+                    return None;
                 }
             };
 
             let packages = packages.split(',');
-            file_map.insert(path.into(), packages.map(strip_section).collect());
-        }
+            Some((path.into(), packages.map(strip_section).collect()))
+        })));
     }
-    Ok(file_map)
+
+    unreachable!("This will never be reached.");
+}
+
+fn load_contents(
+    cache: &config::Cache,
+    suite: Suite,
+    arch: Architecture,
+) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
+    Ok(HashMap::from_iter(load_contents_iter(cache, suite, arch)?))
 }
 
 #[derive(Debug, Parser)]
@@ -106,7 +116,6 @@ impl UsrMerged {
             .into_iter()
             .chain([Architecture::All].into_iter())
         {
-            let stable_file_map = load_contents(&self.cache, Suite::Stable(None), architecture)?;
             let testing_file_map = load_contents(&self.cache, Suite::Testing(None), architecture)?;
 
             /*
@@ -117,7 +126,9 @@ impl UsrMerged {
             pb.set_message("Processing contents");
             */
 
-            for (path, stable_packages) in &stable_file_map {
+            for (path, stable_packages) in
+                load_contents_iter(&self.cache, Suite::Stable(None), architecture)?
+            {
                 // .iter().progress_with(pb) {
                 let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
                     stripped.into()
