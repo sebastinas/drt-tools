@@ -1,4 +1,4 @@
-// Copyright 2021-2022 Sebastian Ramacher
+// Copyright 2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::collections::{HashMap, HashSet};
@@ -51,15 +51,15 @@ fn load_contents(
                 }
             };
 
-            let packages: Vec<&str> = packages.split(',').collect();
+            let packages = packages.split(',');
             match file_map.get_mut(&(path.into(), architecture)) {
                 Some(entry) => {
-                    entry.extend(packages.into_iter().map(strip_section));
+                    entry.extend(packages.map(strip_section));
                 }
                 None => {
                     file_map.insert(
                         (path.into(), architecture),
-                        packages.into_iter().map(strip_section).collect(),
+                        packages.map(strip_section).collect(),
                     );
                 }
             }
