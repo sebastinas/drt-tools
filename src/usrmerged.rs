@@ -75,16 +75,22 @@ fn load_contents(
 }
 
 #[derive(Debug, Parser)]
-pub(crate) struct UsrMergedOptions {}
+pub(crate) struct UsrMergedOptions {
+    #[clap(long)]
+    /// Also include files that only moved between / and /usr
+    only_files_moved: bool,
+}
 
 pub(crate) struct UsrMerged {
     cache: config::Cache,
+    options: UsrMergedOptions,
 }
 
 impl UsrMerged {
-    pub(crate) fn new(base_options: BaseOptions, _: UsrMergedOptions) -> Result<Self> {
+    pub(crate) fn new(base_options: BaseOptions, options: UsrMergedOptions) -> Result<Self> {
         Ok(Self {
             cache: config::Cache::new(base_options.force_download)?,
+            options,
         })
     }
 
@@ -138,15 +144,20 @@ impl UsrMerged {
                     HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
                 let testing_packages_set: HashSet<&str> =
                     HashSet::from_iter(testing_packages.iter().map(|v| v.as_str()));
-                if stable_packages_set == testing_packages_set {
+                if stable_packages_set != testing_packages_set {
+                    println!(
+                        "{}: {} => {}: {:?} vs {:?}",
+                        architecture, path, path_to_test, stable_packages, testing_packages,
+                    );
+                } else if self.options.only_files_moved {
+                    println!(
+                        "{}: {} => {}: {:?}",
+                        architecture, path, path_to_test, stable_packages,
+                    );
+                } else {
                     info!(
                         "Renamed {} to {} (packages {:?})",
                         path, path_to_test, testing_packages,
-                    );
-                } else {
-                    println!(
-                        "E: {}: Renamed {} to {} and packages changed: {:?} vs {:?}",
-                        architecture, path, path_to_test, stable_packages, testing_packages,
                     );
                 }
             }
