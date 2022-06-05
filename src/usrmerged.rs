@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use anyhow::Result;
-use assorted_debian_utils::architectures::Architecture;
+use assorted_debian_utils::architectures::{Architecture, RELEASE_ARCHITECTURES};
 use assorted_debian_utils::archive::Suite;
 use clap::Parser;
 // use indicatif::{ProgressBar, ProgressIterator};
@@ -24,10 +24,15 @@ fn strip_section(package: &str) -> String {
 fn load_contents(
     cache: &config::Cache,
     suite: Suite,
-) -> Result<HashMap<(String, Architecture), HashSet<String>>> {
-    let mut file_map: HashMap<(String, Architecture), HashSet<String>> = HashMap::new();
+    arch: Architecture,
+) -> Result<HashMap<String, HashSet<String>>> {
+    let mut file_map: HashMap<String, HashSet<String>> = HashMap::new();
 
     for (architecture, path) in cache.get_content_paths(suite)? {
+        if arch != architecture {
+            continue;
+        }
+
         log::debug!(
             "Processing contents for {} on {}: {:?}",
             suite,
@@ -52,15 +57,12 @@ fn load_contents(
             };
 
             let packages = packages.split(',');
-            match file_map.get_mut(&(path.into(), architecture)) {
+            match file_map.get_mut(path) {
                 Some(entry) => {
                     entry.extend(packages.map(strip_section));
                 }
                 None => {
-                    file_map.insert(
-                        (path.into(), architecture),
-                        packages.map(strip_section).collect(),
-                    );
+                    file_map.insert(path.into(), packages.map(strip_section).collect());
                 }
             }
         }
@@ -96,45 +98,49 @@ impl UsrMerged {
     pub(crate) fn run(self) -> Result<()> {
         self.download_to_cache()?;
 
-        let stable_file_map = load_contents(&self.cache, Suite::Stable(None))?;
-        let testing_file_map = load_contents(&self.cache, Suite::Testing(None))?;
+        for architecture in RELEASE_ARCHITECTURES
+            .into_iter()
+            .chain([Architecture::All].into_iter())
+        {
+            let stable_file_map = load_contents(&self.cache, Suite::Stable(None), architecture)?;
+            let testing_file_map = load_contents(&self.cache, Suite::Testing(None), architecture)?;
 
-        /*
-        let pb = ProgressBar::new(stable_file_map.len() as u64);
-        pb.set_style(config::default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        ));
-        pb.set_message("Processing contents");
-        */
+            /*
+            let pb = ProgressBar::new(stable_file_map.len() as u64);
+            pb.set_style(config::default_progress_style().template(
+                "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+            ));
+            pb.set_message("Processing contents");
+            */
 
-        for ((path, architecture), stable_packages) in &stable_file_map {
-            // .iter().progress_with(pb) {
-            let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
-                stripped.into()
-            } else {
-                format!("usr/{}", path)
-            };
-            debug!(
-                "{}: processing {} - checking for {}",
-                architecture, path, path_to_test
-            );
+            for (path, stable_packages) in &stable_file_map {
+                // .iter().progress_with(pb) {
+                let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
+                    stripped.into()
+                } else {
+                    format!("usr/{}", path)
+                };
+                debug!(
+                    "{}: processing {} - checking for {}",
+                    architecture, path, path_to_test
+                );
 
-            let testing_packages =
-                match testing_file_map.get(&(path_to_test.clone(), *architecture)) {
+                let testing_packages = match testing_file_map.get(&path_to_test) {
                     Some(packages) => packages,
                     None => continue,
                 };
 
-            if stable_packages == testing_packages {
-                info!(
-                    "Renamed {} to {} (packages {:?})",
-                    path, path_to_test, testing_packages,
-                );
-            } else {
-                println!(
-                    "E: {}: Renamed {} to {} and packages changed: {:?} vs {:?}",
-                    architecture, path, path_to_test, stable_packages, testing_packages,
-                );
+                if stable_packages == testing_packages {
+                    info!(
+                        "Renamed {} to {} (packages {:?})",
+                        path, path_to_test, testing_packages,
+                    );
+                } else {
+                    println!(
+                        "E: {}: Renamed {} to {} and packages changed: {:?} vs {:?}",
+                        architecture, path, path_to_test, stable_packages, testing_packages,
+                    );
+                }
             }
         }
 
