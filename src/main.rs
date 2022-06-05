@@ -14,12 +14,14 @@ mod prepare_binnmus;
 mod process_excuses;
 pub(crate) mod source_packages;
 pub(crate) mod udd_bugs;
+mod usrmerged;
 
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
+use usrmerged::{UsrMerged, UsrMergedOptions};
 
 #[derive(Debug, Parser)]
 pub(crate) struct BaseOptions {
@@ -98,6 +100,9 @@ enum DrtToolsCommands {
     /// Prepare binNMUs to rebuild for outdated Built-Using
     #[clap(name = "nmu-eso")]
     NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
+    /// Check state of /usr-merged bugs
+    #[clap(name = "usrmerged")]
+    UsrMerged(UsrMergedOptions),
 }
 
 fn main() -> Result<()> {
@@ -130,6 +135,10 @@ fn main() -> Result<()> {
         DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => {
             let nmu_eso = NMUOutdatedBuiltUsing::new(opts.base_options, eso_opts)?;
             nmu_eso.run()
+        }
+        DrtToolsCommands::UsrMerged(um_opts) => {
+            let usr_merged = UsrMerged::new(opts.base_options, um_opts)?;
+            usr_merged.run()
         }
     }
 }
