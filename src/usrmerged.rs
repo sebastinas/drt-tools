@@ -19,7 +19,9 @@ use crate::{
     BaseOptions,
 };
 
-fn strip_section(package: &str) -> SmartString<LazyCompact> {
+type SmallString = SmartString<LazyCompact>;
+
+fn strip_section(package: &str) -> SmallString {
     package.split_once('/').map_or(package, |(_, p)| p).into()
 }
 
@@ -27,8 +29,8 @@ fn load_contents(
     cache: &config::Cache,
     suite: Suite,
     arch: Architecture,
-) -> Result<HashMap<String, SmallVec<[SmartString<LazyCompact>; 4]>>> {
-    let mut file_map: HashMap<String, SmallVec<[SmartString<LazyCompact>; 4]>> = HashMap::new();
+) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
+    let mut file_map: HashMap<SmallString, SmallVec<[SmallString; 2]>> = HashMap::new();
 
     for (architecture, path) in cache.get_content_paths(suite)? {
         if arch != architecture {
@@ -127,7 +129,7 @@ impl UsrMerged {
                     architecture, path, path_to_test
                 );
 
-                let testing_packages = match testing_file_map.get(&path_to_test) {
+                let testing_packages = match testing_file_map.get(path_to_test.as_str()) {
                     Some(packages) => packages,
                     None => continue,
                 };
