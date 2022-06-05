@@ -30,6 +30,7 @@ fn load_contents(
     suite: Suite,
     arch: Architecture,
 ) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
+    // if there is a file in more than one package, the most common case are two packages
     let mut file_map: HashMap<SmallString, SmallVec<[SmallString; 2]>> = HashMap::new();
 
     for (architecture, path) in cache.get_content_paths(suite)? {
@@ -61,14 +62,7 @@ fn load_contents(
             };
 
             let packages = packages.split(',');
-            match file_map.get_mut(path) {
-                Some(entry) => {
-                    entry.extend(packages.map(strip_section));
-                }
-                None => {
-                    file_map.insert(path.into(), packages.map(strip_section).collect());
-                }
-            }
+            file_map.insert(path.into(), packages.map(strip_section).collect());
         }
     }
     Ok(file_map)
