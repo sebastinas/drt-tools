@@ -8,7 +8,10 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use assorted_debian_utils::{architectures::RELEASE_ARCHITECTURES, archive::Codename};
+use assorted_debian_utils::{
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    archive::{Codename, Suite},
+};
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::debug;
@@ -30,6 +33,7 @@ pub(crate) enum CacheEntries {
     AutoRemovals,
     OutdatedBuiltUsing,
     // Sources,
+    Contents(Suite),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -101,7 +105,7 @@ impl Downloader {
         &self,
         res: Response,
         pb: &ProgressBar,
-        mut writer: impl Write,
+        writer: &mut impl Write,
     ) -> Result<()> {
         let mut stream = res.bytes_stream();
         while let Some(item) = stream.next().await {
@@ -124,13 +128,17 @@ impl Downloader {
         }
 
         let (res, pb) = res.unwrap();
-        let file = File::create(&path)
+        let mut file = File::create(&path)
             .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?;
         if url.ends_with(".xz") {
-            self.download_internal(res, &pb, XzDecoder::new(file))
+            self.download_internal(res, &pb, &mut XzDecoder::new(file))
                 .await?;
+        } else if url.ends_with(".gz") {
+            let mut writer = flate2::write::GzDecoder::new(file);
+            self.download_internal(res, &pb, &mut writer).await?;
+            writer.try_finish()?;
         } else {
-            self.download_internal(res, &pb, file).await?;
+            self.download_internal(res, &pb, &mut file).await?;
         }
         pb.finish_with_message(format!("Downloaded {}", url));
         debug!("Download of {} to {:?} done", url, path.as_ref());
@@ -159,6 +167,29 @@ impl Cache {
                 self.get_cache_path("excuses.yaml")?,
             )
             .await
+    }
+
+    async fn download_contents(&self, suite: Suite) -> Result<CacheState> {
+        let mut state = CacheState::NoUpdate;
+        for architecture in RELEASE_ARCHITECTURES
+            .into_iter()
+            .chain([Architecture::All].into_iter())
+        {
+            let url = format!(
+                "https://deb.debian.org/debian/dists/{}/main/Contents-{}.gz",
+                suite, architecture
+            );
+            let dest = format!("Contents_{}_{}", suite, architecture);
+            if self
+                .downloader
+                .download_file(&url, self.get_cache_path(&dest)?)
+                .await?
+                == CacheState::FreshFiles
+            {
+                state = CacheState::FreshFiles;
+            }
+        }
+        Ok(state)
     }
 
     async fn download_packages(&self) -> Result<CacheState> {
@@ -229,6 +260,7 @@ impl Cache {
                 CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(*codename).await?,
                 CacheEntries::AutoRemovals => self.download_auto_removals().await?,
                 CacheEntries::OutdatedBuiltUsing => self.download_outdated_builtusing().await?,
+                CacheEntries::Contents(suite) => self.download_contents(*suite).await?,
             };
             if new_state == CacheState::FreshFiles {
                 state = CacheState::FreshFiles;
@@ -273,6 +305,20 @@ impl Cache {
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {
             all_paths.push(self.get_cache_path(format!("Packages_{}", architecture))?);
+        }
+        Ok(all_paths)
+    }
+
+    pub fn get_content_paths(&self, suite: Suite) -> Result<Vec<(Architecture, PathBuf)>> {
+        let mut all_paths = vec![];
+        for architecture in RELEASE_ARCHITECTURES
+            .into_iter()
+            .chain([Architecture::All].into_iter())
+        {
+            all_paths.push((
+                architecture,
+                self.get_cache_path(format!("Contents_{}_{}", suite, architecture))?,
+            ));
         }
         Ok(all_paths)
     }
