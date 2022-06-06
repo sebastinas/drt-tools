@@ -9,7 +9,7 @@ use anyhow::Result;
 use assorted_debian_utils::architectures::{Architecture, RELEASE_ARCHITECTURES};
 use assorted_debian_utils::archive::Suite;
 use clap::Parser;
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
 
@@ -26,13 +26,21 @@ fn strip_section(package: &str) -> SmallString {
     package.split_once('/').map_or(package, |(_, p)| p).into()
 }
 
+fn compute_path_to_test(path: impl AsRef<str>) -> String {
+    if let Some(stripped) = path.as_ref().strip_prefix("usr/") {
+        stripped.into()
+    } else {
+        format!("usr/{}", path.as_ref())
+    }
+}
+
 #[derive(Debug, Parser)]
 pub(crate) struct UsrMergedOptions {
+    /// Also include files that only moved between / and /usr but stayed in the same package
     #[clap(long)]
-    /// Also include files that only moved between / and /usr
-    only_files_moved: bool,
-    #[clap(long)]
+    include_moved_in_package: bool,
     /// Do not skip some paths known to not be affected
+    #[clap(long)]
     no_skip: bool,
 }
 
@@ -82,6 +90,7 @@ impl UsrMerged {
                         return None;
                     }
                 };
+                trace!("Processing: {}", line);
 
                 let mut split = line.split_whitespace();
                 let (path, packages) = match (split.next(), split.next()) {
@@ -98,7 +107,7 @@ impl UsrMerged {
                         .into_iter()
                         .any(|prefix| path.starts_with(prefix))
                 {
-                    info!("Skipping {}", path);
+                    debug!("Skipping {}", path);
                     return None;
                 }
 
@@ -126,7 +135,8 @@ impl UsrMerged {
         // Check if file from stable on $architecture moved to other
         // packages on testing on $architecture | all. If architecture ==
         // all, this will check all -> all.
-        let testing_all_file_map = self.load_contents(Suite::Testing(None), Architecture::All)?;
+        let mut testing_all_file_map =
+            self.load_contents(Suite::Testing(None), Architecture::All)?;
         for architecture in RELEASE_ARCHITECTURES
             .into_iter()
             .chain([Architecture::All].into_iter())
@@ -140,11 +150,7 @@ impl UsrMerged {
             for (path, stable_packages) in
                 self.load_contents_iter(Suite::Stable(None), architecture)?
             {
-                let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
-                    stripped.into()
-                } else {
-                    format!("usr/{}", path)
-                };
+                let path_to_test = compute_path_to_test(&path);
                 debug!(
                     "{}: processing {} - checking for {}",
                     architecture, path, path_to_test
@@ -154,7 +160,10 @@ impl UsrMerged {
                     testing_file_map.get(path_to_test.as_str()),
                     testing_all_file_map.get(path_to_test.as_str()),
                 ) {
-                    (None, None) => continue,
+                    (None, None) => {
+                        debug!("{}: {} not found", architecture, path_to_test);
+                        continue;
+                    }
                     (None, Some(packages)) | (Some(packages), None) => {
                         HashSet::from_iter(packages.iter().map(|v| v.as_str()))
                     }
@@ -173,7 +182,7 @@ impl UsrMerged {
                         "{}: {} => {}: {:?} vs {:?}",
                         architecture, path, path_to_test, stable_packages_set, testing_packages_set,
                     );
-                } else if self.options.only_files_moved {
+                } else if self.options.include_moved_in_package {
                     println!(
                         "{}: {} => {}: {:?}",
                         architecture, path, path_to_test, stable_packages_set,
@@ -186,6 +195,7 @@ impl UsrMerged {
                 }
             }
         }
+        testing_all_file_map.clear();
 
         // Check if file from stable on all moved to other
         // packages on testing on $architecture for all architectures except all.
@@ -195,11 +205,7 @@ impl UsrMerged {
             for (path, stable_packages) in
                 self.load_contents_iter(Suite::Stable(None), Architecture::All)?
             {
-                let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
-                    stripped.into()
-                } else {
-                    format!("usr/{}", path)
-                };
+                let path_to_test = compute_path_to_test(&path);
                 debug!(
                     "{} -> {}: processing {} - checking for {}",
                     Architecture::All,
@@ -209,7 +215,10 @@ impl UsrMerged {
                 );
 
                 let testing_packages_set = match testing_file_map.get(path_to_test.as_str()) {
-                    None => continue,
+                    None => {
+                        debug!("{}: {} not found", Architecture::All, path_to_test);
+                        continue;
+                    }
                     Some(packages) => HashSet::from_iter(packages.iter().map(|v| v.as_str())),
                 };
 
@@ -225,7 +234,7 @@ impl UsrMerged {
                         stable_packages_set,
                         testing_packages_set,
                     );
-                } else if self.options.only_files_moved {
+                } else if self.options.include_moved_in_package {
                     println!(
                         "{} -> {}: {} => {}: {:?}",
                         Architecture::All,
