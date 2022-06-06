@@ -74,8 +74,9 @@ impl UsrMerged {
                 path
             );
 
+            let no_skip = self.options.no_skip;
             let reader = BufReader::new(File::open(path)?);
-            return Ok(Box::new(reader.lines().filter_map(|line| {
+            return Ok(Box::new(reader.lines().filter_map(move |line| {
                 let line = match line {
                     Ok(line) => line,
                     _ => {
@@ -92,11 +93,13 @@ impl UsrMerged {
                     }
                 };
 
-                // there are no packages with files in boot/, usr/etc/, and usr/lib/modules/
-                if path.starts_with("boot/")
-                    || path.starts_with("etc/")
-                    || path.starts_with("lib/modules/")
+                // there are no packages with files in boot/, usr/etc/, usr/lib/modules/, ...
+                if !no_skip
+                    && ["boot/", "etc/", "lib/modules/", "usr/src/", "var/"]
+                        .into_iter()
+                        .any(|prefix| path.starts_with(prefix))
                 {
+                    info!("Skipping {}", path);
                     return None;
                 }
 
