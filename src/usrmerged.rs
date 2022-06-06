@@ -9,7 +9,6 @@ use anyhow::Result;
 use assorted_debian_utils::architectures::{Architecture, RELEASE_ARCHITECTURES};
 use assorted_debian_utils::archive::Suite;
 use clap::Parser;
-// use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, info, warn};
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
@@ -124,24 +123,20 @@ impl UsrMerged {
     pub(crate) fn run(self) -> Result<()> {
         self.download_to_cache()?;
 
+        let testing_all_file_map = self.load_contents(Suite::Testing(None), Architecture::All)?;
         for architecture in RELEASE_ARCHITECTURES
             .into_iter()
             .chain([Architecture::All].into_iter())
         {
-            let testing_file_map = self.load_contents(Suite::Testing(None), architecture)?;
-
-            /*
-            let pb = ProgressBar::new(stable_file_map.len() as u64);
-            pb.set_style(config::default_progress_style().template(
-                "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-            ));
-            pb.set_message("Processing contents");
-            */
+            let testing_file_map = if architecture != Architecture::All {
+                self.load_contents(Suite::Testing(None), architecture)?
+            } else {
+                HashMap::new()
+            };
 
             for (path, stable_packages) in
                 self.load_contents_iter(Suite::Stable(None), architecture)?
             {
-                // .iter().progress_with(pb) {
                 let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
                     stripped.into()
                 } else {
@@ -152,29 +147,38 @@ impl UsrMerged {
                     architecture, path, path_to_test
                 );
 
-                let testing_packages = match testing_file_map.get(path_to_test.as_str()) {
-                    Some(packages) => packages,
-                    None => continue,
+                let testing_packages_set = match (
+                    testing_file_map.get(path_to_test.as_str()),
+                    testing_all_file_map.get(path_to_test.as_str()),
+                ) {
+                    (None, None) => continue,
+                    (None, Some(packages)) | (Some(packages), None) => {
+                        HashSet::from_iter(packages.iter().map(|v| v.as_str()))
+                    }
+                    (Some(arch_packages), Some(all_packages)) => HashSet::from_iter(
+                        arch_packages
+                            .iter()
+                            .chain(all_packages.iter())
+                            .map(|v| v.as_str()),
+                    ),
                 };
 
                 let stable_packages_set: HashSet<&str> =
                     HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
-                let testing_packages_set: HashSet<&str> =
-                    HashSet::from_iter(testing_packages.iter().map(|v| v.as_str()));
                 if stable_packages_set != testing_packages_set {
                     println!(
                         "{}: {} => {}: {:?} vs {:?}",
-                        architecture, path, path_to_test, stable_packages, testing_packages,
+                        architecture, path, path_to_test, stable_packages_set, testing_packages_set,
                     );
                 } else if self.options.only_files_moved {
                     println!(
                         "{}: {} => {}: {:?}",
-                        architecture, path, path_to_test, stable_packages,
+                        architecture, path, path_to_test, stable_packages_set,
                     );
                 } else {
                     info!(
                         "Renamed {} to {} (packages {:?})",
-                        path, path_to_test, testing_packages,
+                        path, path_to_test, testing_packages_set,
                     );
                 }
             }
