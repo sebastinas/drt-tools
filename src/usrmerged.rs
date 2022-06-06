@@ -27,62 +27,14 @@ fn strip_section(package: &str) -> SmallString {
     package.split_once('/').map_or(package, |(_, p)| p).into()
 }
 
-fn load_contents_iter(
-    cache: &config::Cache,
-    suite: Suite,
-    arch: Architecture,
-) -> Result<Box<LoadIterator>> {
-    for (architecture, path) in cache.get_content_paths(suite)? {
-        if arch != architecture {
-            continue;
-        }
-
-        log::debug!(
-            "Processing contents for {} on {}: {:?}",
-            suite,
-            architecture,
-            path
-        );
-
-        let reader = BufReader::new(File::open(path)?);
-        return Ok(Box::new(reader.lines().filter_map(|line| {
-            let line = match line {
-                Ok(line) => line,
-                _ => {
-                    return None;
-                }
-            };
-
-            let mut split = line.split_whitespace();
-            let (path, packages) = match (split.next(), split.next()) {
-                (Some(path), Some(packages)) => (path, packages),
-                _ => {
-                    warn!("Unable to process line: {}", line);
-                    return None;
-                }
-            };
-
-            let packages = packages.split(',');
-            Some((path.into(), packages.map(strip_section).collect()))
-        })));
-    }
-
-    unreachable!("This will never be reached.");
-}
-
-fn load_contents(
-    cache: &config::Cache,
-    suite: Suite,
-    arch: Architecture,
-) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
-    Ok(HashMap::from_iter(load_contents_iter(cache, suite, arch)?))
-}
-
 #[derive(Debug, Parser)]
 pub(crate) struct UsrMergedOptions {
     #[clap(long)]
     /// Also include files that only moved between / and /usr
     only_files_moved: bool,
+    #[clap(long)]
+    /// Do not skip some paths known to not be affected
+    no_skip: bool,
 }
 
 pub(crate) struct UsrMerged {
@@ -109,6 +61,63 @@ impl UsrMerged {
         Ok(())
     }
 
+    fn load_contents_iter(&self, suite: Suite, arch: Architecture) -> Result<Box<LoadIterator>> {
+        for (architecture, path) in self.cache.get_content_paths(suite)? {
+            if arch != architecture {
+                continue;
+            }
+
+            log::debug!(
+                "Processing contents for {} on {}: {:?}",
+                suite,
+                architecture,
+                path
+            );
+
+            let reader = BufReader::new(File::open(path)?);
+            return Ok(Box::new(reader.lines().filter_map(|line| {
+                let line = match line {
+                    Ok(line) => line,
+                    _ => {
+                        return None;
+                    }
+                };
+
+                let mut split = line.split_whitespace();
+                let (path, packages) = match (split.next(), split.next()) {
+                    (Some(path), Some(packages)) => (path, packages),
+                    _ => {
+                        warn!("Unable to process line: {}", line);
+                        return None;
+                    }
+                };
+
+                // there are no packages with files in boot/, usr/etc/, and usr/lib/modules/
+                if path.starts_with("boot/")
+                    || path.starts_with("etc/")
+                    || path.starts_with("lib/modules/")
+                {
+                    return None;
+                }
+
+                Some((
+                    path.into(),
+                    packages.split(',').map(strip_section).collect(),
+                ))
+            })));
+        }
+
+        unreachable!("This will never be reached.");
+    }
+
+    fn load_contents(
+        &self,
+        suite: Suite,
+        arch: Architecture,
+    ) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
+        Ok(HashMap::from_iter(self.load_contents_iter(suite, arch)?))
+    }
+
     pub(crate) fn run(self) -> Result<()> {
         self.download_to_cache()?;
 
@@ -116,7 +125,7 @@ impl UsrMerged {
             .into_iter()
             .chain([Architecture::All].into_iter())
         {
-            let testing_file_map = load_contents(&self.cache, Suite::Testing(None), architecture)?;
+            let testing_file_map = self.load_contents(Suite::Testing(None), architecture)?;
 
             /*
             let pb = ProgressBar::new(stable_file_map.len() as u64);
@@ -127,7 +136,7 @@ impl UsrMerged {
             */
 
             for (path, stable_packages) in
-                load_contents_iter(&self.cache, Suite::Stable(None), architecture)?
+                self.load_contents_iter(Suite::Stable(None), architecture)?
             {
                 // .iter().progress_with(pb) {
                 let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
