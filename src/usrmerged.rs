@@ -123,6 +123,9 @@ impl UsrMerged {
     pub(crate) fn run(self) -> Result<()> {
         self.download_to_cache()?;
 
+        // Check if file from stable on $architecture moved to other
+        // packages on testing on $architecture | all. If architecture ==
+        // all, this will check all -> all.
         let testing_all_file_map = self.load_contents(Suite::Testing(None), Architecture::All)?;
         for architecture in RELEASE_ARCHITECTURES
             .into_iter()
@@ -174,6 +177,62 @@ impl UsrMerged {
                     println!(
                         "{}: {} => {}: {:?}",
                         architecture, path, path_to_test, stable_packages_set,
+                    );
+                } else {
+                    info!(
+                        "Renamed {} to {} (packages {:?})",
+                        path, path_to_test, testing_packages_set,
+                    );
+                }
+            }
+        }
+
+        // Check if file from stable on all moved to other
+        // packages on testing on $architecture for all architectures except all.
+        for testing_architecture in RELEASE_ARCHITECTURES.into_iter() {
+            let testing_file_map =
+                self.load_contents(Suite::Testing(None), testing_architecture)?;
+            for (path, stable_packages) in
+                self.load_contents_iter(Suite::Stable(None), Architecture::All)?
+            {
+                let path_to_test = if let Some(stripped) = path.strip_prefix("usr/") {
+                    stripped.into()
+                } else {
+                    format!("usr/{}", path)
+                };
+                debug!(
+                    "{} -> {}: processing {} - checking for {}",
+                    Architecture::All,
+                    testing_architecture,
+                    path,
+                    path_to_test
+                );
+
+                let testing_packages_set = match testing_file_map.get(path_to_test.as_str()) {
+                    None => continue,
+                    Some(packages) => HashSet::from_iter(packages.iter().map(|v| v.as_str())),
+                };
+
+                let stable_packages_set: HashSet<&str> =
+                    HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
+                if stable_packages_set != testing_packages_set {
+                    println!(
+                        "{} -> {}: {} => {}: {:?} vs {:?}",
+                        Architecture::All,
+                        testing_architecture,
+                        path,
+                        path_to_test,
+                        stable_packages_set,
+                        testing_packages_set,
+                    );
+                } else if self.options.only_files_moved {
+                    println!(
+                        "{} -> {}: {} => {}: {:?}",
+                        Architecture::All,
+                        testing_architecture,
+                        path,
+                        path_to_test,
+                        stable_packages_set,
                     );
                 } else {
                     info!(
