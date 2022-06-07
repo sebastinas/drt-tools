@@ -31,7 +31,7 @@ pub(crate) struct BaseOptions {
     /// Force processing
     #[clap(short, long = "force")]
     force_processing: bool,
-    /// Only print actions to perform without running any commends
+    /// Only print actions to perform without running any commands
     #[clap(short = 'n')]
     dry_run: bool,
     /// Quiet mode

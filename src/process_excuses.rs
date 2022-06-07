@@ -136,7 +136,7 @@ impl ProcessExcuses {
             if archs.is_empty() {
                 // this should not happen, but just to be on the safe side
                 warn!(
-                    "{}: considered candiate, but no architecture with missing build",
+                    "{}: considered candidate, but no architecture with missing build",
                     item.source
                 );
                 trace!("{:?}", item);

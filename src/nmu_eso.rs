@@ -80,7 +80,7 @@ impl NMUOutdatedBuiltUsing {
             "Processing {}",
             path.as_ref().file_name().unwrap().to_str().unwrap()
         ));
-        // collect all sources with arch dependendent binaries having Built-Using set
+        // collect all sources with arch dependent binaries having Built-Using set
         Ok(binary_packages
             .into_iter()
             .progress_with(pb)
