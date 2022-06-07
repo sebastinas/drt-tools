@@ -22,7 +22,7 @@ use crate::{
 pub(crate) struct PrepareBinNMUsOptions {
     #[clap(flatten)]
     binnmu_options: BinNMUsOptions,
-    /// Input file with a list of packages. If not specfied, the list of packages will be read from he standard input.
+    /// Input file with a list of packages. If not specified, the list of packages will be read from he standard input.
     #[clap(parse(from_os_str))]
     input: Option<PathBuf>,
 }

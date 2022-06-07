@@ -48,7 +48,7 @@ pub enum ParseError {
     InvalidSuiteOrCodename,
     /// Given string is not a valid multi-arch value
     InvalidMultiArch,
-    /// Given string is not a valid compoment
+    /// Given string is not a valid component
     InvalidComponent,
 }
 
