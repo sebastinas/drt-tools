@@ -75,11 +75,14 @@ impl PrepareBinNMUs {
 
         let mut wb_commands = Vec::new();
         for line in reader.lines() {
-            if line.is_err() {
-                break;
+            let line = match line {
+                Ok(line) => line,
+                Err(_) => break,
+            };
+            if line.starts_with("Dependency level") {
+                continue;
             }
 
-            let line = line.unwrap();
             if let Some(capture) = matcher.captures(&line) {
                 let package = capture.get(1);
                 let version = capture.get(2);
