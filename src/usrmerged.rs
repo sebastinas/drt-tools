@@ -74,11 +74,9 @@ impl UsrMerged {
                 continue;
             }
 
-            log::debug!(
+            debug!(
                 "Processing contents for {} on {}: {:?}",
-                suite,
-                architecture,
-                path
+                suite, architecture, path
             );
 
             let no_skip = self.options.no_skip;
@@ -101,8 +99,15 @@ impl UsrMerged {
                     }
                 };
 
-                // there are no packages with files in boot/, usr/etc/, usr/lib/modules/, ...
-                const SKIP: [&str; 5] = ["boot/", "etc/", "lib/modules/", "usr/src/", "var/"];
+                // skip some well-known locations which should not be an issue: boot/, usr/etc/, usr/lib/modules/, ...
+                const SKIP: [&str; 6] = [
+                    "boot/",
+                    "etc/",
+                    "lib/modules/",
+                    "usr/src/",
+                    "usr/share/doc",
+                    "var/",
+                ];
                 if !no_skip && SKIP.into_iter().any(|prefix| path.starts_with(prefix)) {
                     debug!("Skipping {}", path);
                     return None;
@@ -172,16 +177,50 @@ impl UsrMerged {
                     ),
                 };
 
+                let testing_packages_set_original_path = match (
+                    testing_file_map.get(path.as_str()),
+                    testing_all_file_map.get(path.as_str()),
+                ) {
+                    (None, None) => {
+                        debug!("{}: {} not found", architecture, path_to_test);
+                        continue;
+                    }
+                    (None, Some(packages)) | (Some(packages), None) => {
+                        HashSet::from_iter(packages.iter().map(|v| v.as_str()))
+                    }
+                    (Some(arch_packages), Some(all_packages)) => HashSet::from_iter(
+                        arch_packages
+                            .iter()
+                            .chain(all_packages.iter())
+                            .map(|v| v.as_str()),
+                    ),
+                };
+
                 let stable_packages_set: HashSet<&str> =
                     HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
                 if stable_packages_set != testing_packages_set {
-                    println!(
-                        "{}: {} => {}: {:?} vs {:?}",
-                        architecture, path, path_to_test, stable_packages_set, testing_packages_set,
-                    );
+                    if stable_packages_set == testing_packages_set_original_path {
+                        println!(
+                            "also-in-other-package: {}: {} {:?} vs {} {:?}",
+                            architecture,
+                            path,
+                            stable_packages_set,
+                            path_to_test,
+                            testing_packages_set,
+                        );
+                    } else {
+                        println!(
+                            "moved: {}: {} => {}: {:?} vs {:?}",
+                            architecture,
+                            path,
+                            path_to_test,
+                            stable_packages_set,
+                            testing_packages_set,
+                        );
+                    }
                 } else if self.options.include_moved_in_package {
                     println!(
-                        "{}: {} => {}: {:?}",
+                        "moved-in-package: {}: {} => {}: {:?}",
                         architecture, path, path_to_test, stable_packages_set,
                     );
                 } else {
@@ -218,22 +257,40 @@ impl UsrMerged {
                     }
                     Some(packages) => HashSet::from_iter(packages.iter().map(|v| v.as_str())),
                 };
+                let testing_packages_set_original_path = match testing_file_map.get(path.as_str()) {
+                    None => {
+                        debug!("{}: {} not found", Architecture::All, path_to_test);
+                        continue;
+                    }
+                    Some(packages) => HashSet::from_iter(packages.iter().map(|v| v.as_str())),
+                };
 
                 let stable_packages_set: HashSet<&str> =
                     HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
                 if stable_packages_set != testing_packages_set {
-                    println!(
-                        "{} -> {}: {} => {}: {:?} vs {:?}",
-                        Architecture::All,
-                        testing_architecture,
-                        path,
-                        path_to_test,
-                        stable_packages_set,
-                        testing_packages_set,
-                    );
+                    if stable_packages_set == testing_packages_set_original_path {
+                        println!(
+                            "also-in-other-package: {}: {} {:?} vs {} {:?}",
+                            Architecture::All,
+                            path,
+                            stable_packages_set,
+                            path_to_test,
+                            testing_packages_set,
+                        );
+                    } else {
+                        println!(
+                            "moved: {} -> {}: {} => {}: {:?} vs {:?}",
+                            Architecture::All,
+                            testing_architecture,
+                            path,
+                            path_to_test,
+                            stable_packages_set,
+                            testing_packages_set,
+                        );
+                    }
                 } else if self.options.include_moved_in_package {
                     println!(
-                        "{} -> {}: {} => {}: {:?}",
+                        "moved-in-package: {} -> {}: {} => {}: {:?}",
                         Architecture::All,
                         testing_architecture,
                         path,
