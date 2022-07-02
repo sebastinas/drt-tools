@@ -11,6 +11,7 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use clap::Parser;
+use log::debug;
 
 use crate::{
     config::{self, CacheEntries},
@@ -93,10 +94,8 @@ impl PrepareBinNMUs {
                 };
 
                 if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
-                    println!("# Skipping {} due to FTBFS bugs ...", source);
-                    for bug in bugs {
-                        println!("#   {} ({}): {}", bug.id, bug.severity, bug.title);
-                    }
+                    debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
+                    println!("# Skipping {} due to FTBFS bugs", source);
                     continue;
                 }
 
