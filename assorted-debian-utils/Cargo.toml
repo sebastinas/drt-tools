@@ -11,8 +11,8 @@ readme = "README.md"
 keywords = ["debian"]
 
 [dependencies]
-chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"], default-features = false }
+serde = { version = "1.0", features = ["derive"], default-features = false }
 serde_yaml = "0.8"
 rfc822-like = "0.2.1"
 libdpkg-sys = { version = "0.1", optional = true }
