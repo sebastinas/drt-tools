@@ -14,10 +14,7 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
-use std::{
-    error::Error,
-    fmt::{Display, Formatter},
-};
+use thiserror::Error;
 
 pub mod architectures;
 pub mod archive;
@@ -32,41 +29,30 @@ pub mod wb;
 mod cversion;
 
 /// Parsing error
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Error)]
 pub enum ParseError {
+    #[error("invalid architecture")]
     /// Given string is not a valid architecture
     InvalidArchitecture,
+    #[error("invalid version: {0}")]
     /// Given string is not a valid version
-    InvalidVersion(version::VersionError),
+    InvalidVersion(#[from] version::VersionError),
+    #[error("invalid suite")]
     /// Given string is not a valid suite
     InvalidSuite,
+    #[error("invalid extension")]
     /// Given string is not a valid suite or codename extension
     InvalidExtension,
+    #[error("invalid codename")]
     /// Given string is not a valid codename
     InvalidCodename,
+    #[error("invalid suite or codename")]
     /// Given string is not a valid suite or codename
     InvalidSuiteOrCodename,
+    #[error("invalid multi-arch")]
     /// Given string is not a valid multi-arch value
     InvalidMultiArch,
+    #[error("invalid component")]
     /// Given string is not a valid component
     InvalidComponent,
 }
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseError::InvalidArchitecture => write!(f, "invalid architecture"),
-            ParseError::InvalidVersion(version_error) => {
-                write!(f, "invalid version: {}", version_error)
-            }
-            ParseError::InvalidSuite => write!(f, "invalid suite"),
-            ParseError::InvalidExtension => write!(f, "invalid extension"),
-            ParseError::InvalidCodename => write!(f, "invalid codename"),
-            ParseError::InvalidSuiteOrCodename => write!(f, "invalid suite or codename"),
-            ParseError::InvalidMultiArch => write!(f, "invalid multi-arch"),
-            ParseError::InvalidComponent => write!(f, "invalid component"),
-        }
-    }
-}
-
-impl Error for ParseError {}

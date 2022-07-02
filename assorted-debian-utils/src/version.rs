@@ -26,37 +26,28 @@
 //! ```
 
 use std::{
-    error::Error,
     fmt::{self, Display},
     hash::{Hash, Hasher},
 };
 
 use serde::{de, Deserialize, Serialize};
+use thiserror::Error;
 
 pub use crate::ParseError;
 
 /// Version errors
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Error)]
 pub enum VersionError {
+    #[error("invalid epoch")]
     /// Epoch is invalid
     InvalidEpoch,
+    #[error("invalid upstream version")]
     /// Upstream version is invalid
     InvalidUpstreamVersion,
+    #[error("invalid Debian revision")]
     /// Debian revision is invalid
     InvalidDebianRevision,
 }
-
-impl Display for VersionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VersionError::InvalidEpoch => write!(f, "invalid epoch"),
-            VersionError::InvalidUpstreamVersion => write!(f, "invalid upstream version"),
-            VersionError::InvalidDebianRevision => write!(f, "invalid Debian revision"),
-        }
-    }
-}
-
-impl Error for VersionError {}
 
 /// A version number of a Debian package
 ///
