@@ -10,38 +10,24 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::architectures::Architecture;
 use crate::archive::{Suite, SuiteOrCodename};
 use crate::version::PackageVersion;
 
 /// Errors when working with `wb`
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("invalid architecture {0} for wb command '{1}'")]
     /// An invalid architecture for a command was specified
     InvalidArchitecture(WBArchitecture, &'static str),
+    #[error("unable to execute 'wb'")]
     /// Execution of `wb` failed
-    ExecutionError(Option<std::io::Error>),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::InvalidArchitecture(arch, command) => write!(
-                f,
-                "invalid architecture {} for wb command '{}'",
-                arch, command
-            ),
-            Error::ExecutionError(None) => write!(f, "unable to execute 'wb'"),
-            Error::ExecutionError(Some(ioerr)) => write!(f, "unable to execute 'wb': {}", ioerr),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-fn map_io_error(ioerr: std::io::Error) -> Error {
-    Error::ExecutionError(Some(ioerr))
+    ExecutionError,
+    #[error("unable to exectue 'wb': {0}")]
+    /// Execution of `wb` failed with IO error
+    IOError(#[from] std::io::Error),
 }
 
 /// A command to be executed by `wb`
@@ -56,13 +42,13 @@ impl WBCommand {
         let mut proc = Command::new("wb")
             .stdin(Stdio::piped())
             .spawn()
-            .map_err(map_io_error)?;
+            .map_err(Error::from)?;
         if let Some(mut stdin) = proc.stdin.take() {
-            stdin.write_all(self.0.as_bytes()).map_err(map_io_error)?;
+            stdin.write_all(self.0.as_bytes()).map_err(Error::from)?;
         } else {
-            return Err(Error::ExecutionError(None));
+            return Err(Error::ExecutionError);
         }
-        proc.wait_with_output().map_err(map_io_error)?;
+        proc.wait_with_output().map_err(Error::from)?;
         Ok(())
     }
 }
