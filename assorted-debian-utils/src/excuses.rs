@@ -6,19 +6,56 @@
 //! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, fmt, io};
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{de, Deserialize, Deserializer};
 
-use crate::{architectures::Architecture, archive::Component, utils::DateTimeVisitor};
+use crate::{
+    architectures::Architecture, archive::Component, utils::DateTimeVisitor,
+    version::PackageVersion,
+};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S%.f"))
+}
+
+/// Deserialize a version or '-' as `PackageVersion` or `None`
+fn deserialize_version<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<PackageVersion>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Debug)]
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = Option<PackageVersion>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            write!(formatter, "a package version or '-'")
+        }
+
+        fn visit_str<E>(self, s: &str) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            if s == "-" {
+                Ok(None)
+            } else {
+                PackageVersion::try_from(s)
+                    .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &self))
+                    .map(Some)
+            }
+        }
+    }
+
+    deserializer.deserialize_str(Visitor)
 }
 
 /// The excuses.
@@ -127,9 +164,15 @@ pub struct ExcusesItem {
     /// The item is a candidate for migration
     pub is_candidate: bool,
     /// Version in the source suite, i.e., the version to migrate
-    pub new_version: String,
+    ///
+    /// If the value is `None`, the package is being removed.
+    #[serde(deserialize_with = "deserialize_version")]
+    pub new_version: Option<PackageVersion>,
     /// Version in the target suite
-    pub old_version: String,
+    ///
+    /// If the value is `None`, the package is not yet available in the target suite.
+    #[serde(deserialize_with = "deserialize_version")]
+    pub old_version: Option<PackageVersion>,
     /// Migration item name
     pub item_name: String,
     /// Source package name
@@ -150,7 +193,7 @@ pub struct ExcusesItem {
 impl ExcusesItem {
     /// Excuses item refers to package removal
     pub fn is_removal(&self) -> bool {
-        self.new_version == "-"
+        self.new_version.is_none()
     }
 
     /// Excuses item refers to a binNMU

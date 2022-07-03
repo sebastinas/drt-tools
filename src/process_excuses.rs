@@ -119,7 +119,6 @@ impl ProcessExcuses {
                 return None;
             }
         };
-
         if !Self::is_binnmu_required(policy_info) {
             debug!("{}: binNMU not required", item.source);
             return None;
@@ -150,8 +149,7 @@ impl ProcessExcuses {
         }
 
         let mut source_specifier = SourceSpecifier::new(&item.source);
-        let version = item.new_version.as_str().try_into().unwrap();
-        source_specifier.with_version(&version);
+        source_specifier.with_version(item.new_version.as_ref().unwrap());
         if !source_packages.is_ma_same(&item.source) {
             source_specifier.with_architectures(&archs);
         }

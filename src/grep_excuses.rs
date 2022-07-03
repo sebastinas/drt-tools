@@ -46,7 +46,15 @@ impl GrepExcuses {
     fn print_excuse(&self, excuse: &ExcusesItem) {
         println!(
             "{} ({} to {})",
-            excuse.source, excuse.old_version, excuse.new_version
+            excuse.source,
+            excuse
+                .old_version
+                .as_ref()
+                .map_or_else(|| "-".into(), |version| version.to_string()),
+            excuse
+                .new_version
+                .as_ref()
+                .map_or_else(|| "-".into(), |version| version.to_string())
         );
         if let Some(maintainer) = &excuse.maintainer {
             println!("  Maintainer: {}", maintainer);
