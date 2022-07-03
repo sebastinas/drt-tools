@@ -113,52 +113,55 @@ impl ProcessExcuses {
             return None;
         }
 
-        if let Some(policy_info) = &item.policy_info {
-            if !Self::is_binnmu_required(policy_info) {
-                debug!("{}: binNMU not required", item.source);
+        let policy_info = match &item.policy_info {
+            Some(pi) => pi,
+            None => {
                 return None;
             }
+        };
 
-            // find architectures with maintainer built binaries
-            let mut archs = vec![];
-            for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
-                if let Some(signer) = signer {
-                    if !signer.ends_with("@buildd.debian.org") {
-                        if arch == &Architecture::All {
-                            // cannot binNMU arch: all
-                            debug!("{}: cannot binNMU arch: all", item.source);
-                            return None;
-                        }
-                        archs.push(WBArchitecture::Architecture(*arch));
+        if !Self::is_binnmu_required(policy_info) {
+            debug!("{}: binNMU not required", item.source);
+            return None;
+        }
+
+        // find architectures with maintainer built binaries
+        let mut archs = vec![];
+        for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
+            if let Some(signer) = signer {
+                if !signer.ends_with("@buildd.debian.org") {
+                    if arch == &Architecture::All {
+                        // cannot binNMU arch: all
+                        debug!("{}: cannot binNMU arch: all", item.source);
+                        return None;
                     }
+                    archs.push(WBArchitecture::Architecture(*arch));
                 }
             }
-            if archs.is_empty() {
-                // this should not happen, but just to be on the safe side
-                warn!(
-                    "{}: considered candidate, but no architecture with missing build",
-                    item.source
-                );
-                trace!("{:?}", item);
-                return None;
-            }
+        }
+        if archs.is_empty() {
+            // this should not happen, but just to be on the safe side
+            warn!(
+                "{}: considered candidate, but no architecture with missing build",
+                item.source
+            );
+            trace!("{:?}", item);
+            return None;
+        }
 
-            let mut source_specifier = SourceSpecifier::new(&item.source);
-            let version = item.new_version.as_str().try_into().unwrap();
-            source_specifier.with_version(&version);
-            if !source_packages.is_ma_same(&item.source) {
-                source_specifier.with_architectures(&archs);
+        let mut source_specifier = SourceSpecifier::new(&item.source);
+        let version = item.new_version.as_str().try_into().unwrap();
+        source_specifier.with_version(&version);
+        if !source_packages.is_ma_same(&item.source) {
+            source_specifier.with_architectures(&archs);
+        }
+        match BinNMU::new(&source_specifier, "Rebuild on buildd") {
+            Ok(command) => Some(command.build()),
+            // not binNMU-able
+            Err(_) => {
+                error!("{}: failed to construct nmu command", item.source);
+                None
             }
-            match BinNMU::new(&source_specifier, "Rebuild on buildd") {
-                Ok(command) => Some(command.build()),
-                // not binNMU-able
-                Err(_) => {
-                    error!("{}: failed to construct nmu command", item.source);
-                    None
-                }
-            }
-        } else {
-            None
         }
     }
 
