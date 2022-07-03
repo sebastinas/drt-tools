@@ -28,7 +28,7 @@ pub struct Excuses {
     /// Date of the run that produced `excuses.yaml`
     #[serde(deserialize_with = "deserialize_datetime")]
     pub generated_date: DateTime<Utc>,
-    /// All excuses
+    /// All excuse items
     ///
     /// While not every excuses item relates to a source package, the field is still named that way in `excuses.yaml`
     pub sources: Vec<ExcusesItem>,
@@ -654,6 +654,9 @@ sources:
         let excuses = super::from_str(data).expect("successful parsing of excuses");
         let sources = excuses.sources;
         assert_eq!(sources.len(), 2);
+
+        let kalarm = &sources[0];
+        assert!(kalarm.is_removal());
 
         let moosex = &sources[1];
         assert_eq!(moosex.source, "libmoosex-types-path-class-perl");
