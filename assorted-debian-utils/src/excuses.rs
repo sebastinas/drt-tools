@@ -169,12 +169,12 @@ impl ExcusesItem {
     }
 
     /// Excuses item refers to an item in (stable) proposed-updates
-    pub fn is_pu(&self) -> bool {
+    pub fn is_from_pu(&self) -> bool {
         self.item_name.ends_with("_pu")
     }
 
     /// Excuses item refers to an item in testing-proposed-updates
-    pub fn is_tpu(&self) -> bool {
+    pub fn is_from_tpu(&self) -> bool {
         self.item_name.ends_with("_tpu")
     }
 }

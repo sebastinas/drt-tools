@@ -163,19 +163,24 @@ impl ProcessExcuses {
     }
 
     fn is_actionable(item: &ExcusesItem) -> bool {
-        if item.new_version == "-" {
+        if item.is_removal() {
             // skip removals
             trace!("{} not actionable: removal", item.source);
             return false;
         }
-        if item.new_version == item.old_version {
+        if item.is_binnmu() {
             // skip binNMUs
             trace!("{} not actionable: binNMU", item.source);
             return false;
         }
-        if item.item_name.ends_with("_pu") {
+        if item.is_from_pu() {
             // skip PU requests
             trace!("{} not actionable: pu request", item.source);
+            return false;
+        }
+        if item.is_from_tpu() {
+            // skip TPU requests
+            trace!("{} not actionable: tpu request", item.source);
             return false;
         }
         match item.component {
