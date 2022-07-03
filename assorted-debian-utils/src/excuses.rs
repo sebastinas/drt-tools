@@ -13,7 +13,9 @@ use serde::{de, Deserialize, Deserializer};
 use smallvec::SmallVec;
 
 use crate::{
-    architectures::Architecture, archive::Component, utils::DateTimeVisitor,
+    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    archive::Component,
+    utils::DateTimeVisitor,
     version::PackageVersion,
 };
 
