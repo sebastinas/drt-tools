@@ -10,6 +10,7 @@ use std::{collections::HashMap, fmt, io};
 
 use chrono::{DateTime, Utc};
 use serde::{de, Deserialize, Deserializer};
+use smallvec::SmallVec;
 
 use crate::{
     architectures::Architecture, archive::Component, utils::DateTimeVisitor,
@@ -152,7 +153,7 @@ pub struct PolicyInfo {
 #[serde(rename_all = "kebab-case")]
 pub struct MissingBuilds {
     /// Architectures where builds are missing
-    pub on_architectures: Vec<Architecture>,
+    pub on_architectures: SmallVec<[Architecture; RELEASE_ARCHITECTURES.len()]>,
 }
 
 /// A source package's excuses
