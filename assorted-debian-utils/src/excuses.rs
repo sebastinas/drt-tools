@@ -147,6 +147,38 @@ pub struct ExcusesItem {
     pub excuses: Vec<String>,
 }
 
+impl ExcusesItem {
+    /// Excuses item refers to package removal
+    pub fn is_removal(&self) -> bool {
+        self.new_version == "-"
+    }
+
+    /// Excuses item refers to a binNMU
+    pub fn is_binnmu(&self) -> bool {
+        self.new_version == self.old_version
+    }
+
+    /// Get architecture of the binNMU or `None`
+    pub fn binnmu_arch(&self) -> Option<Architecture> {
+        self.item_name.split_once('/').map(|(_, arch)| {
+            arch.split_once('_')
+                .map_or(arch, |(arch, _)| arch)
+                .try_into()
+                .unwrap()
+        })
+    }
+
+    /// Excuses item refers to an item in (stable) proposed-updates
+    pub fn is_pu(&self) -> bool {
+        self.item_name.ends_with("_pu")
+    }
+
+    /// Excuses item refers to an item in testing-proposed-updates
+    pub fn is_tpu(&self) -> bool {
+        self.item_name.ends_with("_tpu")
+    }
+}
+
 /// Result type
 pub type Result<T> = serde_yaml::Result<T>;
 
