@@ -9,6 +9,7 @@ rust-version = "1.56"
 license = "LGPL-3.0-or-later"
 readme = "README.md"
 keywords = ["debian"]
+exclude = ["tests/excuses.rs", "tests/data/*.yaml"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"], default-features = false }
