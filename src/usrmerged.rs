@@ -57,7 +57,6 @@ impl UsrMerged {
         })
     }
 
-    #[tokio::main]
     async fn download_to_cache(&self) -> Result<()> {
         self.cache
             .download(&[
@@ -131,8 +130,8 @@ impl UsrMerged {
         Ok(HashMap::from_iter(self.load_contents_iter(suite, arch)?))
     }
 
-    pub(crate) fn run(self) -> Result<()> {
-        self.download_to_cache()?;
+    pub(crate) async fn run(self) -> Result<()> {
+        self.download_to_cache().await?;
 
         // Check if file from stable on $architecture moved to other
         // packages on testing on $architecture | all. If architecture ==

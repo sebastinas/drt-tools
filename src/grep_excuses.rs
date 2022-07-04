@@ -36,7 +36,6 @@ impl GrepExcuses {
         })
     }
 
-    #[tokio::main]
     async fn download_to_cache(&self) -> Result<CacheState> {
         self.cache
             .download(&[CacheEntries::Excuses, CacheEntries::AutoRemovals])
@@ -75,8 +74,8 @@ impl GrepExcuses {
         // TODO: print other fields
     }
 
-    pub(crate) fn run(self) -> Result<()> {
-        self.download_to_cache()?;
+    pub(crate) async fn run(self) -> Result<()> {
+        self.download_to_cache().await?;
 
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;

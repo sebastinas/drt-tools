@@ -49,7 +49,6 @@ impl NMUOutdatedBuiltUsing {
         })
     }
 
-    #[tokio::main]
     async fn download_to_cache(&self, codename: &Codename) -> Result<CacheState> {
         self.cache
             .download(&[CacheEntries::Packages, CacheEntries::FTBFSBugs(*codename)])
@@ -99,9 +98,9 @@ impl NMUOutdatedBuiltUsing {
             .collect())
     }
 
-    fn load_eso(&self, suite: &Suite) -> Result<Vec<String>> {
+    async fn load_eso(&self, suite: &Suite) -> Result<Vec<String>> {
         let codename = (*suite).into();
-        if self.download_to_cache(&codename)? == CacheState::NoUpdate
+        if self.download_to_cache(&codename).await? == CacheState::NoUpdate
             && !self.base_options.force_processing
         {
             return Ok(Vec::new());
@@ -168,9 +167,9 @@ impl NMUOutdatedBuiltUsing {
         Ok(result)
     }
 
-    pub(crate) fn run(self) -> Result<()> {
+    pub(crate) async fn run(self) -> Result<()> {
         let suite = self.options.suite.into();
-        let eso_sources = self.load_eso(&suite)?;
+        let eso_sources = self.load_eso(&suite).await?;
 
         for source in eso_sources {
             let mut source = SourceSpecifier::new(&source);

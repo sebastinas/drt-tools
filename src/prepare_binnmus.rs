@@ -43,7 +43,6 @@ impl PrepareBinNMUs {
         })
     }
 
-    #[tokio::main]
     async fn download_to_cache(&self, codename: &Codename) -> Result<()> {
         self.cache
             .download(&[CacheEntries::FTBFSBugs(*codename)])
@@ -51,18 +50,18 @@ impl PrepareBinNMUs {
         Ok(())
     }
 
-    fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
-        self.download_to_cache(codename)?;
+    async fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
+        self.download_to_cache(codename).await?;
         load_bugs_from_reader(
             self.cache
                 .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
         )
     }
 
-    pub(crate) fn run(self) -> Result<()> {
+    pub(crate) async fn run(self) -> Result<()> {
         let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if !self.base_options.force_processing {
-            self.load_bugs(&codename)?
+            self.load_bugs(&codename).await?
         } else {
             UDDBugs::new(vec![])
         };

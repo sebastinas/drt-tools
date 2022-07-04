@@ -105,7 +105,8 @@ enum DrtToolsCommands {
     UsrMerged(UsrMergedOptions),
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let opts = DrtToolsOptions::parse();
 
     stderrlog::new()
@@ -118,11 +119,11 @@ fn main() -> Result<()> {
     match opts.command {
         DrtToolsCommands::ProcessExcuses(pe_opts) => {
             let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;
-            process_excuses.run()
+            process_excuses.run().await
         }
         DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
             let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts)?;
-            prepare_binnmus.run()
+            prepare_binnmus.run().await
         }
         DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
             let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts)?;
@@ -130,15 +131,15 @@ fn main() -> Result<()> {
         }
         DrtToolsCommands::GrepExcuses(ge_opts) => {
             let grep_excuses = GrepExcuses::new(opts.base_options, ge_opts)?;
-            grep_excuses.run()
+            grep_excuses.run().await
         }
         DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => {
             let nmu_eso = NMUOutdatedBuiltUsing::new(opts.base_options, eso_opts)?;
-            nmu_eso.run()
+            nmu_eso.run().await
         }
         DrtToolsCommands::UsrMerged(um_opts) => {
             let usr_merged = UsrMerged::new(opts.base_options, um_opts)?;
-            usr_merged.run()
+            usr_merged.run().await
         }
     }
 }

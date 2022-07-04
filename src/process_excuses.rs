@@ -58,7 +58,6 @@ impl ProcessExcuses {
         })
     }
 
-    #[tokio::main]
     async fn download_to_cache(&self) -> Result<CacheState> {
         if self.cache.download(&[CacheEntries::Excuses]).await? == CacheState::NoUpdate
             && !self.base_options.force_processing
@@ -222,9 +221,9 @@ impl ProcessExcuses {
         Ok(())
     }
 
-    pub(crate) fn run(self) -> Result<()> {
+    pub(crate) async fn run(self) -> Result<()> {
         // download excuses and Package files
-        if self.download_to_cache()? == CacheState::NoUpdate {
+        if self.download_to_cache().await? == CacheState::NoUpdate {
             // nothing to do
             trace!("Cached excuses.yml is up-to-date; nothing to do");
             return Ok(());
