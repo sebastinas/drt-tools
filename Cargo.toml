@@ -16,7 +16,7 @@ members = ["assorted-debian-utils"]
 [dependencies]
 anyhow = "1.0"
 assorted-debian-utils = { version = "0.5", path = "assorted-debian-utils" }
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false }
 clap = { version = "3", features = ["derive", "unicode", "wrap_help"] }
 futures = "0.3"
 futures-util = "0.3"
@@ -35,4 +35,4 @@ log = "0.4"
 stderrlog = "0.5"
 flate2 = { version = "1.0", default-features = false, features = ["zlib"] }
 smartstring = "1.0"
-smallvec = "1.0"
+smallvec = { version = "1", default-features = false, features = ["union"] }
