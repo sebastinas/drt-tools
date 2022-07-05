@@ -98,9 +98,22 @@ enum DrtToolsCommands {
     #[clap(name = "grep-excuses")]
     GrepExcuses(GrepExcusesOptions),
     /// Prepare binNMUs to rebuild for outdated Built-Using
+    ///
+    /// Based on
+    /// `https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt`,
+    /// this command prepares and schedules binNMUs for packages with outdated
+    /// `Built-Using` fields.
     #[clap(name = "nmu-eso")]
     NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
     /// Check state of /usr-merged bugs
+    ///
+    /// Currently, a moratorium is in place that forbids files to move from
+    /// `/{bin,lib}` to `/usr/{bin,lib}` or vice-versa if the file moves from
+    /// one binary package to another at the same time. This tool tries to find
+    /// all occurrences of all files violating this rule between stable and
+    /// testing.
+    ///
+    /// Note that this subcommand requires at least 2 GB of available RAM.
     #[clap(name = "usrmerged")]
     UsrMerged(UsrMergedOptions),
 }

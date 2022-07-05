@@ -101,7 +101,9 @@ impl Downloader {
             pb.set_message(format!("Downloading {}", url));
             Ok(Some((res, pb)))
         } else {
-            Ok(Some((res, mp.add(ProgressBar::hidden()))))
+            let pb = mp.add(ProgressBar::new_spinner());
+            pb.set_message(format!("Downloading {}", url));
+            Ok(Some((res, pb)))
         }
     }
 
