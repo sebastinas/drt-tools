@@ -122,12 +122,11 @@ impl Downloader {
     where
         P: AsRef<Path>,
     {
-        let res = self.download_init(url, &path).await?;
-        if res.is_none() {
-            return Ok(CacheState::NoUpdate);
-        }
+        let (res, pb) = match self.download_init(url, &path).await? {
+            None => return Ok(CacheState::NoUpdate),
+            Some(val) => val,
+        };
 
-        let (res, pb) = res.unwrap();
         let mut file = File::create(&path)
             .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?;
         if url.ends_with(".xz") {
@@ -202,7 +201,7 @@ impl Cache {
             let dest = format!("Packages_{}", architecture);
             if self
                 .downloader
-                .download_file(&url, self.get_cache_path(&dest)?)
+                .download_file(&url, self.get_cache_path(dest)?)
                 .await?
                 == CacheState::FreshFiles
             {
