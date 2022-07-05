@@ -237,7 +237,7 @@ impl ProcessExcuses {
         let pb = ProgressBar::new(excuses.sources.len() as u64);
         pb.set_style(config::default_progress_style().template(
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        ));
+        )?);
         pb.set_message("Processing excuses");
         let to_binnmu: Vec<WBCommand> = excuses
             .sources

@@ -21,7 +21,7 @@ clap = { version = "3", features = ["derive", "unicode", "wrap_help"] }
 futures = "0.3"
 futures-util = "0.3"
 httpdate = "1.0"
-indicatif = "0.16"
+indicatif = "0.17.0-rc.11"
 regex = "1"
 reqwest = { version = "0.11", features = ["stream"] }
 rfc822-like = "0.2.1"

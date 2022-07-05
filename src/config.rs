@@ -13,8 +13,8 @@ use assorted_debian_utils::{
     archive::{Codename, Suite},
 };
 use futures_util::StreamExt;
-use indicatif::{ProgressBar, ProgressStyle};
-use log::debug;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use log::{debug, trace};
 use reqwest::{header, Client, Response, StatusCode};
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
@@ -32,7 +32,6 @@ pub(crate) enum CacheEntries {
     FTBFSBugs(Codename),
     AutoRemovals,
     OutdatedBuiltUsing,
-    // Sources,
     Contents(Suite),
 }
 
@@ -42,7 +41,7 @@ pub(crate) enum CacheState {
     FreshFiles,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Downloader {
     always_download: bool,
     client: Client,
@@ -56,7 +55,12 @@ impl Downloader {
         }
     }
 
-    async fn download_init<P>(&self, url: &str, path: P) -> Result<Option<(Response, ProgressBar)>>
+    async fn download_init<P>(
+        &self,
+        url: &str,
+        path: P,
+        mp: MultiProgress,
+    ) -> Result<Option<(Response, ProgressBar)>>
     where
         P: AsRef<Path>,
     {
@@ -90,14 +94,14 @@ impl Downloader {
         }
 
         if let Some(total_size) = res.content_length() {
-            let pb = ProgressBar::new(total_size);
+            let pb = mp.add(ProgressBar::new(total_size));
             pb.set_style(default_progress_style()
-            .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+            .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?
             );
             pb.set_message(format!("Downloading {}", url));
             Ok(Some((res, pb)))
         } else {
-            Ok(Some((res, ProgressBar::hidden())))
+            Ok(Some((res, mp.add(ProgressBar::hidden()))))
         }
     }
 
@@ -118,11 +122,16 @@ impl Downloader {
         Ok(())
     }
 
-    pub async fn download_file<P>(&self, url: &str, path: P) -> Result<CacheState>
+    pub async fn download_file<P>(
+        &self,
+        url: &str,
+        path: P,
+        mp: MultiProgress,
+    ) -> Result<CacheState>
     where
         P: AsRef<Path>,
     {
-        let (res, pb) = match self.download_init(url, &path).await? {
+        let (res, pb) = match self.download_init(url, &path, mp).await? {
             None => return Ok(CacheState::NoUpdate),
             Some(val) => val,
         };
@@ -159,113 +168,123 @@ impl Cache {
         })
     }
 
-    async fn download_excuses(&self) -> Result<CacheState> {
-        self.downloader
-            .download_file(
-                "https://release.debian.org/britney/excuses.yaml",
-                self.get_cache_path("excuses.yaml")?,
-            )
-            .await
+    fn excuses_urls(&self) -> Vec<(String, String)> {
+        vec![(
+            "https://release.debian.org/britney/excuses.yaml".into(),
+            "excuses.yaml".into(),
+        )]
     }
 
-    async fn download_contents(&self, suite: Suite) -> Result<CacheState> {
-        let mut state = CacheState::NoUpdate;
-        for architecture in RELEASE_ARCHITECTURES
+    fn contents_urls(&self, suite: Suite) -> Vec<(String, String)> {
+        RELEASE_ARCHITECTURES
             .into_iter()
             .chain([Architecture::All].into_iter())
-        {
-            let url = format!(
-                "https://deb.debian.org/debian/dists/{}/main/Contents-{}.gz",
-                suite, architecture
-            );
-            let dest = format!("Contents_{}_{}", suite, architecture);
-            if self
-                .downloader
-                .download_file(&url, self.get_cache_path(&dest)?)
-                .await?
-                == CacheState::FreshFiles
-            {
-                state = CacheState::FreshFiles;
-            }
-        }
-        Ok(state)
+            .map(|architecture| {
+                (
+                    format!(
+                        "https://deb.debian.org/debian/dists/{}/main/Contents-{}.gz",
+                        suite, architecture
+                    ),
+                    format!("Contents_{}_{}", suite, architecture),
+                )
+            })
+            .collect()
     }
 
-    async fn download_packages(&self) -> Result<CacheState> {
-        let mut state = CacheState::NoUpdate;
-        for architecture in RELEASE_ARCHITECTURES {
-            let url = format!(
-                "https://deb.debian.org/debian/dists/unstable/main/binary-{}/Packages.xz",
-                architecture
-            );
-            let dest = format!("Packages_{}", architecture);
-            if self
-                .downloader
-                .download_file(&url, self.get_cache_path(dest)?)
-                .await?
-                == CacheState::FreshFiles
-            {
-                state = CacheState::FreshFiles;
-            }
-        }
-        Ok(state)
+    fn packages_urls(&self) -> Vec<(String, String)> {
+        RELEASE_ARCHITECTURES
+            .into_iter()
+            .map(|architecture| {
+                (
+                    format!(
+                        "https://deb.debian.org/debian/dists/unstable/main/binary-{}/Packages.xz",
+                        architecture
+                    ),
+                    format!("Packages_{}", architecture),
+                )
+            })
+            .collect()
     }
 
-    async fn download_ftbfs_bugs(&self, codename: Codename) -> Result<CacheState> {
-        let url = format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename);
-        let dest = format!("udd-ftbfs-bugs-{}.yaml", codename);
-        self.downloader
-            .download_file(&url, self.get_cache_path(dest)?)
-            .await
+    fn ftbfs_bugs_urls(&self, codename: Codename) -> Vec<(String, String)> {
+        vec![(
+            format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename),
+            format!("udd-ftbfs-bugs-{}.yaml", codename)
+        )]
     }
 
-    async fn download_auto_removals(&self) -> Result<CacheState> {
-        self.downloader
-            .download_file(
-                "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi",
-                self.get_cache_path("autoremovals.yaml")?,
-            )
-            .await
+    fn auto_removals_urls(&self) -> Vec<(String, String)> {
+        vec![(
+            "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi".into(),
+            "autoremovals.yaml".into(),
+        )]
     }
 
-    async fn download_outdated_builtusing(&self) -> Result<CacheState> {
-        self.downloader
-            .download_file(
-                "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt",
-                self.get_cache_path("outdated-built-using.txt")?,
-            )
-            .await
+    fn outdateed_builtusing_urls(&self) -> Vec<(String, String)> {
+        vec![(
+            "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt".into(),
+            "outdated-built-using.txt".into(),
+        )]
     }
 
-    /*
-    async fn download_sources(&self) -> Result<CacheState> {
-        Ok(self
-            .downloader
-            .download_file(
-                "https://deb.debian.org/debian/dists/unstable/main/source/Sources.xz",
-                self.get_cache_path("Sources")?,
-            )
-            .await?)
+    fn cache_entries_to_urls_dests(
+        &self,
+        entries: &[CacheEntries],
+    ) -> Result<Vec<(String, PathBuf)>> {
+        entries
+            .iter()
+            .flat_map(|entry| {
+                match entry {
+                    CacheEntries::Excuses => self.excuses_urls(),
+                    CacheEntries::Packages => self.packages_urls(),
+                    CacheEntries::FTBFSBugs(codename) => self.ftbfs_bugs_urls(*codename),
+                    CacheEntries::AutoRemovals => self.auto_removals_urls(),
+                    CacheEntries::OutdatedBuiltUsing => self.outdateed_builtusing_urls(),
+                    CacheEntries::Contents(suite) => self.contents_urls(*suite),
+                }
+                .into_iter()
+            })
+            .map(|(url, dest)| Ok((url, self.get_cache_path(dest)?)))
+            .collect()
     }
-    */
 
     pub async fn download(&self, entries: &[CacheEntries]) -> Result<CacheState> {
-        let mut state = CacheState::NoUpdate;
-        for entry in entries {
-            let new_state = match entry {
-                CacheEntries::Excuses => self.download_excuses().await?,
-                CacheEntries::Packages => self.download_packages().await?,
-                // CacheEntries::Sources => self.download_sources().await?,
-                CacheEntries::FTBFSBugs(codename) => self.download_ftbfs_bugs(*codename).await?,
-                CacheEntries::AutoRemovals => self.download_auto_removals().await?,
-                CacheEntries::OutdatedBuiltUsing => self.download_outdated_builtusing().await?,
-                CacheEntries::Contents(suite) => self.download_contents(*suite).await?,
+        let urls_and_dests = self.cache_entries_to_urls_dests(entries)?;
+        trace!(
+            "Scheduling {} URLs to download: {:?}",
+            urls_and_dests.len(),
+            urls_and_dests
+        );
+
+        let mp = MultiProgress::new();
+        let join_handles: Vec<_> = urls_and_dests
+            .into_iter()
+            .map(|(url, dest)| {
+                let downloader = self.downloader.clone();
+                let mp = mp.clone();
+                tokio::spawn(async move {
+                    debug!("Starting task to download {}", url);
+                    downloader.download_file(&url, dest, mp).await
+                })
+            })
+            .collect();
+
+        let mut state = Ok(CacheState::NoUpdate);
+        for handle in join_handles {
+            match handle.await {
+                Ok(download_result) => match download_result {
+                    Ok(CacheState::FreshFiles) => {
+                        if state.is_ok() {
+                            state = Ok(CacheState::FreshFiles);
+                        }
+                    }
+                    Err(err) => state = Err(err),
+                    _ => {}
+                },
+                Err(err) => state = Err(err.into()),
             };
-            if new_state == CacheState::FreshFiles {
-                state = CacheState::FreshFiles;
-            }
         }
-        Ok(state)
+        state
     }
 
     pub fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>

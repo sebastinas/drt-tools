@@ -47,7 +47,7 @@ impl SourcePackages {
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(config::default_progress_style().template(
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        ));
+        )?);
         pb.set_message(format!(
             "Processing {}",
             path.as_ref().file_name().unwrap().to_str().unwrap()
