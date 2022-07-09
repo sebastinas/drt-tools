@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 (2022-07-09)
+
+* Implement errors with `thiserror`.
+* excuses: Add tests.
+* excuses: Add some helper functions.
+
 ## 0.5 (2022-05-22)
 
 * Implement Clone and Copy consistently for enums.
