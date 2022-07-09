@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 (2022-07-09)
+
+* Implement new sub-command:
+  * `usrmerged`: check file moves between /usr and /
+* Implement parallel downloads
+
 ## 0.2.5 (2022-05-22)
 
 * `nmu-eso`: Skip packages that FTBFS.
