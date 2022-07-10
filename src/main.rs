@@ -40,6 +40,9 @@ pub(crate) struct BaseOptions {
     /// Verbose mode (-v, -vv, -vvv, etc)
     #[clap(short = 'v', long, parse(from_occurrences))]
     verbose: usize,
+    /// Archive mirror
+    #[clap(long, default_value = "https://deb.debian.org/debian")]
+    mirror: String,
 }
 
 #[derive(Debug, Parser)]

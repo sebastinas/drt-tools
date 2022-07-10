@@ -43,7 +43,7 @@ impl NMUOutdatedBuiltUsing {
         options: NMUOutdatedBuiltUsingOptions,
     ) -> Result<Self> {
         Ok(Self {
-            cache: config::Cache::new(base_options.force_download)?,
+            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
             base_options,
             options,
         })

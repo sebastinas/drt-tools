@@ -52,7 +52,7 @@ pub(crate) struct UsrMerged {
 impl UsrMerged {
     pub(crate) fn new(base_options: BaseOptions, options: UsrMergedOptions) -> Result<Self> {
         Ok(Self {
-            cache: config::Cache::new(base_options.force_download)?,
+            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
             options,
         })
     }

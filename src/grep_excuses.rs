@@ -31,7 +31,7 @@ pub(crate) struct GrepExcuses {
 impl GrepExcuses {
     pub(crate) fn new(base_options: BaseOptions, options: GrepExcusesOptions) -> Result<Self> {
         Ok(Self {
-            cache: config::Cache::new(base_options.force_download)?,
+            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
             options,
         })
     }

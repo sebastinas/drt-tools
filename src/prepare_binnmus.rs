@@ -37,7 +37,7 @@ pub(crate) struct PrepareBinNMUs {
 impl PrepareBinNMUs {
     pub(crate) fn new(base_options: BaseOptions, options: PrepareBinNMUsOptions) -> Result<Self> {
         Ok(Self {
-            cache: config::Cache::new(base_options.force_download)?,
+            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
             base_options,
             options,
         })

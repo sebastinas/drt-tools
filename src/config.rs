@@ -188,13 +188,15 @@ fn outdateed_builtusing_urls() -> Vec<(String, String)> {
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
     downloader: Downloader,
+    archive_mirror: String,
 }
 
 impl Cache {
-    pub fn new(force_download: bool) -> Result<Self> {
+    pub fn new(force_download: bool, archive_mirror: &str) -> Result<Self> {
         Ok(Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
             downloader: Downloader::new(force_download),
+            archive_mirror: archive_mirror.into(),
         })
     }
 
@@ -205,8 +207,8 @@ impl Cache {
             .map(|architecture| {
                 (
                     format!(
-                        "https://deb.debian.org/debian/dists/{}/main/Contents-{}.gz",
-                        suite, architecture
+                        "{}/dists/{}/main/Contents-{}.gz",
+                        self.archive_mirror, suite, architecture
                     ),
                     format!("Contents_{}_{}", suite, architecture),
                 )
@@ -220,8 +222,8 @@ impl Cache {
             .map(|architecture| {
                 (
                     format!(
-                        "https://deb.debian.org/debian/dists/unstable/main/binary-{}/Packages.xz",
-                        architecture
+                        "{}/dists/unstable/main/binary-{}/Packages.xz",
+                        self.archive_mirror, architecture
                     ),
                     format!("Packages_{}", architecture),
                 )

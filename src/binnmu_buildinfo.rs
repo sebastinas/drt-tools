@@ -37,7 +37,7 @@ pub(crate) struct BinNMUBuildinfo {
 impl BinNMUBuildinfo {
     pub(crate) fn new(base_options: BaseOptions, options: BinNMUBuildinfoOptions) -> Result<Self> {
         Ok(Self {
-            cache: Cache::new(base_options.force_download)?,
+            cache: Cache::new(base_options.force_download, &base_options.mirror)?,
             base_options,
             options,
         })
