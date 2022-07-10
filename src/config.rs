@@ -156,6 +156,34 @@ impl Downloader {
     }
 }
 
+fn excuses_urls() -> Vec<(String, String)> {
+    vec![(
+        "https://release.debian.org/britney/excuses.yaml".into(),
+        "excuses.yaml".into(),
+    )]
+}
+
+fn ftbfs_bugs_urls(codename: Codename) -> Vec<(String, String)> {
+    vec![(
+        format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename),
+        format!("udd-ftbfs-bugs-{}.yaml", codename)
+    )]
+}
+
+fn auto_removals_urls() -> Vec<(String, String)> {
+    vec![(
+        "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi".into(),
+        "autoremovals.yaml".into(),
+    )]
+}
+
+fn outdateed_builtusing_urls() -> Vec<(String, String)> {
+    vec![(
+        "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt".into(),
+        "outdated-built-using.txt".into(),
+    )]
+}
+
 #[derive(Debug)]
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
@@ -168,13 +196,6 @@ impl Cache {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
             downloader: Downloader::new(force_download),
         })
-    }
-
-    fn excuses_urls(&self) -> Vec<(String, String)> {
-        vec![(
-            "https://release.debian.org/britney/excuses.yaml".into(),
-            "excuses.yaml".into(),
-        )]
     }
 
     fn contents_urls(&self, suite: Suite) -> Vec<(String, String)> {
@@ -208,27 +229,6 @@ impl Cache {
             .collect()
     }
 
-    fn ftbfs_bugs_urls(&self, codename: Codename) -> Vec<(String, String)> {
-        vec![(
-            format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename),
-            format!("udd-ftbfs-bugs-{}.yaml", codename)
-        )]
-    }
-
-    fn auto_removals_urls(&self) -> Vec<(String, String)> {
-        vec![(
-            "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi".into(),
-            "autoremovals.yaml".into(),
-        )]
-    }
-
-    fn outdateed_builtusing_urls(&self) -> Vec<(String, String)> {
-        vec![(
-            "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt".into(),
-            "outdated-built-using.txt".into(),
-        )]
-    }
-
     fn cache_entries_to_urls_dests(
         &self,
         entries: &[CacheEntries],
@@ -237,11 +237,11 @@ impl Cache {
             .iter()
             .flat_map(|entry| {
                 match entry {
-                    CacheEntries::Excuses => self.excuses_urls(),
+                    CacheEntries::Excuses => excuses_urls(),
                     CacheEntries::Packages => self.packages_urls(),
-                    CacheEntries::FTBFSBugs(codename) => self.ftbfs_bugs_urls(*codename),
-                    CacheEntries::AutoRemovals => self.auto_removals_urls(),
-                    CacheEntries::OutdatedBuiltUsing => self.outdateed_builtusing_urls(),
+                    CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls(*codename),
+                    CacheEntries::AutoRemovals => auto_removals_urls(),
+                    CacheEntries::OutdatedBuiltUsing => outdateed_builtusing_urls(),
                     CacheEntries::Contents(suite) => self.contents_urls(*suite),
                 }
                 .into_iter()
