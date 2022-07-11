@@ -1,4 +1,4 @@
-// Copyright 2021 Sebastian Ramacher
+// Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::cmp::min;
@@ -217,8 +217,8 @@ impl ProcessExcuses {
         serde_yaml::to_writer(
             self.cache.get_data_bufwriter("scheduled-binnmus.yaml")?,
             &scheduled_binnmus,
-        )?;
-        Ok(())
+        )
+        .map_err(|err| err.into())
     }
 
     pub(crate) async fn run(self) -> Result<()> {

@@ -179,11 +179,8 @@ impl<'a> Display for SourceSpecifier<'a> {
         write!(
             f,
             ". {}",
-            if let Some(suite) = self.suite {
-                *suite
-            } else {
-                SuiteOrCodename::Suite(Suite::Unstable)
-            },
+            self.suite
+                .unwrap_or(&SuiteOrCodename::Suite(Suite::Unstable))
         )
     }
 }
