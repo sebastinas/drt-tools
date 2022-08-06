@@ -200,7 +200,7 @@ impl<'a> BinNMU<'a> {
     /// Create a new `nmu` command for the given `source`.
     pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
         for arch in &source.architectures {
-            match *arch {
+            match arch {
                 // unable to nmu with source, -source, ALL, all
                 WBArchitecture::Architecture(Architecture::Source)
                 | WBArchitecture::ExcludeArchitecture(Architecture::Source)
@@ -298,7 +298,7 @@ impl<'a> DepWait<'a> {
     /// Create a new `dw` command for the given `source`.
     pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
         for arch in &source.architectures {
-            match *arch {
+            match arch {
                 // unable to dw with source, -source
                 WBArchitecture::Architecture(Architecture::Source)
                 | WBArchitecture::ExcludeArchitecture(Architecture::Source) => {
