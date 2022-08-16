@@ -62,7 +62,7 @@ where
 }
 
 /// The excuses.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Excuses {
     /// Date of the run that produced `excuses.yaml`
@@ -75,7 +75,7 @@ pub struct Excuses {
 }
 
 /// A policy's verdict
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub enum Verdict {
     /// Policy passed
     #[serde(rename = "PASS")]
@@ -99,7 +99,7 @@ pub enum Verdict {
 }
 
 /// Age policy info
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AgeInfo {
     /// The required age
@@ -111,7 +111,7 @@ pub struct AgeInfo {
 }
 
 /// Catch-all policy info
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnspecfiedPolicyInfo {
     /// The verdict
@@ -119,7 +119,7 @@ pub struct UnspecfiedPolicyInfo {
 }
 
 /// Built-on-buildd policy info
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuiltOnBuildd {
     /// The signers for each architecture
@@ -129,7 +129,7 @@ pub struct BuiltOnBuildd {
 }
 
 /// Collected policy infos
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PolicyInfo {
     /// The age policy
@@ -151,7 +151,7 @@ pub struct PolicyInfo {
 }
 
 /// List of missing builds
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MissingBuilds {
     /// Architectures where builds are missing
@@ -159,7 +159,7 @@ pub struct MissingBuilds {
 }
 
 /// A source package's excuses
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ExcusesItem {
     /// Maintainer of the package

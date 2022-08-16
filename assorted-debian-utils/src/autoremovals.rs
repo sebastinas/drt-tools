@@ -25,7 +25,7 @@ where
 pub type AutoRemovals = HashMap<String, AutoRemoval>;
 
 /// An autoremoval
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct AutoRemoval {
     /// The package's RC bugs causing auto-removal.
     pub bugs: Vec<String>,
