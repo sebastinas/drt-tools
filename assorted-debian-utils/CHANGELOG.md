@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 (2022-09-09)
+
+* Derive `Eq` where possible.
+* Bump `serde_yaml` to 0.9.
+
 ## 0.5.1 (2022-07-09)
 
 * Implement errors with `thiserror`.
