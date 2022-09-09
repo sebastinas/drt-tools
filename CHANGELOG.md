@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7 (2022-09-09)
+
+* Reduce feature flags of dependencies.
+* Make mirror for package files configurable.
+* `nmu-eso`: Reduce options and provide sensible defaults.
+
 ## 0.2.6 (2022-07-09)
 
 * Implement new sub-command:
