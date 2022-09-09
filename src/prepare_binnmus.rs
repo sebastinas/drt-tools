@@ -84,10 +84,7 @@ impl PrepareBinNMUs {
             }
 
             if let Some(capture) = matcher.captures(&line) {
-                let package = capture.get(1);
-                let version = capture.get(2);
-
-                let (source, version) = match (package, version) {
+                let (source, version) = match (capture.get(1), capture.get(2)) {
                     (Some(package), Some(version)) => (package.as_str(), version.as_str()),
                     _ => continue,
                 };
