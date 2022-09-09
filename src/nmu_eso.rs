@@ -6,9 +6,10 @@ use std::{collections::HashSet, io::BufRead, path::Path};
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Suite},
+    archive::{Codename, Suite, SuiteOrCodename},
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
+use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, trace};
 use serde::Deserialize;
@@ -16,7 +17,7 @@ use serde::Deserialize;
 use crate::{
     config::{self, CacheEntries, CacheState},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
-    BaseOptions, BinNMUsOptions,
+    BaseOptions,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -29,7 +30,18 @@ struct BinaryPackage {
     built_using: Option<String>,
 }
 
-pub(crate) type NMUOutdatedBuiltUsingOptions = BinNMUsOptions;
+#[derive(Debug, Parser)]
+pub(crate) struct NMUOutdatedBuiltUsingOptions {
+    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
+    #[clap(long = "bp", default_value = "-50")]
+    build_priority: i32,
+    /// Suite for binNMUs.
+    #[clap(short, long, default_value = "unstable")]
+    suite: SuiteOrCodename,
+    /// Set architectures for binNMUs. If no archictures are specified, the binNMUs are scheduled with ANY.
+    #[clap(short, long)]
+    architecture: Option<Vec<Architecture>>,
+}
 
 pub(crate) struct NMUOutdatedBuiltUsing {
     cache: config::Cache,
@@ -178,16 +190,8 @@ impl NMUOutdatedBuiltUsing {
                 source.with_archive_architectures(architectures);
             }
 
-            let mut binnmu = BinNMU::new(&source, &self.options.message)?;
-            if let Some(bp) = self.options.build_priority {
-                binnmu.with_build_priority(bp);
-            }
-            if let Some(dw) = &self.options.dep_wait {
-                binnmu.with_dependency_wait(dw);
-            }
-            if let Some(extra_depends) = &self.options.extra_depends {
-                binnmu.with_extra_depends(extra_depends);
-            }
+            let mut binnmu = BinNMU::new(&source, "Rebuild for outdated Built-Using")?;
+            binnmu.with_build_priority(self.options.build_priority);
 
             let command = binnmu.build();
             println!("{}", command);
