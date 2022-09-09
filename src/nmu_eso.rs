@@ -15,7 +15,7 @@ use log::{debug, trace};
 use serde::Deserialize;
 
 use crate::{
-    config::{self, CacheEntries, CacheState},
+    config::{default_progress_style, Cache, CacheEntries, CacheState},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions,
 };
@@ -44,7 +44,7 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
 }
 
 pub(crate) struct NMUOutdatedBuiltUsing {
-    cache: config::Cache,
+    cache: Cache,
     base_options: BaseOptions,
     options: NMUOutdatedBuiltUsingOptions,
 }
@@ -55,7 +55,7 @@ impl NMUOutdatedBuiltUsing {
         options: NMUOutdatedBuiltUsingOptions,
     ) -> Result<Self> {
         Ok(Self {
-            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
+            cache: Cache::new(base_options.force_download, &base_options.mirror)?,
             base_options,
             options,
         })
@@ -84,7 +84,7 @@ impl NMUOutdatedBuiltUsing {
         // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(config::default_progress_style().template(
+        pb.set_style(default_progress_style().template(
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
         )?);
         pb.set_message(format!(
