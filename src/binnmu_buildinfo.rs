@@ -11,7 +11,7 @@ use assorted_debian_utils::archive::Codename;
 use assorted_debian_utils::rfc822_like;
 use assorted_debian_utils::version::PackageVersion;
 use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    architectures::Architecture,
     buildinfo::{self, Buildinfo},
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
