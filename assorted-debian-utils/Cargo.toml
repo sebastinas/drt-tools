@@ -5,7 +5,7 @@ version = "0.5.2"
 authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 repository = "https://github.com/sebastinas/drt-tools"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.60"
 license = "LGPL-3.0-or-later"
 readme = "README.md"
 keywords = ["debian"]
@@ -22,6 +22,9 @@ smallvec = { version = "1", default-features = false, features = [
     "serde",
     "union",
 ] }
+
+[features]
+version-compare = ["dep:libdpkg-sys"]
 
 [dev-dependencies]
 spectral = { version = "0.6", default-features = false }

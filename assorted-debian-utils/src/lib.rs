@@ -25,7 +25,7 @@ mod utils;
 pub mod version;
 pub mod wb;
 
-#[cfg(feature = "libdpkg-sys")]
+#[cfg(feature = "version-compare")]
 mod cversion;
 
 // Re-export rfc822_like

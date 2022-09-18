@@ -150,34 +150,34 @@ impl PackageVersion {
     }
 }
 
-#[cfg(feature = "libdpkg-sys")]
+#[cfg(feature = "version-compare")]
 use std::cmp::Ordering;
 
-#[cfg(feature = "libdpkg-sys")]
+#[cfg(feature = "version-compare")]
 use crate::cversion::CVersion;
 
-#[cfg(feature = "libdpkg-sys")]
+#[cfg(feature = "version-compare")]
 impl PartialOrd for PackageVersion {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-#[cfg(feature = "libdpkg-sys")]
+#[cfg(feature = "version-compare")]
 impl Ord for PackageVersion {
     fn cmp(&self, other: &Self) -> Ordering {
         CVersion::from(self).cmp(&CVersion::from(other))
     }
 }
 
-#[cfg(feature = "libdpkg-sys")]
+#[cfg(feature = "version-compare")]
 impl PartialEq for PackageVersion {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
     }
 }
 
-#[cfg(not(feature = "libdpkg-sys"))]
+#[cfg(not(feature = "version-compare"))]
 impl PartialEq for PackageVersion {
     fn eq(&self, other: &Self) -> bool {
         self.epoch_or_0() == other.epoch_or_0()
