@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.8 (2022-09-18)
+
+* `binNMU-buildinfo`: Make command usable again.
+
 ## 0.2.7 (2022-09-09)
 
 * Reduce feature flags of dependencies.
