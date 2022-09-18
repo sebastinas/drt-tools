@@ -324,10 +324,13 @@ impl Cache {
         )?))
     }
 
-    pub fn get_package_paths(&self) -> Result<Vec<PathBuf>> {
+    pub fn get_package_paths(&self, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {
             all_paths.push(self.get_cache_path(format!("Packages_{}", architecture))?);
+        }
+        if with_all {
+            all_paths.push(self.get_cache_path(format!("Packages_{}", Architecture::All))?);
         }
         Ok(all_paths)
     }

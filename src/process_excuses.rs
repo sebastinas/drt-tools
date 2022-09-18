@@ -229,7 +229,7 @@ impl ProcessExcuses {
             return Ok(());
         }
 
-        let source_packages = SourcePackages::new(&self.cache.get_package_paths()?)?;
+        let source_packages = SourcePackages::new(&self.cache.get_package_paths(false)?)?;
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 

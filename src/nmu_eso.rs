@@ -121,7 +121,7 @@ impl NMUOutdatedBuiltUsing {
 
         let ftbfs_bugs = self.load_bugs(&codename)?;
         let mut actionable_sources = HashSet::<String>::new();
-        for path in self.cache.get_package_paths()? {
+        for path in self.cache.get_package_paths(false)? {
             let sources = Self::parse_packages(path);
             actionable_sources.extend(sources?);
         }

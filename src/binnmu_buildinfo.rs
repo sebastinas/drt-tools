@@ -194,25 +194,10 @@ impl BinNMUBuildinfo {
     pub(crate) async fn run(self) -> Result<()> {
         self.download_to_cache().await?;
 
-        let mut all_paths = vec![];
-        let mut source_versions: HashMap<String, PackageVersion> = Self::parse_packages(
-            self.cache
-                .get_cache_path(format!("Packages_{}", Architecture::All))?,
-        )?
-        .into_iter()
-        .collect();
-        for architecture in RELEASE_ARCHITECTURES {
-            all_paths.push(
-                self.cache
-                    .get_cache_path(format!("Packages_{}", architecture))?,
-            );
-
-            for (source, version) in Self::parse_packages(
-                self.cache
-                    .get_cache_path(format!("Packages_{}", architecture))?,
-            )?
-            .into_iter()
-            {
+        // store latest version of all source packages
+        let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
+        for path in self.cache.get_package_paths(true)? {
+            for (source, version) in Self::parse_packages(path)?.into_iter() {
                 match source_versions.get_mut(&source) {
                     Some(old_ver) => {
                         if version > *old_ver {
@@ -225,7 +210,7 @@ impl BinNMUBuildinfo {
                 }
             }
         }
-        let source_packages = SourcePackages::new(&all_paths)?;
+        let source_packages = SourcePackages::new(&self.cache.get_package_paths(false)?)?;
 
         let ftbfs_bugs = if !self.base_options.force_processing {
             self.load_bugs()?
