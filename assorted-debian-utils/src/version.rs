@@ -18,7 +18,7 @@
 //! assert!(ver2.has_epoch());
 //! assert!(!ver2.is_native());
 //!
-//! #[cfg(feature="libdpkg-sys")]
+//! #[cfg(feature="version-compare")]
 //! {
 //!     assert!(ver1 < ver2);
 //!     assert_eq!(ver1, PackageVersion::new(Some(0), "1.0", Some("2")).expect("Failed to construct version"));
@@ -286,7 +286,7 @@ mod test {
         assert_eq!(version.debian_revision, Some("1".into()));
     }
 
-    #[cfg(feature = "libdpkg-sys")]
+    #[cfg(feature = "version-compare")]
     #[test]
     fn epoch_compare() {
         let version1 = PackageVersion::try_from("2.0-1").unwrap();
