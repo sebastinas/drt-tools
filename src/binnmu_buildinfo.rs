@@ -55,7 +55,7 @@ impl BinNMUBuildinfo {
         let architectures: Vec<Architecture> = buildinfo
             .architecture
             .into_iter()
-            .filter(|arch| *arch == Architecture::All || *arch == Architecture::Source)
+            .filter(|arch| *arch != Architecture::All && *arch != Architecture::Source)
             .collect();
         if architectures.is_empty() {
             return Err(anyhow!("no binNMU-able architecture"));
