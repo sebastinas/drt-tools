@@ -65,24 +65,17 @@ impl BinNMUBuildinfo {
                 CacheEntries::Packages,
                 CacheEntries::FTBFSBugs(self.options.binnmu_options.suite.into()),
             ])
-            .await?;
-        Ok(CacheState::FreshFiles)
+            .await
     }
 
-    fn parse_packages<P>(path: P) -> Result<HashSet<(String, PackageVersion)>>
-    where
-        P: AsRef<Path>,
-    {
+    fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<(String, PackageVersion)>> {
         // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(default_progress_style().template(
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
         )?);
-        pb.set_message(format!(
-            "Processing {}",
-            path.as_ref().file_name().unwrap().to_str().unwrap()
-        ));
+        pb.set_message(format!("Processing {}", path.as_ref().display()));
 
         Ok(binary_packages
             .into_iter()
@@ -271,11 +264,13 @@ fn strip_signature(input: impl BufRead) -> Result<Vec<u8>> {
             true
         }
     }) {
-        if line.is_err() {
-            break;
-        }
+        let line = match line {
+            Ok(v) => v,
+            Err(_) => {
+                break;
+            }
+        };
 
-        let line = line.unwrap();
         // Read until beginning of the signature block
         if line.starts_with("-----BEGIN") {
             return Ok(data);
