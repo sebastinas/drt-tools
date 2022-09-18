@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{anyhow, Result};
+use assorted_debian_utils::archive::Codename;
 use assorted_debian_utils::rfc822_like;
 use assorted_debian_utils::version::PackageVersion;
 use assorted_debian_utils::{
@@ -19,6 +20,7 @@ use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
 use crate::config::default_progress_style;
+use crate::udd_bugs::{load_bugs_from_reader, UDDBugs};
 use crate::{
     config::{Cache, CacheEntries, CacheState},
     source_packages::SourcePackages,
@@ -30,7 +32,6 @@ use crate::{
 struct BinaryPackage {
     source: Option<String>,
     package: String,
-    architecture: Architecture,
     version: PackageVersion,
 }
 
@@ -59,7 +60,12 @@ impl BinNMUBuildinfo {
     }
 
     async fn download_to_cache(&self) -> Result<CacheState> {
-        self.cache.download(&[CacheEntries::Packages]).await?;
+        self.cache
+            .download(&[
+                CacheEntries::Packages,
+                CacheEntries::FTBFSBugs(self.options.binnmu_options.suite.into()),
+            ])
+            .await?;
         Ok(CacheState::FreshFiles)
     }
 
@@ -81,7 +87,6 @@ impl BinNMUBuildinfo {
         Ok(binary_packages
             .into_iter()
             .progress_with(pb)
-            .filter(|binary_package| binary_package.architecture != Architecture::All)
             .map(|binary_package| {
                 if let Some(source_package) = &binary_package.source {
                     (
@@ -101,6 +106,7 @@ impl BinNMUBuildinfo {
         buildinfo: Buildinfo,
         source_packages: &SourcePackages,
         source_versions: &HashMap<String, PackageVersion>,
+        ftbfs_bugs: &UDDBugs,
     ) -> Result<WBCommand> {
         let mut source_split = buildinfo.source.split_whitespace();
         let source_package = source_split.next().unwrap();
@@ -120,10 +126,13 @@ impl BinNMUBuildinfo {
                     return Err(anyhow!("newer version in archive"));
                 }
             }
-            None => {}
+            None => return Err(anyhow!("removed from the archive")),
         }
 
-        // let mut nmu_version = None;
+        if ftbfs_bugs.bugs_for_source(source_package).is_some() {
+            return Err(anyhow!("skipping due to FTBFS bugs"));
+        }
+
         let mut source = SourceSpecifier::new(source_package);
         let version = buildinfo.version.without_binnmu_version();
         source
@@ -144,17 +153,61 @@ impl BinNMUBuildinfo {
         if let Some(extra_depends) = &self.options.binnmu_options.extra_depends {
             binnmu.with_extra_depends(extra_depends);
         }
-        //  if let Some(version) = nmu_version {
-        //      binnmu.with_nmu_version(version);
-        //  }
         Ok(binnmu.build())
+    }
+
+    fn process_path(
+        &self,
+        path: impl AsRef<Path>,
+        source_packages: &SourcePackages,
+        source_versions: &HashMap<String, PackageVersion>,
+        ftbfs_bugs: &UDDBugs,
+    ) -> Result<HashSet<WBCommand>> {
+        let mut ret = HashSet::new();
+        let path = path.as_ref();
+        if path.is_dir() {
+            for path in path.read_dir()? {
+                ret.extend(
+                    self.process_path(path?.path(), source_packages, source_versions, ftbfs_bugs)
+                        .unwrap_or_default(),
+                );
+            }
+        } else {
+            let data = strip_signature(BufReader::new(File::open(path)?))?;
+            match buildinfo::from_reader(data.as_ref()) {
+                Err(e) => {
+                    println!("# skipping {}: {}", path.display(), e);
+                }
+                Ok(bi) => match self.process(bi, source_packages, source_versions, ftbfs_bugs) {
+                    Err(e) => {
+                        println!("# skipping {}: {}", path.display(), e,);
+                    }
+                    Ok(command) => {
+                        ret.insert(command);
+                    }
+                },
+            }
+        }
+        Ok(ret)
+    }
+
+    fn load_bugs(&self) -> Result<UDDBugs> {
+        load_bugs_from_reader(self.cache.get_cache_bufreader(format!(
+            "udd-ftbfs-bugs-{}.yaml",
+            Codename::from(self.options.binnmu_options.suite)
+        ))?)
     }
 
     pub(crate) async fn run(self) -> Result<()> {
         self.download_to_cache().await?;
 
         let mut all_paths = vec![];
-        let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
+        let mut source_versions: HashMap<String, PackageVersion> = Self::parse_packages(
+            self.cache
+                .get_cache_path(format!("Packages_{}", Architecture::All))?,
+        )?
+        .into_iter()
+        .collect();
         for architecture in RELEASE_ARCHITECTURES {
             all_paths.push(
                 self.cache
@@ -181,25 +234,19 @@ impl BinNMUBuildinfo {
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
+        let ftbfs_bugs = if !self.base_options.force_processing {
+            self.load_bugs()?
+        } else {
+            UDDBugs::new(vec![])
+        };
+
         let mut wb_commands = HashSet::new();
         // iterate over all buildinfo files
         for filename in &self.options.inputs {
-            let data = strip_signature(BufReader::new(File::open(&filename)?))?;
-            match buildinfo::from_reader(data.as_ref()) {
-                Err(e) => {
-                    println!("# skipping {}: {}", filename.display(), e);
-                    continue;
-                }
-                Ok(bi) => match self.process(bi, &source_packages, &source_versions) {
-                    Err(e) => {
-                        println!("# skipping {}: {}", filename.display(), e,);
-                        continue;
-                    }
-                    Ok(command) => {
-                        wb_commands.insert(command);
-                    }
-                },
-            }
+            wb_commands.extend(
+                self.process_path(filename, &source_packages, &source_versions, &ftbfs_bugs)
+                    .unwrap_or_default(),
+            );
         }
 
         for commands in wb_commands {
