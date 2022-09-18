@@ -43,7 +43,6 @@ impl BinNMUBuildinfo {
         })
     }
 
-    #[tokio::main]
     async fn download_to_cache(&self) -> Result<CacheState> {
         self.cache.download(&[CacheEntries::Packages]).await?;
         Ok(CacheState::FreshFiles)
@@ -71,12 +70,6 @@ impl BinNMUBuildinfo {
         if !source_packages.is_ma_same(source_package) {
             // binNMU only on the architecture if no MA: same binary packages
             source.with_archive_architectures(&architectures);
-            //  } else {
-            //      if let Some(binnmu_version) = version_split.next() {
-            //          nmu_version = Some(binnmu_version.parse::<u32>().unwrap() + 1);
-            //      } else {
-            //          nmu_version = Some(1u32);
-            //      }
         }
 
         let mut binnmu = BinNMU::new(&source, &self.options.binnmu_options.message)?;
@@ -95,8 +88,8 @@ impl BinNMUBuildinfo {
         Ok(binnmu.build())
     }
 
-    pub(crate) fn run(self) -> Result<()> {
-        self.download_to_cache()?;
+    pub(crate) async fn run(self) -> Result<()> {
+        self.download_to_cache().await?;
 
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {

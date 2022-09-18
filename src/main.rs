@@ -143,7 +143,7 @@ async fn main() -> Result<()> {
         }
         DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
             let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts)?;
-            binnmus_buildinfo.run()
+            binnmus_buildinfo.run().await
         }
         DrtToolsCommands::GrepExcuses(ge_opts) => {
             let grep_excuses = GrepExcuses::new(opts.base_options, ge_opts)?;
