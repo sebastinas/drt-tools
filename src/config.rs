@@ -219,6 +219,7 @@ impl Cache {
     fn packages_urls(&self) -> Vec<(String, String)> {
         RELEASE_ARCHITECTURES
             .into_iter()
+            .chain([Architecture::All].into_iter())
             .map(|architecture| {
                 (
                     format!(
