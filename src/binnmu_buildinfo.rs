@@ -1,23 +1,38 @@
 // Copyright 2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{anyhow, Result};
+use assorted_debian_utils::rfc822_like;
+use assorted_debian_utils::version::PackageVersion;
 use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     buildinfo::{self, Buildinfo},
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressIterator};
+use serde::Deserialize;
 
+use crate::config::default_progress_style;
 use crate::{
     config::{Cache, CacheEntries, CacheState},
     source_packages::SourcePackages,
     BaseOptions, BinNMUsOptions,
 };
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+struct BinaryPackage {
+    source: Option<String>,
+    package: String,
+    architecture: Architecture,
+    version: PackageVersion,
+}
 
 #[derive(Debug, Parser)]
 pub(crate) struct BinNMUBuildinfoOptions {
@@ -48,7 +63,45 @@ impl BinNMUBuildinfo {
         Ok(CacheState::FreshFiles)
     }
 
-    fn process(&self, buildinfo: Buildinfo, source_packages: &SourcePackages) -> Result<WBCommand> {
+    fn parse_packages<P>(path: P) -> Result<HashSet<(String, PackageVersion)>>
+    where
+        P: AsRef<Path>,
+    {
+        // read Package file
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
+        let pb = ProgressBar::new(binary_packages.len() as u64);
+        pb.set_style(default_progress_style().template(
+            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+        )?);
+        pb.set_message(format!(
+            "Processing {}",
+            path.as_ref().file_name().unwrap().to_str().unwrap()
+        ));
+
+        Ok(binary_packages
+            .into_iter()
+            .progress_with(pb)
+            .filter(|binary_package| binary_package.architecture != Architecture::All)
+            .map(|binary_package| {
+                if let Some(source_package) = &binary_package.source {
+                    (
+                        source_package.split_whitespace().next().unwrap().into(),
+                        binary_package.version,
+                    )
+                } else {
+                    // no Source set, so Source == Package
+                    (binary_package.package, binary_package.version)
+                }
+            })
+            .collect())
+    }
+
+    fn process(
+        &self,
+        buildinfo: Buildinfo,
+        source_packages: &SourcePackages,
+        source_versions: &HashMap<String, PackageVersion>,
+    ) -> Result<WBCommand> {
         let mut source_split = buildinfo.source.split_whitespace();
         let source_package = source_split.next().unwrap();
 
@@ -59,6 +112,15 @@ impl BinNMUBuildinfo {
             .collect();
         if architectures.is_empty() {
             return Err(anyhow!("no binNMU-able architecture"));
+        }
+
+        match source_versions.get(source_package) {
+            Some(version) => {
+                if version > &buildinfo.version {
+                    return Err(anyhow!("newer version in archive"));
+                }
+            }
+            None => {}
         }
 
         // let mut nmu_version = None;
@@ -92,11 +154,30 @@ impl BinNMUBuildinfo {
         self.download_to_cache().await?;
 
         let mut all_paths = vec![];
+        let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
         for architecture in RELEASE_ARCHITECTURES {
             all_paths.push(
                 self.cache
                     .get_cache_path(format!("Packages_{}", architecture))?,
             );
+
+            for (source, version) in Self::parse_packages(
+                self.cache
+                    .get_cache_path(format!("Packages_{}", architecture))?,
+            )?
+            .into_iter()
+            {
+                match source_versions.get_mut(&source) {
+                    Some(old_ver) => {
+                        if version > *old_ver {
+                            *old_ver = version;
+                        }
+                    }
+                    None => {
+                        source_versions.insert(source, version);
+                    }
+                }
+            }
         }
         let source_packages = SourcePackages::new(&all_paths)?;
 
@@ -109,7 +190,7 @@ impl BinNMUBuildinfo {
                     println!("# skipping {}: {}", filename.display(), e);
                     continue;
                 }
-                Ok(bi) => match self.process(bi, &source_packages) {
+                Ok(bi) => match self.process(bi, &source_packages, &source_versions) {
                     Err(e) => {
                         println!("# skipping {}: {}", filename.display(), e,);
                         continue;

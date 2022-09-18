@@ -15,7 +15,9 @@ members = ["assorted-debian-utils"]
 
 [dependencies]
 anyhow = "1"
-assorted-debian-utils = { version = "0.5.1", path = "assorted-debian-utils" }
+assorted-debian-utils = { version = "0.5.1", path = "assorted-debian-utils", features = [
+    "libdpkg-sys",
+] }
 chrono = { version = "0.4", default-features = false }
 clap = { version = "3", features = ["derive", "unicode", "wrap_help"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
