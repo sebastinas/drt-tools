@@ -7,6 +7,7 @@ use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Suite, SuiteOrCodename},
+    rfc822_like,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use clap::Parser;

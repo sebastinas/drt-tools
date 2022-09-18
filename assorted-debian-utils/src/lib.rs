@@ -28,6 +28,9 @@ pub mod wb;
 #[cfg(feature = "libdpkg-sys")]
 mod cversion;
 
+// Re-export rfc822_like
+pub use rfc822_like;
+
 /// Parsing error
 #[derive(Clone, Copy, Debug, Error)]
 pub enum ParseError {

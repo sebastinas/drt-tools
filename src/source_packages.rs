@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::Result;
-use assorted_debian_utils::archive::MultiArch;
+use assorted_debian_utils::{archive::MultiArch, rfc822_like};
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
