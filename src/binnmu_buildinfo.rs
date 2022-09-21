@@ -242,12 +242,11 @@ impl BinNMUBuildinfo {
 fn strip_signature(input: impl BufRead) -> Result<Vec<u8>> {
     let mut data = vec![];
     for line in input.lines().skip_while(|rline| {
-        if let Ok(line) = rline {
-            // Skip until the beginning of a buildinfo file
-            !line.starts_with("Format: ")
-        } else {
-            true
-        }
+        // Skip until the beginning of a buildinfo file
+        rline
+            .as_ref()
+            .map(|line| !line.starts_with("Format: "))
+            .unwrap_or(true)
     }) {
         let line = match line {
             Ok(v) => v,
