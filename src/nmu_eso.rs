@@ -12,6 +12,7 @@ use assorted_debian_utils::{
 };
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
+use itertools::sorted;
 use log::{debug, trace};
 use serde::Deserialize;
 
@@ -127,14 +128,18 @@ impl NMUOutdatedBuiltUsing {
         }
 
         let mut result = HashSet::new();
-        let reader = self.cache.get_cache_bufreader("outdated-built-using.txt")?;
+        for line in self
+            .cache
+            .get_cache_bufreader("outdated-built-using.txt")?
+            .lines()
+        {
+            let line = match line {
+                Ok(line) => line,
+                Err(_) => {
+                    break;
+                }
+            };
 
-        for line in reader.lines() {
-            if line.is_err() {
-                break;
-            }
-
-            let line = line.unwrap();
             trace!("Processing line: {}", line);
             let split: Vec<&str> = line.split(" | ").collect();
             if split.len() != 5 {
@@ -172,12 +177,10 @@ impl NMUOutdatedBuiltUsing {
                 continue;
             }
 
-            result.insert(split[1].trim().to_owned());
+            result.insert(source);
         }
 
-        let mut result: Vec<String> = result.into_iter().collect();
-        result.sort();
-        Ok(result)
+        Ok(sorted(result.into_iter()).collect())
     }
 
     pub(crate) async fn run(self) -> Result<()> {
