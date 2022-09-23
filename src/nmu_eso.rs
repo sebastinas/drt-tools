@@ -1,7 +1,12 @@
 // Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{collections::HashSet, io::BufRead, path::Path};
+use std::{
+    collections::HashSet,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::Path,
+};
 
 use anyhow::Result;
 use assorted_debian_utils::{
@@ -51,6 +56,86 @@ pub(crate) struct NMUOutdatedBuiltUsing {
     options: NMUOutdatedBuiltUsingOptions,
 }
 
+struct PackageReader {
+    reader: BufReader<File>,
+    suite: Suite,
+    actionable_sources: HashSet<String>,
+    ftbfs_bugs: UDDBugs,
+}
+
+impl PackageReader {
+    fn new(
+        reader: BufReader<File>,
+        suite: Suite,
+        actionable_sources: HashSet<String>,
+        ftbfs_bugs: UDDBugs,
+    ) -> Self {
+        Self {
+            reader,
+            suite,
+            actionable_sources,
+            ftbfs_bugs,
+        }
+    }
+}
+
+impl Iterator for PackageReader {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut line = String::new();
+        while let Ok(size) = {
+            line.clear();
+            self.reader.read_line(&mut line)
+        } {
+            if size == 0 {
+                break;
+            }
+
+            trace!("Processing line: {}", line);
+            let split: Vec<&str> = line.split(" | ").collect();
+            if split.len() != 5 {
+                continue;
+            }
+
+            // check if suite matches
+            match Suite::try_from(split[0].trim()) {
+                Ok(source_suite) if source_suite == self.suite => {}
+                _ => {
+                    continue;
+                }
+            }
+
+            let source = split[1].trim().to_owned();
+            // not-binNMUable as the Built-Using package is binary-independent
+            if !self.actionable_sources.contains(&source) {
+                debug!("Skipping {}: not actionable", source);
+                continue;
+            }
+            // skip some packages that either make no sense to binNMU or fail to be binNMUed
+            if source.starts_with("gcc-") || source.starts_with("binutils") {
+                debug!("Skipping {}: either gcc or binuitls", source);
+                continue;
+            }
+            // check if package FTBFS
+            if let Some(bugs) = self.ftbfs_bugs.bugs_for_source(&source) {
+                println!("# Skipping {} due to FTBFS bugs ...", source);
+                for bug in bugs {
+                    debug!(
+                        "Skipping {}: #{} - {}: {}",
+                        source, bug.id, bug.severity, bug.title
+                    );
+                }
+                continue;
+            }
+
+            return Some(source);
+        }
+
+        None
+    }
+}
+
 impl NMUOutdatedBuiltUsing {
     pub(crate) fn new(
         base_options: BaseOptions,
@@ -63,16 +148,16 @@ impl NMUOutdatedBuiltUsing {
         })
     }
 
-    async fn download_to_cache(&self, codename: &Codename) -> Result<CacheState> {
+    async fn download_to_cache(&self, codename: Codename) -> Result<CacheState> {
         self.cache
-            .download(&[CacheEntries::Packages, CacheEntries::FTBFSBugs(*codename)])
+            .download(&[CacheEntries::Packages, CacheEntries::FTBFSBugs(codename)])
             .await?;
         self.cache
             .download(&[CacheEntries::OutdatedBuiltUsing])
             .await
     }
 
-    fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
+    fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
         load_bugs_from_reader(
             self.cache
                 .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
@@ -89,10 +174,7 @@ impl NMUOutdatedBuiltUsing {
         pb.set_style(default_progress_style().template(
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
         )?);
-        pb.set_message(format!(
-            "Processing {}",
-            path.as_ref().file_name().unwrap().to_str().unwrap()
-        ));
+        pb.set_message(format!("Processing {}", path.as_ref().display()));
         // collect all sources with arch dependent binaries having Built-Using set
         Ok(binary_packages
             .into_iter()
@@ -112,80 +194,36 @@ impl NMUOutdatedBuiltUsing {
             .collect())
     }
 
-    async fn load_eso(&self, suite: &Suite) -> Result<Vec<String>> {
-        let codename = (*suite).into();
-        if self.download_to_cache(&codename).await? == CacheState::NoUpdate
+    async fn load_eso(&self, suite: Suite) -> Result<Vec<String>> {
+        let codename = suite.into();
+        if self.download_to_cache(codename).await? == CacheState::NoUpdate
             && !self.base_options.force_processing
         {
             return Ok(Vec::new());
         }
 
-        let ftbfs_bugs = self.load_bugs(&codename)?;
+        let ftbfs_bugs = self.load_bugs(codename)?;
         let mut actionable_sources = HashSet::<String>::new();
         for path in self.cache.get_package_paths(false)? {
             let sources = Self::parse_packages(path);
             actionable_sources.extend(sources?);
         }
 
-        let mut result = HashSet::new();
-        for line in self
-            .cache
-            .get_cache_bufreader("outdated-built-using.txt")?
-            .lines()
-        {
-            let line = match line {
-                Ok(line) => line,
-                Err(_) => {
-                    break;
-                }
-            };
-
-            trace!("Processing line: {}", line);
-            let split: Vec<&str> = line.split(" | ").collect();
-            if split.len() != 5 {
-                continue;
-            }
-
-            // check if suite matches
-            match Suite::try_from(split[0].trim()) {
-                Ok(ref source_suite) if source_suite == suite => {}
-                _ => {
-                    continue;
-                }
-            }
-
-            let source = split[1].trim().to_owned();
-            // not-binNMUable as the Built-Using package is binary-independent
-            if !actionable_sources.contains(&source) {
-                debug!("Skipping {}: not actionable", source);
-                continue;
-            }
-            // skip some packages that either make no sense to binNMU or fail to be binNMUed
-            if source.starts_with("gcc-") || source.starts_with("binutils") {
-                debug!("Skipping {}: either gcc or binuitls", source);
-                continue;
-            }
-            // check if package FTBFS
-            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
-                println!("# Skipping {} due to FTBFS bugs ...", source);
-                for bug in bugs {
-                    debug!(
-                        "Skipping {}: #{} - {}: {}",
-                        source, bug.id, bug.severity, bug.title
-                    );
-                }
-                continue;
-            }
-
-            result.insert(source);
-        }
+        let result: HashSet<String> = PackageReader::new(
+            self.cache.get_cache_bufreader("outdated-built-using.txt")?,
+            suite,
+            actionable_sources,
+            ftbfs_bugs,
+        )
+        .into_iter()
+        .collect();
 
         Ok(sorted(result.into_iter()).collect())
     }
 
     pub(crate) async fn run(self) -> Result<()> {
         let suite = self.options.suite.into();
-        let eso_sources = self.load_eso(&suite).await?;
+        let eso_sources = self.load_eso(suite).await?;
 
         for source in eso_sources {
             let mut source = SourceSpecifier::new(&source);
