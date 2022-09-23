@@ -56,7 +56,7 @@ impl UDDBugs {
             ..Default::default()
         };
 
-        for (idx, bug) in (&udd_bugs.bugs).iter().enumerate() {
+        for (idx, bug) in udd_bugs.bugs.iter().enumerate() {
             if udd_bugs.source_index.contains_key(&bug.source) {
                 udd_bugs
                     .source_index
