@@ -40,7 +40,6 @@ pub(crate) struct BinNMUBuildinfoOptions {
     #[clap(flatten)]
     binnmu_options: BinNMUsOptions,
     /// Input files
-    #[clap(parse(from_os_str))]
     inputs: Vec<PathBuf>,
 }
 

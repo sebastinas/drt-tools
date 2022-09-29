@@ -3,7 +3,7 @@
 
 use anyhow::Result;
 use assorted_debian_utils::{architectures::Architecture, archive::SuiteOrCodename};
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 use log::trace;
 
 mod binnmu_buildinfo;
@@ -38,8 +38,8 @@ pub(crate) struct BaseOptions {
     #[clap(short = 'q', long)]
     quiet: bool,
     /// Verbose mode (-v, -vv, -vvv, etc)
-    #[clap(short = 'v', long, parse(from_occurrences))]
-    verbose: usize,
+    #[clap(short = 'v', long, action(ArgAction::Count))]
+    verbose: u8,
     /// Archive mirror
     #[clap(long, default_value = "https://deb.debian.org/debian")]
     mirror: String,
@@ -127,7 +127,7 @@ async fn main() -> Result<()> {
 
     stderrlog::new()
         .quiet(opts.base_options.quiet)
-        .verbosity(opts.base_options.verbose)
+        .verbosity(opts.base_options.verbose as usize)
         .init()?;
     trace!("base options {:?}", opts.base_options);
     trace!("command: {:?}", opts.command);
