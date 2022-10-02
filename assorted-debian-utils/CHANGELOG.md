@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3 (2022-10-02)
+
+* Add `version-compare` feature (replaces optional `libdpkg-sys` dependency).
+* Re-export `rfc822_like`.
+
 ## 0.5.2 (2022-09-09)
 
 * Derive `Eq` where possible.
