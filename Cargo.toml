@@ -20,23 +20,23 @@ assorted-debian-utils = { version = "0.5.3", path = "assorted-debian-utils", fea
 ] }
 chrono = { version = "0.4", default-features = false }
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
+flate2 = { version = "1", default-features = false, features = ["zlib"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 httpdate = "1"
 indicatif = "0.17"
+itertools = { version = "0.10" }
+log = "0.4"
 regex = { version = "1", default-features = false, features = ["std", "perf"] }
 reqwest = { version = "0.11", features = ["stream"] }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = { version = "0.9" }
+smartstring = "1"
+smallvec = { version = "1", default-features = false, features = ["union"] }
+stderrlog = "0.5"
 tokio = { version = "1.13", default-features = false, features = [
     "macros",
     "rt-multi-thread",
 ] }
+voca_rs = "1.14.0"
 xdg = "2.4"
 xz2 = { version = "0.1", default-features = false }
-voca_rs = "1.14"
-log = "0.4"
-stderrlog = "0.5"
-flate2 = { version = "1", default-features = false, features = ["zlib"] }
-smartstring = "1"
-smallvec = { version = "1", default-features = false, features = ["union"] }
-itertools = { version = "0.10" }
