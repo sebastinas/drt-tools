@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9 (2022-10-02)
+
+* `binNMU-buildinfo`: Various improvements.
+* Upgrade to `clap` 4.
+
 ## 0.2.8 (2022-09-18)
 
 * `binNMU-buildinfo`: Make command usable again.
