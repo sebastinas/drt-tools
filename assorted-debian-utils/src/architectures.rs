@@ -49,8 +49,8 @@ pub enum Architecture {
     /// The `kfreebsd-i386` architecture
     #[serde(rename = "kfreebsd-i386")]
     KFreeBSDI386,
-    /// The `m86k` architecture
-    M86k,
+    /// The `m68k` architecture
+    M68k,
     /// The `mips64el` architecture
     Mips64el,
     /// The `mipsel` architecture
@@ -94,13 +94,13 @@ impl Display for Architecture {
                 Architecture::Ia64 => "ia64",
                 Architecture::KFreeBSDAmd64 => "kfreebsd-amd64",
                 Architecture::KFreeBSDI386 => "kfreebsd-i386",
-                Architecture::M86k => "m86k",
+                Architecture::M68k => "m68k",
                 Architecture::Mips64el => "mips64el",
                 Architecture::Mipsel => "mipsel",
                 Architecture::PowerPC => "powerpc",
                 Architecture::Ppc64 => "ppc64",
                 Architecture::Ppc64el => "ppc64el",
-                Architecture::Riscv64 => "risc64",
+                Architecture::Riscv64 => "riscv64",
                 Architecture::S390x => "s390x",
                 Architecture::Sh4 => "sh4",
                 Architecture::Sparc64 => "sparc64",
@@ -129,13 +129,13 @@ impl TryFrom<&str> for Architecture {
             "ia64" => Ok(Architecture::Ia64),
             "kfreebsd-amd64" => Ok(Architecture::KFreeBSDAmd64),
             "kfreebsd-i386" => Ok(Architecture::KFreeBSDI386),
-            "m86k" => Ok(Architecture::M86k),
+            "m68k" => Ok(Architecture::M68k),
             "mips64el" => Ok(Architecture::Mips64el),
             "mipsel" => Ok(Architecture::Mipsel),
             "powerpc" => Ok(Architecture::PowerPC),
             "ppc64" => Ok(Architecture::Ppc64),
             "ppc64el" => Ok(Architecture::Ppc64el),
-            "risc64" => Ok(Architecture::Riscv64),
+            "riscv64" => Ok(Architecture::Riscv64),
             "s390x" => Ok(Architecture::S390x),
             "sh4" => Ok(Architecture::Sh4),
             "sparc64" => Ok(Architecture::Sparc64),
