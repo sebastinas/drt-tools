@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4 (2022-10-06)
+
+* Add support for `arc` architecture
+* Fix `m68k` and `riscv64` architectures
+* Add support for `non-free-firmware` component
+
 ## 0.5.3 (2022-10-02)
 
 * Add `version-compare` feature (replaces optional `libdpkg-sys` dependency).
