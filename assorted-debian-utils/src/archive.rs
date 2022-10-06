@@ -351,6 +351,9 @@ pub enum Component {
     /// The `non-free` archive component
     #[serde(rename = "non-free")]
     NonFree,
+    /// The `non-free-firmware` archive component
+    #[serde(rename = "non-free-firmware")]
+    NonFreeFirmware,
 }
 
 impl Display for Component {
@@ -359,6 +362,7 @@ impl Display for Component {
             Component::Main => write!(f, "main"),
             Component::Contrib => write!(f, "contrib"),
             Component::NonFree => write!(f, "non-free"),
+            Component::NonFreeFirmware => write!(f, "non-free-firmware"),
         }
     }
 }
@@ -371,6 +375,7 @@ impl TryFrom<&str> for Component {
             "main" => Ok(Component::Main),
             "contrib" => Ok(Component::Contrib),
             "non-free" => Ok(Component::NonFree),
+            "non-free-firmware" => Ok(Component::NonFreeFirmware),
             _ => Err(ParseError::InvalidComponent),
         }
     }
