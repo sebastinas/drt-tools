@@ -19,7 +19,6 @@ use thiserror::Error;
 pub mod architectures;
 pub mod archive;
 pub mod autoremovals;
-pub mod ben;
 pub mod buildinfo;
 pub mod excuses;
 mod utils;

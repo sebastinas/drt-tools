@@ -11,7 +11,6 @@ pub(crate) mod config;
 mod grep_excuses;
 mod nmu_eso;
 mod prepare_binnmus;
-mod prepare_binnmus_json;
 mod process_excuses;
 pub(crate) mod source_packages;
 pub(crate) mod udd_bugs;
