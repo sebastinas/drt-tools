@@ -70,14 +70,19 @@ impl PackageVersion {
         upstream_version: &str,
         debian_revision: Option<&str>,
     ) -> Result<Self, VersionError> {
+        // Upstream version may consist of alphanumeric characters and ., +, ~, - (if the revision is non-empty), : (if the epoch is non-empty)
         if upstream_version.is_empty()
-            || upstream_version
-                .chars()
-                .any(|c| !c.is_alphanumeric() && !".+-~".contains(c))
+            || upstream_version.chars().any(|c| {
+                !(c.is_alphanumeric()
+                    || ".+~".contains(c)
+                    || (debian_revision.is_some() && c == '-')
+                    || (epoch.is_some() && c == ':'))
+            })
         {
             return Err(VersionError::InvalidUpstreamVersion);
         }
 
+        // Debian revision may consist of alphanumeric characters and ., +, ~
         if let Some(rev) = debian_revision {
             if rev.is_empty()
                 || rev
@@ -352,17 +357,29 @@ mod test {
         assert!(PackageVersion::try_from(":1.0-1").is_err());
         assert!(PackageVersion::try_from("a1:1.0-1").is_err());
     }
+
     #[test]
     fn invalid_upstream_version() {
         assert!(PackageVersion::try_from("-1").is_err());
         assert!(PackageVersion::try_from("0:-1").is_err());
+        assert!(PackageVersion::new(None, "1:2", None).is_err());
+        assert!(PackageVersion::new(None, "1-2", None).is_err());
     }
 
     #[test]
     fn multi_dash() {
         let version = PackageVersion::try_from("1.0-2-1").unwrap();
+        assert_eq!(version.epoch, None);
         assert_eq!(version.upstream_version, "1.0-2");
-        assert_eq!(version.debian_revision, Some("1".into()));
+        assert_eq!(version.debian_revision.unwrap(), "1");
+    }
+
+    #[test]
+    fn multi_colon() {
+        let version = PackageVersion::try_from("1:1.0:2-1").unwrap();
+        assert_eq!(version.epoch.unwrap(), 1);
+        assert_eq!(version.upstream_version, "1.0:2");
+        assert_eq!(version.debian_revision.unwrap(), "1");
     }
 
     #[test]
