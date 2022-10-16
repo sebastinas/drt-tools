@@ -18,14 +18,12 @@
 //! assert!(ver2.has_epoch());
 //! assert!(!ver2.is_native());
 //!
-//! #[cfg(feature="version-compare")]
-//! {
-//!     assert!(ver1 < ver2);
-//!     assert_eq!(ver1, PackageVersion::new(Some(0), "1.0", Some("2")).expect("Failed to construct version"));
-//! }
+//! assert!(ver1 < ver2);
+//! assert_eq!(ver1, PackageVersion::new(Some(0), "1.0", Some("2")).expect("Failed to construct version"));
 //! ```
 
 use std::{
+    cmp::Ordering,
     fmt::{self, Display},
     hash::{Hash, Hasher},
 };
@@ -150,39 +148,101 @@ impl PackageVersion {
     }
 }
 
-#[cfg(feature = "version-compare")]
-use std::cmp::Ordering;
-
-#[cfg(feature = "version-compare")]
-use crate::cversion::CVersion;
-
-#[cfg(feature = "version-compare")]
 impl PartialOrd for PackageVersion {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-#[cfg(feature = "version-compare")]
+/// Compare non-digits part of a version
+///
+/// Non-letters sort before letters, and ~ always sorts first.
+fn compare_non_digits(mut lhs: &str, mut rhs: &str) -> Ordering {
+    while !lhs.is_empty() || !rhs.is_empty() {
+        let (lhs_tilde, lhs_found) = lhs
+            .find(|c| c == '~')
+            .map(|i| (i, true))
+            .unwrap_or((lhs.len(), false));
+        let (rhs_tilde, rhs_found) = rhs
+            .find(|c| c == '~')
+            .map(|i| (i, true))
+            .unwrap_or((rhs.len(), false));
+        let c = lhs[..lhs_tilde].cmp(&rhs[..rhs_tilde]);
+        if c != Ordering::Equal {
+            return c;
+        }
+
+        if lhs_found && rhs_found {
+            lhs = &lhs[lhs_tilde + 1..];
+            rhs = &rhs[rhs_tilde + 1..];
+        } else if lhs_found {
+            return Ordering::Less;
+        } else if rhs_found {
+            return Ordering::Greater;
+        } else {
+            return Ordering::Equal;
+        }
+    }
+
+    // both lhs and rhs are empty
+    Ordering::Equal
+}
+
+/// Compare parts of the two versions
+fn compare_parts(mut lhs: &str, mut rhs: &str) -> Ordering {
+    while !lhs.is_empty() || !rhs.is_empty() {
+        // compare initial non-digits
+        let lhs_digit_start = lhs.find(|c| char::is_ascii_digit(&c)).unwrap_or(lhs.len());
+        let rhs_digit_start = rhs.find(|c| char::is_ascii_digit(&c)).unwrap_or(rhs.len());
+        let c = compare_non_digits(&lhs[..lhs_digit_start], &rhs[..rhs_digit_start]);
+        if c != Ordering::Equal {
+            return c;
+        }
+        lhs = &lhs[lhs_digit_start..];
+        rhs = &rhs[rhs_digit_start..];
+
+        // compare initial digits
+        let lhs_digit_end = lhs.find(|c| !char::is_ascii_digit(&c)).unwrap_or(lhs.len());
+        let rhs_digit_end = rhs.find(|c| !char::is_ascii_digit(&c)).unwrap_or(rhs.len());
+        let c = lhs[..lhs_digit_end]
+            .parse::<u64>()
+            .unwrap_or(0)
+            .cmp(&rhs[..rhs_digit_end].parse::<u64>().unwrap_or(0));
+        if c != Ordering::Equal {
+            return c;
+        }
+        lhs = &lhs[lhs_digit_end..];
+        rhs = &rhs[rhs_digit_end..];
+    }
+
+    // both lhs and rhs are empty
+    Ordering::Equal
+}
+
 impl Ord for PackageVersion {
     fn cmp(&self, other: &Self) -> Ordering {
-        CVersion::from(self).cmp(&CVersion::from(other))
+        match self.epoch_or_0().cmp(&other.epoch_or_0()) {
+            Ordering::Equal => {}
+            v => return v,
+        };
+
+        match compare_parts(&self.upstream_version, &other.upstream_version) {
+            Ordering::Equal => {}
+            v => return v,
+        };
+
+        match (&self.debian_revision, &other.debian_revision) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+            (Some(lhs), Some(rhs)) => compare_parts(lhs, rhs),
+        }
     }
 }
 
-#[cfg(feature = "version-compare")]
 impl PartialEq for PackageVersion {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
-    }
-}
-
-#[cfg(not(feature = "version-compare"))]
-impl PartialEq for PackageVersion {
-    fn eq(&self, other: &Self) -> bool {
-        self.epoch_or_0() == other.epoch_or_0()
-            && self.upstream_version == other.upstream_version
-            && self.debian_revision == other.debian_revision
     }
 }
 
@@ -276,7 +336,7 @@ impl Hash for PackageVersion {
 
 #[cfg(test)]
 mod test {
-    use super::PackageVersion;
+    use super::*;
 
     #[test]
     fn conversion() {
@@ -286,32 +346,12 @@ mod test {
         assert_eq!(version.debian_revision, Some("1".into()));
     }
 
-    #[cfg(feature = "version-compare")]
-    #[test]
-    fn epoch_compare() {
-        let version1 = PackageVersion::try_from("2.0-1").unwrap();
-        let version2 = PackageVersion::try_from("2:1.0+dfsg-1").unwrap();
-
-        assert!(version2.has_epoch());
-        assert!(!version1.has_epoch());
-        assert!(version1 < version2);
-    }
-
-    #[test]
-    fn zero_epoch_compare() {
-        let version1 = PackageVersion::try_from("2.0-1").unwrap();
-        let version2 = PackageVersion::try_from("0:2.0-1").unwrap();
-
-        assert_eq!(version1, version2);
-    }
-
     #[test]
     fn invalid_epoch() {
         assert!(PackageVersion::try_from("-1:1.0-1").is_err());
         assert!(PackageVersion::try_from(":1.0-1").is_err());
         assert!(PackageVersion::try_from("a1:1.0-1").is_err());
     }
-
     #[test]
     fn invalid_upstream_version() {
         assert!(PackageVersion::try_from("-1").is_err());
@@ -344,5 +384,77 @@ mod test {
 
         assert!(!version.has_binnmu_version());
         assert_eq!(version.binnmu_version(), None);
+    }
+
+    #[test]
+    fn compare_non_digits_invariants() {
+        assert_eq!(compare_non_digits("~~", "~~a"), Ordering::Less);
+        assert_eq!(compare_non_digits("~~a", "~"), Ordering::Less);
+        assert_eq!(compare_non_digits("~", ""), Ordering::Less);
+        assert_eq!(compare_non_digits("", "a"), Ordering::Less);
+    }
+
+    #[test]
+    fn epoch_compare() {
+        let version1 = PackageVersion::try_from("2.0-1").unwrap();
+        let version2 = PackageVersion::try_from("2:1.0+dfsg-1").unwrap();
+
+        assert!(version2.has_epoch());
+        assert!(!version1.has_epoch());
+        assert!(version1 < version2);
+    }
+
+    #[test]
+    fn zero_epoch_compare() {
+        let version1 = PackageVersion::try_from("2.0-1").unwrap();
+        let version2 = PackageVersion::try_from("0:2.0-1").unwrap();
+        assert_eq!(version1, version2);
+    }
+
+    #[test]
+    fn equal_compare() {
+        let version1 = PackageVersion::try_from("2.0-1").unwrap();
+        assert_eq!(version1, version1);
+
+        let version1 = PackageVersion::try_from("2a.0-1").unwrap();
+        assert_eq!(version1, version1);
+
+        let version1 = PackageVersion::try_from("2+dfsg1-1").unwrap();
+        assert_eq!(version1, version1);
+    }
+
+    #[test]
+    fn tilde_plus_compare() {
+        let version1 = PackageVersion::try_from("2.0~dfsg-1").unwrap();
+        let version2 = PackageVersion::try_from("2.0-1").unwrap();
+        assert!(version1 < version2);
+
+        let version2 = PackageVersion::try_from("2.0+dfsg-1").unwrap();
+        assert!(version1 < version2);
+
+        let version1 = PackageVersion::try_from("2.0-1").unwrap();
+        assert!(version1 < version2);
+
+        let version1 = PackageVersion::try_from("2+dfsg1-1").unwrap();
+        let version2 = PackageVersion::try_from("2+dfsg2-1").unwrap();
+        assert!(version1 < version2);
+
+        let version1 = PackageVersion::try_from("2+dfsg1-1").unwrap();
+        let version2 = PackageVersion::try_from("2.1-1").unwrap();
+        assert!(version1 < version2);
+    }
+
+    #[test]
+    fn letters_compare() {
+        let version1 = PackageVersion::try_from("2dfsg-1").unwrap();
+        let version2 = PackageVersion::try_from("2-1").unwrap();
+        assert!(version1 > version2);
+    }
+
+    #[test]
+    fn less_compare() {
+        let version1 = PackageVersion::try_from("2-1").unwrap();
+        let version2 = PackageVersion::try_from("2.0-1").unwrap();
+        assert!(version1 < version2);
     }
 }

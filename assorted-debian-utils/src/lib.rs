@@ -19,14 +19,12 @@ use thiserror::Error;
 pub mod architectures;
 pub mod archive;
 pub mod autoremovals;
+pub mod ben;
 pub mod buildinfo;
 pub mod excuses;
 mod utils;
 pub mod version;
 pub mod wb;
-
-#[cfg(feature = "version-compare")]
-mod cversion;
 
 // Re-export rfc822_like
 pub use rfc822_like;
