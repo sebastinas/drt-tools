@@ -33,6 +33,71 @@ use thiserror::Error;
 
 pub use crate::ParseError;
 
+/// Compare non-digits part of a version
+///
+/// Non-letters sort before letters, and ~ always sorts first.
+fn compare_non_digits(mut lhs: &str, mut rhs: &str) -> Ordering {
+    while !lhs.is_empty() || !rhs.is_empty() {
+        let (lhs_tilde, lhs_found) = lhs
+            .find(|c| c == '~')
+            .map(|i| (i, true))
+            .unwrap_or((lhs.len(), false));
+        let (rhs_tilde, rhs_found) = rhs
+            .find(|c| c == '~')
+            .map(|i| (i, true))
+            .unwrap_or((rhs.len(), false));
+        let c = lhs[..lhs_tilde].cmp(&rhs[..rhs_tilde]);
+        if c != Ordering::Equal {
+            return c;
+        }
+
+        if lhs_found && rhs_found {
+            lhs = &lhs[lhs_tilde + 1..];
+            rhs = &rhs[rhs_tilde + 1..];
+        } else if lhs_found {
+            return Ordering::Less;
+        } else if rhs_found {
+            return Ordering::Greater;
+        } else {
+            return Ordering::Equal;
+        }
+    }
+
+    // both lhs and rhs are empty
+    Ordering::Equal
+}
+
+/// Compare parts of the two versions
+fn compare_parts(mut lhs: &str, mut rhs: &str) -> Ordering {
+    while !lhs.is_empty() || !rhs.is_empty() {
+        // compare initial non-digits
+        let lhs_digit_start = lhs.find(|c| char::is_ascii_digit(&c)).unwrap_or(lhs.len());
+        let rhs_digit_start = rhs.find(|c| char::is_ascii_digit(&c)).unwrap_or(rhs.len());
+        let c = compare_non_digits(&lhs[..lhs_digit_start], &rhs[..rhs_digit_start]);
+        if c != Ordering::Equal {
+            return c;
+        }
+        lhs = &lhs[lhs_digit_start..];
+        rhs = &rhs[rhs_digit_start..];
+
+        // compare initial digits
+        let lhs_digit_end = lhs.find(|c| !char::is_ascii_digit(&c)).unwrap_or(lhs.len());
+        let rhs_digit_end = rhs.find(|c| !char::is_ascii_digit(&c)).unwrap_or(rhs.len());
+        let c = lhs[..lhs_digit_end]
+            .parse::<u64>()
+            .unwrap_or(0)
+            .cmp(&rhs[..rhs_digit_end].parse::<u64>().unwrap_or(0));
+        if c != Ordering::Equal {
+            return c;
+        }
+        lhs = &lhs[lhs_digit_end..];
+        rhs = &rhs[rhs_digit_end..];
+    }
+
+    // both lhs and rhs are empty
+    Ordering::Equal
+}
+
 /// Version errors
 #[derive(Clone, Copy, Debug, Error)]
 pub enum VersionError {
@@ -157,71 +222,6 @@ impl PartialOrd for PackageVersion {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
-}
-
-/// Compare non-digits part of a version
-///
-/// Non-letters sort before letters, and ~ always sorts first.
-fn compare_non_digits(mut lhs: &str, mut rhs: &str) -> Ordering {
-    while !lhs.is_empty() || !rhs.is_empty() {
-        let (lhs_tilde, lhs_found) = lhs
-            .find(|c| c == '~')
-            .map(|i| (i, true))
-            .unwrap_or((lhs.len(), false));
-        let (rhs_tilde, rhs_found) = rhs
-            .find(|c| c == '~')
-            .map(|i| (i, true))
-            .unwrap_or((rhs.len(), false));
-        let c = lhs[..lhs_tilde].cmp(&rhs[..rhs_tilde]);
-        if c != Ordering::Equal {
-            return c;
-        }
-
-        if lhs_found && rhs_found {
-            lhs = &lhs[lhs_tilde + 1..];
-            rhs = &rhs[rhs_tilde + 1..];
-        } else if lhs_found {
-            return Ordering::Less;
-        } else if rhs_found {
-            return Ordering::Greater;
-        } else {
-            return Ordering::Equal;
-        }
-    }
-
-    // both lhs and rhs are empty
-    Ordering::Equal
-}
-
-/// Compare parts of the two versions
-fn compare_parts(mut lhs: &str, mut rhs: &str) -> Ordering {
-    while !lhs.is_empty() || !rhs.is_empty() {
-        // compare initial non-digits
-        let lhs_digit_start = lhs.find(|c| char::is_ascii_digit(&c)).unwrap_or(lhs.len());
-        let rhs_digit_start = rhs.find(|c| char::is_ascii_digit(&c)).unwrap_or(rhs.len());
-        let c = compare_non_digits(&lhs[..lhs_digit_start], &rhs[..rhs_digit_start]);
-        if c != Ordering::Equal {
-            return c;
-        }
-        lhs = &lhs[lhs_digit_start..];
-        rhs = &rhs[rhs_digit_start..];
-
-        // compare initial digits
-        let lhs_digit_end = lhs.find(|c| !char::is_ascii_digit(&c)).unwrap_or(lhs.len());
-        let rhs_digit_end = rhs.find(|c| !char::is_ascii_digit(&c)).unwrap_or(rhs.len());
-        let c = lhs[..lhs_digit_end]
-            .parse::<u64>()
-            .unwrap_or(0)
-            .cmp(&rhs[..rhs_digit_end].parse::<u64>().unwrap_or(0));
-        if c != Ordering::Equal {
-            return c;
-        }
-        lhs = &lhs[lhs_digit_end..];
-        rhs = &rhs[rhs_digit_end..];
-    }
-
-    // both lhs and rhs are empty
-    Ordering::Equal
 }
 
 impl Ord for PackageVersion {
