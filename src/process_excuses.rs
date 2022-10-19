@@ -21,6 +21,8 @@ use crate::{
     BaseOptions,
 };
 
+const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ScheduledBinNMUs {
     binnmus: Vec<WBCommand>,
@@ -206,7 +208,7 @@ impl ProcessExcuses {
     }
 
     fn load_scheduled_binnmus(&self) -> ScheduledBinNMUs {
-        if let Ok(reader) = self.cache.get_data_bufreader("scheduled-binnmus.yaml") {
+        if let Ok(reader) = self.cache.get_data_bufreader(SCHEDULED_BINNMUS) {
             serde_yaml::from_reader(reader).unwrap_or_default()
         } else {
             Default::default()
@@ -215,7 +217,7 @@ impl ProcessExcuses {
 
     fn store_scheduled_binnmus(&self, scheduled_binnmus: ScheduledBinNMUs) -> Result<()> {
         serde_yaml::to_writer(
-            self.cache.get_data_bufwriter("scheduled-binnmus.yaml")?,
+            self.cache.get_data_bufwriter(SCHEDULED_BINNMUS)?,
             &scheduled_binnmus,
         )
         .map_err(|err| err.into())
