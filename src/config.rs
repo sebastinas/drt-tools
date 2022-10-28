@@ -1,4 +1,4 @@
-// Copyright 2021 Sebastian Ramacher
+// Copyright 2021-2022 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
@@ -158,7 +158,7 @@ impl Downloader {
 
 fn excuses_urls() -> Vec<(String, String)> {
     vec![(
-        "https://release.debian.org/britney/excuses.yaml".into(),
+        "https://release.debian.org/britney/excuses.yaml.gz".into(),
         "excuses.yaml".into(),
     )]
 }
