@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
+    borrow::Cow,
     fs::{self, File},
     io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
@@ -156,28 +157,28 @@ impl Downloader {
     }
 }
 
-fn excuses_urls() -> Vec<(String, String)> {
+fn excuses_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
     vec![(
         "https://release.debian.org/britney/excuses.yaml.gz".into(),
         "excuses.yaml".into(),
     )]
 }
 
-fn ftbfs_bugs_urls(codename: Codename) -> Vec<(String, String)> {
+fn ftbfs_bugs_urls(codename: Codename) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
     vec![(
-        format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename),
-        format!("udd-ftbfs-bugs-{}.yaml", codename)
+        format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename).into(),
+        format!("udd-ftbfs-bugs-{}.yaml", codename).into()
     )]
 }
 
-fn auto_removals_urls() -> Vec<(String, String)> {
+fn auto_removals_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
     vec![(
         "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi".into(),
         "autoremovals.yaml".into(),
     )]
 }
 
-fn outdateed_builtusing_urls() -> Vec<(String, String)> {
+fn outdateed_builtusing_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
     vec![(
         "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt".into(),
         "outdated-built-using.txt".into(),
@@ -200,7 +201,7 @@ impl Cache {
         })
     }
 
-    fn contents_urls(&self, suite: Suite) -> Vec<(String, String)> {
+    fn contents_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
         RELEASE_ARCHITECTURES
             .into_iter()
             .chain([Architecture::All].into_iter())
@@ -209,14 +210,15 @@ impl Cache {
                     format!(
                         "{}/dists/{}/main/Contents-{}.gz",
                         self.archive_mirror, suite, architecture
-                    ),
-                    format!("Contents_{}_{}", suite, architecture),
+                    )
+                    .into(),
+                    format!("Contents_{}_{}", suite, architecture).into(),
                 )
             })
             .collect()
     }
 
-    fn packages_urls(&self) -> Vec<(String, String)> {
+    fn packages_urls(&self) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
         RELEASE_ARCHITECTURES
             .into_iter()
             .chain([Architecture::All].into_iter())
@@ -225,8 +227,9 @@ impl Cache {
                     format!(
                         "{}/dists/unstable/main/binary-{}/Packages.xz",
                         self.archive_mirror, architecture
-                    ),
-                    format!("Packages_{}", architecture),
+                    )
+                    .into(),
+                    format!("Packages_{}", architecture).into(),
                 )
             })
             .collect()
@@ -235,7 +238,7 @@ impl Cache {
     fn cache_entries_to_urls_dests(
         &self,
         entries: &[CacheEntries],
-    ) -> Result<Vec<(String, PathBuf)>> {
+    ) -> Result<Vec<(Cow<'static, str>, PathBuf)>> {
         entries
             .iter()
             .flat_map(|entry| {
@@ -249,7 +252,7 @@ impl Cache {
                 }
                 .into_iter()
             })
-            .map(|(url, dest)| Ok((url, self.get_cache_path(dest)?)))
+            .map(|(url, dest)| Ok((url, self.get_cache_path(dest.as_ref())?)))
             .collect()
     }
 
