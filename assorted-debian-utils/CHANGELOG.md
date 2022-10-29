@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.5 (2022-10-29)
+
+* Implement package version comparison without `libdpkg-sys`.
+* Fix handling of some package versions that are valid but were not accepted.
+
 ## 0.5.4 (2022-10-06)
 
 * Add support for `arc` architecture
