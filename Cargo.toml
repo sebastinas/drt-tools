@@ -15,9 +15,7 @@ members = ["assorted-debian-utils"]
 
 [dependencies]
 anyhow = "1"
-assorted-debian-utils = { version = "0.5.3", path = "assorted-debian-utils", features = [
-    "version-compare",
-] }
+assorted-debian-utils = { version = "0.5.5", path = "assorted-debian-utils" }
 chrono = { version = "0.4", default-features = false }
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
 flate2 = { version = "1", default-features = false, features = ["zlib"] }
