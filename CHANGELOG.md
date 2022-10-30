@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.10 (2022-10-30)
+
+* Download compressed migration excuses.
+
 ## 0.2.9 (2022-10-02)
 
 * `binNMU-buildinfo`: Various improvements.
