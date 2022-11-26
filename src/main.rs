@@ -12,6 +12,7 @@ mod grep_excuses;
 mod nmu_eso;
 mod prepare_binnmus;
 mod process_excuses;
+mod process_unblocks;
 pub(crate) mod source_packages;
 pub(crate) mod udd_bugs;
 mod usrmerged;
@@ -21,6 +22,7 @@ use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
+use process_unblocks::ProcessUnblocks;
 use usrmerged::{UsrMerged, UsrMergedOptions};
 
 #[derive(Debug, Parser)]
@@ -119,6 +121,8 @@ enum DrtToolsCommands {
     /// Note that this subcommand requires at least 2 GB of available RAM.
     #[clap(name = "usrmerged")]
     UsrMerged(UsrMergedOptions),
+    /// Prepare a list of unblocks for binNMUs in tpu
+    ProcessUnblocks,
 }
 
 #[tokio::main]
@@ -156,6 +160,10 @@ async fn main() -> Result<()> {
         DrtToolsCommands::UsrMerged(um_opts) => {
             let usr_merged = UsrMerged::new(opts.base_options, um_opts)?;
             usr_merged.run().await
+        }
+        DrtToolsCommands::ProcessUnblocks => {
+            let process_unblocks = ProcessUnblocks::new(opts.base_options)?;
+            process_unblocks.run().await
         }
     }
 }
