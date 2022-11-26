@@ -92,10 +92,10 @@ enum DrtToolsCommands {
     ///
     /// The list of packages can be either given on the standard input or they
     /// are read from a file.
-    #[clap(name = "prepare-binNMUs")]
+    #[clap(name = "nmu-transition")]
     PrepareBinNMUs(PrepareBinNMUsOptions),
     /// Prepare binNMUs based on a list of buildinfo files
-    #[clap(name = "binNMU-buildinfo")]
+    #[clap(name = "nmu-buildinfo")]
     BinNMUBuildinfo(BinNMUBuildinfoOptions),
     /// Grep excuses
     #[clap(name = "grep-excuses")]

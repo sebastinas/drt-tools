@@ -10,14 +10,16 @@ This crate includes tools to help with typical work of Debian's release team. Cu
 
 The following commands are provided:
 
+* `grep-excuses`: Mostly the same as the tool of the same name from `devscripts`.
 * `process-excuses`: Download and process `excuses.yaml` to generate a list binNMUs for packages that require them for migration. Packages that have other issues preventing them from migrating, are not considered.
-* `prepare-binNMUs`: Take a list packages copies from [ben's output](https://release.debian.org/transitions) and schedules binNMUs. This command supports multiple options:
+* `nmu-transition`: Take a list packages copies from [ben's output](https://release.debian.org/transitions) and schedules binNMUs. This command supports multiple options:
    * `-m message`: the binNMU message
    * `--dw dependency`: additionally generate a `dw` command with the given dependency
    * `--extra-depends dependency`: schedule the binNMUs with an extra dependency
    * `--bp priority`: specify a build priority
    * `--suite suite`: specify a suite
    * `-a architecture`: use a different architecture than `ANY`
+* `usrmerged`: Check for packages moving files from / to /usr or vice versa.
 
 
 ## License
