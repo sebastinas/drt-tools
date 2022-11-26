@@ -197,6 +197,8 @@ pub struct ExcusesItem {
     pub policy_info: Option<PolicyInfo>,
     /// The excuses
     pub excuses: Vec<String>,
+    /// Combined verdict
+    pub migration_policy_verdict: Verdict,
 }
 
 impl ExcusesItem {
