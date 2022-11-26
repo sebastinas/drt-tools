@@ -96,6 +96,12 @@ pub enum Verdict {
     /// Rejected, but not able to determine if the issue is transient
     #[serde(rename = "REJECTED_CANNOT_DETERMINE_IF_PERMANENT")]
     RejectedCannotDetermineIfPermanent,
+    /// Reject due to another blocking item.
+    #[serde(rename = "REJECTED_BLOCKED_BY_ANOTHER_ITEM")]
+    RejectedBlockedByAnotherItem,
+    /// Reject due to another blocking item.
+    #[serde(rename = "REJECTED_WAITING_FOR_ANOTHER_ITEM")]
+    RejectedWaitingForAnotherItem,
 }
 
 /// Age policy info
