@@ -121,7 +121,11 @@ enum DrtToolsCommands {
     /// Note that this subcommand requires at least 2 GB of available RAM.
     #[clap(name = "usrmerged")]
     UsrMerged(UsrMergedOptions),
-    /// Prepare a list of unblocks for binNMUs in tpu
+    /// Prepare a list of unblocks
+    ///
+    /// This command parses the current excuses and prepares a list of packages
+    /// in testing-proposed-updates and packages that have been rebuilt in
+    /// unstable but are blocked by the freeze.
     ProcessUnblocks,
 }
 

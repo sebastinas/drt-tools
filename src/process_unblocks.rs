@@ -32,30 +32,37 @@ impl ProcessUnblocks {
             return None;
         }
 
-        let version = match item.new_version {
-            Some(ref version) => version,
+        let mut unblock = String::from("unblock ");
+        unblock.push_str(&item.source);
+        // append _tpu if item is from _tpu
+        if item.is_from_tpu() {
+            unblock.push_str("_tpu");
+        }
+        // append version
+        unblock.push('/');
+        match item.new_version {
+            Some(ref version) => unblock.push_str(&version.to_string()),
             _ => {
                 // this will never happen
                 error!("{}: new-version not set", item.source);
                 return None;
             }
         };
-        if !item.is_binnmu() {
-            return Some(format!("unblock {}_tpu/{}", item.source, version));
+
+        // append architecture for binNMUs
+        if item.is_binnmu() {
+            unblock.push('/');
+            match item.binnmu_arch() {
+                Some(arch) => unblock.push_str(&arch.to_string()),
+                None => {
+                    // this will never happen
+                    error!("{}: binNMU but unable to extract architecture", item.source);
+                    return None;
+                }
+            };
         }
 
-        let architecture = match item.binnmu_arch() {
-            Some(arch) => arch,
-            None => {
-                error!("{}: binNMU but unable to extract architecture", item.source);
-                return None;
-            }
-        };
-
-        Some(format!(
-            "unblock {}_tpu/{}/{}",
-            item.source, version, architecture
-        ))
+        Some(unblock)
     }
 
     fn is_actionable(item: &ExcusesItem) -> bool {
@@ -64,9 +71,14 @@ impl ProcessUnblocks {
             trace!("{} not actionable: removal", item.source);
             return false;
         }
-        if !item.is_from_tpu() {
+        if item.is_from_pu() {
+            // skip pu
+            trace! {"{} not actionable: pu request", item.source};
+            return false;
+        }
+        if !item.is_from_tpu() && !item.is_binnmu() {
             // skip non-tpu requests
-            trace!("{} not actionable: not in tpu", item.source);
+            trace!("{} not actionable: not in tpu or not binnmu", item.source);
             return false;
         }
         if let Some(true) = item.invalidated_by_other_package {
