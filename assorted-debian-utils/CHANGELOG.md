@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.6 (2023-01-17)
+
+* Make overall verdict available.
+* Add missing verdicts.
+
 ## 0.5.5 (2022-10-29)
 
 * Implement package version comparison without `libdpkg-sys`.
