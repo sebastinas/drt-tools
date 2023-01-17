@@ -12,6 +12,7 @@ The following commands are provided:
 
 * `grep-excuses`: Mostly the same as the tool of the same name from `devscripts`.
 * `process-excuses`: Download and process `excuses.yaml` to generate a list binNMUs for packages that require them for migration. Packages that have other issues preventing them from migrating, are not considered.
+* `process-unblocks`: Download and process `excuses.yaml` to generate a list of unblocks for packages in tpu and some other cases.
 * `nmu-transition`: Take a list packages copies from [ben's output](https://release.debian.org/transitions) and schedules binNMUs. This command supports multiple options:
    * `-m message`: the binNMU message
    * `--dw dependency`: additionally generate a `dw` command with the given dependency
