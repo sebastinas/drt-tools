@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.11 (2023-01-17)
+
+* Implement new sub-command:
+  * `process-unblocks`: Produce a list of packages that require unblocks.
+
 ## 0.2.10 (2022-10-30)
 
 * Download compressed migration excuses.
