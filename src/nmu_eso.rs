@@ -117,6 +117,17 @@ impl Iterator for PackageReader {
                 debug!("Skipping {}: either gcc or binuitls", source);
                 continue;
             }
+            // skip grub/linux/... signed packages
+            if source.ends_with("-signed")
+                && (source.starts_with("grub-")
+                    || source.starts_with("linux-")
+                    || source.starts_with("shim-")
+                    || source.starts_with("fwupd-"))
+            {
+                debug!("Skipping {}: signed package", source);
+                continue;
+            }
+
             // check if package FTBFS
             if let Some(bugs) = self.ftbfs_bugs.bugs_for_source(&source) {
                 println!("# Skipping {} due to FTBFS bugs ...", source);
