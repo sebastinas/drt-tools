@@ -3,7 +3,9 @@
 
 use anyhow::Result;
 use assorted_debian_utils::{architectures::Architecture, archive::SuiteOrCodename};
+use async_trait::async_trait;
 use clap::{ArgAction, Parser, Subcommand};
+use config::{CacheEntries, CacheState};
 use log::trace;
 
 mod binnmu_buildinfo;
@@ -129,6 +131,40 @@ enum DrtToolsCommands {
     ProcessUnblocks,
 }
 
+#[async_trait]
+pub(crate) trait Command {
+    /// Cache entries that need to be downloaded and in fresh state.
+    fn required_downloads(&self) -> Vec<CacheEntries> {
+        Vec::new()
+    }
+
+    /// Cache entries that need to be downloaded
+    fn downloads(&self) -> Vec<CacheEntries> {
+        Vec::new()
+    }
+
+    /// Execture the command
+    async fn run(&self) -> Result<()>;
+}
+
+async fn execute_command(
+    cache: &config::Cache,
+    command: &dyn Command,
+    force_processing: bool,
+) -> Result<()> {
+    let to_download = command.required_downloads();
+    if !to_download.is_empty()
+        && cache.download(&to_download).await? == CacheState::NoUpdate
+        && !force_processing
+    {
+        trace!("all files are up-to-date; nothing to do");
+        return Ok(());
+    }
+
+    cache.download(&command.downloads()).await?;
+    command.run().await
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts = DrtToolsOptions::parse();
@@ -140,34 +176,24 @@ async fn main() -> Result<()> {
     trace!("base options {:?}", opts.base_options);
     trace!("command: {:?}", opts.command);
 
-    match opts.command {
-        DrtToolsCommands::ProcessExcuses(pe_opts) => {
-            let process_excuses = ProcessExcuses::new(opts.base_options, pe_opts)?;
-            process_excuses.run().await
-        }
-        DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
-            let prepare_binnmus = PrepareBinNMUs::new(opts.base_options, pbm_opts)?;
-            prepare_binnmus.run().await
-        }
-        DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
-            let binnmus_buildinfo = BinNMUBuildinfo::new(opts.base_options, bb_opts)?;
-            binnmus_buildinfo.run().await
-        }
-        DrtToolsCommands::GrepExcuses(ge_opts) => {
-            let grep_excuses = GrepExcuses::new(opts.base_options, ge_opts)?;
-            grep_excuses.run().await
-        }
-        DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => {
-            let nmu_eso = NMUOutdatedBuiltUsing::new(opts.base_options, eso_opts)?;
-            nmu_eso.run().await
-        }
-        DrtToolsCommands::UsrMerged(um_opts) => {
-            let usr_merged = UsrMerged::new(opts.base_options, um_opts)?;
-            usr_merged.run().await
-        }
-        DrtToolsCommands::ProcessUnblocks => {
-            let process_unblocks = ProcessUnblocks::new(opts.base_options)?;
-            process_unblocks.run().await
-        }
-    }
+    let cache = config::Cache::new(opts.base_options.force_download, &opts.base_options.mirror)?;
+    let command: Box<dyn Command> =
+        match opts.command {
+            DrtToolsCommands::ProcessExcuses(pe_opts) => {
+                Box::new(ProcessExcuses::new(&cache, &opts.base_options, pe_opts))
+            }
+            DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
+                Box::new(PrepareBinNMUs::new(&cache, &opts.base_options, pbm_opts))
+            }
+            DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
+                Box::new(BinNMUBuildinfo::new(&cache, &opts.base_options, bb_opts))
+            }
+            DrtToolsCommands::GrepExcuses(ge_opts) => Box::new(GrepExcuses::new(&cache, ge_opts)),
+            DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => Box::new(
+                NMUOutdatedBuiltUsing::new(&cache, &opts.base_options, eso_opts),
+            ),
+            DrtToolsCommands::UsrMerged(um_opts) => Box::new(UsrMerged::new(&cache, um_opts)),
+            DrtToolsCommands::ProcessUnblocks => Box::new(ProcessUnblocks::new(&cache)),
+        };
+    execute_command(&cache, command.as_ref(), opts.base_options.force_processing).await
 }

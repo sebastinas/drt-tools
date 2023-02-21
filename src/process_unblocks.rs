@@ -3,27 +3,22 @@
 
 use anyhow::Result;
 use assorted_debian_utils::excuses::{self, ExcusesItem, Verdict};
+use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, trace};
 
 use crate::{
-    config::{self, CacheEntries, CacheState},
-    BaseOptions,
+    config::{self, CacheEntries},
+    Command,
 };
 
-pub(crate) struct ProcessUnblocks {
-    cache: config::Cache,
+pub(crate) struct ProcessUnblocks<'a> {
+    cache: &'a config::Cache,
 }
 
-impl ProcessUnblocks {
-    pub(crate) fn new(base_options: BaseOptions) -> Result<Self> {
-        Ok(Self {
-            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
-        })
-    }
-
-    async fn download_to_cache(&self) -> Result<CacheState> {
-        self.cache.download(&[CacheEntries::Excuses]).await
+impl<'a> ProcessUnblocks<'a> {
+    pub(crate) fn new(cache: &'a config::Cache) -> Self {
+        Self { cache }
     }
 
     fn build_unblock(item: &ExcusesItem) -> Option<String> {
@@ -73,7 +68,7 @@ impl ProcessUnblocks {
         }
         if item.is_from_pu() {
             // skip pu
-            trace! {"{} not actionable: pu request", item.source};
+            trace!("{} not actionable: pu request", item.source);
             return false;
         }
         if !item.is_from_tpu() && !item.is_binnmu() {
@@ -94,10 +89,11 @@ impl ProcessUnblocks {
 
         true
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
-        // download excuses and Package files
-        self.download_to_cache().await?;
+#[async_trait]
+impl<'a> Command for ProcessUnblocks<'a> {
+    async fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 
@@ -119,5 +115,9 @@ impl ProcessUnblocks {
             println!("{}", unblock);
         }
         Ok(())
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [CacheEntries::Excuses].into()
     }
 }

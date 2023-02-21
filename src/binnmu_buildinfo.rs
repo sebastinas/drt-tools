@@ -15,14 +15,16 @@ use assorted_debian_utils::{
     buildinfo::{self, Buildinfo},
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
+use async_trait::async_trait;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
 use crate::config::default_progress_style;
 use crate::udd_bugs::{load_bugs_from_reader, UDDBugs};
+use crate::Command;
 use crate::{
-    config::{Cache, CacheEntries, CacheState},
+    config::{Cache, CacheEntries},
     source_packages::SourcePackages,
     BaseOptions, BinNMUsOptions,
 };
@@ -43,28 +45,23 @@ pub(crate) struct BinNMUBuildinfoOptions {
     inputs: Vec<PathBuf>,
 }
 
-pub(crate) struct BinNMUBuildinfo {
-    cache: Cache,
-    base_options: BaseOptions,
+pub(crate) struct BinNMUBuildinfo<'a> {
+    cache: &'a Cache,
+    base_options: &'a BaseOptions,
     options: BinNMUBuildinfoOptions,
 }
 
-impl BinNMUBuildinfo {
-    pub(crate) fn new(base_options: BaseOptions, options: BinNMUBuildinfoOptions) -> Result<Self> {
-        Ok(Self {
-            cache: Cache::new(base_options.force_download, &base_options.mirror)?,
+impl<'a> BinNMUBuildinfo<'a> {
+    pub(crate) fn new(
+        cache: &'a Cache,
+        base_options: &'a BaseOptions,
+        options: BinNMUBuildinfoOptions,
+    ) -> Self {
+        Self {
+            cache,
             base_options,
             options,
-        })
-    }
-
-    async fn download_to_cache(&self) -> Result<CacheState> {
-        self.cache
-            .download(&[
-                CacheEntries::Packages,
-                CacheEntries::FTBFSBugs(self.options.binnmu_options.suite.into()),
-            ])
-            .await
+        }
     }
 
     fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<(String, PackageVersion)>> {
@@ -189,10 +186,11 @@ impl BinNMUBuildinfo {
             Codename::from(self.options.binnmu_options.suite)
         ))?)
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
-        self.download_to_cache().await?;
-
+#[async_trait]
+impl<'a> Command for BinNMUBuildinfo<'a> {
+    async fn run(&self) -> Result<()> {
         // store latest version of all source packages
         let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
         for path in self.cache.get_package_paths(true)? {
@@ -234,6 +232,14 @@ impl BinNMUBuildinfo {
         }
 
         Ok(())
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [
+            CacheEntries::Packages,
+            CacheEntries::FTBFSBugs(self.options.binnmu_options.suite.into()),
+        ]
+        .into()
     }
 }
 

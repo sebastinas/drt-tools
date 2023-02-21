@@ -10,15 +10,16 @@ use assorted_debian_utils::{
     excuses::{self, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
+use async_trait::async_trait;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::{self, CacheEntries, CacheState},
+    config::{self, CacheEntries},
     source_packages::SourcePackages,
-    BaseOptions,
+    BaseOptions, Command,
 };
 
 const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
@@ -45,31 +46,23 @@ pub(crate) struct ProcessExcusesOptions {
     no_rebuilds: bool,
 }
 
-pub(crate) struct ProcessExcuses {
-    cache: config::Cache,
-    base_options: BaseOptions,
+pub(crate) struct ProcessExcuses<'a> {
+    cache: &'a config::Cache,
+    base_options: &'a BaseOptions,
     options: ProcessExcusesOptions,
 }
 
-impl ProcessExcuses {
-    pub(crate) fn new(base_options: BaseOptions, options: ProcessExcusesOptions) -> Result<Self> {
-        Ok(Self {
-            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
+impl<'a> ProcessExcuses<'a> {
+    pub(crate) fn new(
+        cache: &'a config::Cache,
+        base_options: &'a BaseOptions,
+        options: ProcessExcusesOptions,
+    ) -> Self {
+        Self {
+            cache,
             base_options,
             options,
-        })
-    }
-
-    async fn download_to_cache(&self) -> Result<CacheState> {
-        if self.cache.download(&[CacheEntries::Excuses]).await? == CacheState::NoUpdate
-            && !self.base_options.force_processing
-        {
-            // if excuses.yaml did not change, there is nothing new to build
-            return Ok(CacheState::NoUpdate);
         }
-
-        self.cache.download(&[CacheEntries::Packages]).await?;
-        Ok(CacheState::FreshFiles)
     }
 
     fn is_binnmu_required(policy_info: &PolicyInfo) -> bool {
@@ -222,15 +215,11 @@ impl ProcessExcuses {
         )
         .map_err(|err| err.into())
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
-        // download excuses and Package files
-        if self.download_to_cache().await? == CacheState::NoUpdate {
-            // nothing to do
-            trace!("Cached excuses.yml is up-to-date; nothing to do");
-            return Ok(());
-        }
-
+#[async_trait]
+impl<'a> Command for ProcessExcuses<'a> {
+    async fn run(&self) -> Result<()> {
         let source_packages = SourcePackages::new(&self.cache.get_package_paths(false)?)?;
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
@@ -268,5 +257,13 @@ impl ProcessExcuses {
 
         // store scheduled binNMUs in cache
         self.store_scheduled_binnmus(scheduled_binnmus)
+    }
+
+    fn required_downloads(&self) -> Vec<CacheEntries> {
+        [CacheEntries::Excuses].into()
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [CacheEntries::Packages].into()
     }
 }

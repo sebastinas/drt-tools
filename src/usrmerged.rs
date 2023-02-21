@@ -8,15 +8,14 @@ use std::io::{BufRead, BufReader};
 use anyhow::Result;
 use assorted_debian_utils::architectures::{Architecture, RELEASE_ARCHITECTURES};
 use assorted_debian_utils::archive::Suite;
+use async_trait::async_trait;
 use clap::Parser;
 use log::{debug, info, trace, warn};
 use smallvec::SmallVec;
 use smartstring::{LazyCompact, SmartString};
 
-use crate::{
-    config::{self, CacheEntries},
-    BaseOptions,
-};
+use crate::config::{self, CacheEntries};
+use crate::Command;
 
 type SmallString = SmartString<LazyCompact>;
 // if there is a file in more than one package, the most common case are two packages
@@ -44,27 +43,14 @@ pub(crate) struct UsrMergedOptions {
     no_skip: bool,
 }
 
-pub(crate) struct UsrMerged {
-    cache: config::Cache,
+pub(crate) struct UsrMerged<'a> {
+    cache: &'a config::Cache,
     options: UsrMergedOptions,
 }
 
-impl UsrMerged {
-    pub(crate) fn new(base_options: BaseOptions, options: UsrMergedOptions) -> Result<Self> {
-        Ok(Self {
-            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
-            options,
-        })
-    }
-
-    async fn download_to_cache(&self) -> Result<()> {
-        self.cache
-            .download(&[
-                CacheEntries::Contents(Suite::Stable(None)),
-                CacheEntries::Contents(Suite::Testing(None)),
-            ])
-            .await?;
-        Ok(())
+impl<'a> UsrMerged<'a> {
+    pub(crate) fn new(cache: &'a config::Cache, options: UsrMergedOptions) -> Self {
+        Self { cache, options }
     }
 
     fn load_contents_iter(&self, suite: Suite, arch: Architecture) -> Result<Box<LoadIterator>> {
@@ -129,10 +115,11 @@ impl UsrMerged {
     ) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
         Ok(HashMap::from_iter(self.load_contents_iter(suite, arch)?))
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
-        self.download_to_cache().await?;
-
+#[async_trait]
+impl<'a> Command for UsrMerged<'a> {
+    async fn run(&self) -> Result<()> {
         // Check if file from stable on $architecture moved to other
         // packages on testing on $architecture | all. If architecture ==
         // all, this will check all -> all.
@@ -306,5 +293,13 @@ impl UsrMerged {
         }
 
         Ok(())
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [
+            CacheEntries::Contents(Suite::Stable(None)),
+            CacheEntries::Contents(Suite::Testing(None)),
+        ]
+        .into()
     }
 }

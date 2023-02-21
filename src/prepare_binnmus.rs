@@ -10,9 +10,11 @@ use assorted_debian_utils::{
     archive::Codename,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
+use async_trait::async_trait;
 use clap::Parser;
 use log::debug;
 
+use crate::Command;
 use crate::{
     config::{self, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
@@ -27,40 +29,39 @@ pub(crate) struct PrepareBinNMUsOptions {
     input: Option<PathBuf>,
 }
 
-pub(crate) struct PrepareBinNMUs {
-    cache: config::Cache,
-    base_options: BaseOptions,
+pub(crate) struct PrepareBinNMUs<'a> {
+    cache: &'a config::Cache,
+    base_options: &'a BaseOptions,
     options: PrepareBinNMUsOptions,
 }
 
-impl PrepareBinNMUs {
-    pub(crate) fn new(base_options: BaseOptions, options: PrepareBinNMUsOptions) -> Result<Self> {
-        Ok(Self {
-            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
+impl<'a> PrepareBinNMUs<'a> {
+    pub(crate) fn new(
+        cache: &'a config::Cache,
+        base_options: &'a BaseOptions,
+        options: PrepareBinNMUsOptions,
+    ) -> Self {
+        Self {
+            cache,
             base_options,
             options,
-        })
+        }
     }
 
-    async fn download_to_cache(&self, codename: &Codename) -> Result<()> {
-        self.cache
-            .download(&[CacheEntries::FTBFSBugs(*codename)])
-            .await?;
-        Ok(())
-    }
-
-    async fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
-        self.download_to_cache(codename).await?;
+    fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
         load_bugs_from_reader(
             self.cache
                 .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
         )
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
+#[async_trait]
+impl<'a> Command for PrepareBinNMUs<'a> {
+    async fn run(&self) -> Result<()> {
         let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if !self.base_options.force_processing {
-            self.load_bugs(&codename).await?
+            self.load_bugs(&codename)?
         } else {
             UDDBugs::new(vec![])
         };
@@ -125,5 +126,12 @@ impl PrepareBinNMUs {
         }
 
         Ok(())
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [CacheEntries::FTBFSBugs(
+            self.options.binnmu_options.suite.into(),
+        )]
+        .into()
     }
 }

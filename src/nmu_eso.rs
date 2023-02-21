@@ -15,6 +15,7 @@ use assorted_debian_utils::{
     rfc822_like,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
+use async_trait::async_trait;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use itertools::sorted;
@@ -22,9 +23,9 @@ use log::{debug, trace};
 use serde::Deserialize;
 
 use crate::{
-    config::{default_progress_style, Cache, CacheEntries, CacheState},
+    config::{default_progress_style, Cache, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
-    BaseOptions,
+    BaseOptions, Command,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -50,9 +51,9 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
     architecture: Option<Vec<Architecture>>,
 }
 
-pub(crate) struct NMUOutdatedBuiltUsing {
-    cache: Cache,
-    base_options: BaseOptions,
+pub(crate) struct NMUOutdatedBuiltUsing<'a> {
+    cache: &'a Cache,
+    base_options: &'a BaseOptions,
     options: NMUOutdatedBuiltUsingOptions,
 }
 
@@ -147,25 +148,17 @@ impl Iterator for PackageReader {
     }
 }
 
-impl NMUOutdatedBuiltUsing {
+impl<'a> NMUOutdatedBuiltUsing<'a> {
     pub(crate) fn new(
-        base_options: BaseOptions,
+        cache: &'a Cache,
+        base_options: &'a BaseOptions,
         options: NMUOutdatedBuiltUsingOptions,
-    ) -> Result<Self> {
-        Ok(Self {
-            cache: Cache::new(base_options.force_download, &base_options.mirror)?,
+    ) -> Self {
+        Self {
+            cache,
             base_options,
             options,
-        })
-    }
-
-    async fn download_to_cache(&self, codename: Codename) -> Result<CacheState> {
-        self.cache
-            .download(&[CacheEntries::Packages, CacheEntries::FTBFSBugs(codename)])
-            .await?;
-        self.cache
-            .download(&[CacheEntries::OutdatedBuiltUsing])
-            .await
+        }
     }
 
     fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
@@ -207,12 +200,6 @@ impl NMUOutdatedBuiltUsing {
 
     async fn load_eso(&self, suite: Suite) -> Result<Vec<String>> {
         let codename = suite.into();
-        if self.download_to_cache(codename).await? == CacheState::NoUpdate
-            && !self.base_options.force_processing
-        {
-            return Ok(Vec::new());
-        }
-
         let ftbfs_bugs = self.load_bugs(codename)?;
         let mut actionable_sources = HashSet::<String>::new();
         for path in self.cache.get_package_paths(false)? {
@@ -231,8 +218,11 @@ impl NMUOutdatedBuiltUsing {
 
         Ok(sorted(result.into_iter()).collect())
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
+#[async_trait]
+impl<'a> Command for NMUOutdatedBuiltUsing<'a> {
+    async fn run(&self) -> Result<()> {
         let suite = self.options.suite.into();
         let eso_sources = self.load_eso(suite).await?;
 
@@ -254,5 +244,17 @@ impl NMUOutdatedBuiltUsing {
         }
 
         Ok(())
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [
+            CacheEntries::Packages,
+            CacheEntries::FTBFSBugs(self.options.suite.into()),
+        ]
+        .into()
+    }
+
+    fn required_downloads(&self) -> Vec<CacheEntries> {
+        [CacheEntries::OutdatedBuiltUsing].into()
     }
 }

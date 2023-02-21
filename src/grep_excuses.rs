@@ -6,12 +6,13 @@ use assorted_debian_utils::{
     autoremovals::{self, AutoRemoval},
     excuses::{self, ExcusesItem},
 };
+use async_trait::async_trait;
 use chrono::Utc;
 use clap::Parser;
 
 use crate::{
-    config::{self, CacheEntries, CacheState},
-    BaseOptions,
+    config::{self, CacheEntries},
+    Command,
 };
 
 #[derive(Debug, Parser)]
@@ -23,23 +24,14 @@ pub(crate) struct GrepExcusesOptions {
     maintainer_package: String,
 }
 
-pub(crate) struct GrepExcuses {
-    cache: config::Cache,
+pub(crate) struct GrepExcuses<'a> {
+    cache: &'a config::Cache,
     options: GrepExcusesOptions,
 }
 
-impl GrepExcuses {
-    pub(crate) fn new(base_options: BaseOptions, options: GrepExcusesOptions) -> Result<Self> {
-        Ok(Self {
-            cache: config::Cache::new(base_options.force_download, &base_options.mirror)?,
-            options,
-        })
-    }
-
-    async fn download_to_cache(&self) -> Result<CacheState> {
-        self.cache
-            .download(&[CacheEntries::Excuses, CacheEntries::AutoRemovals])
-            .await
+impl<'a> GrepExcuses<'a> {
+    pub(crate) fn new(cache: &'a config::Cache, options: GrepExcusesOptions) -> Self {
+        Self { cache, options }
     }
 
     fn print_excuse(&self, excuse: &ExcusesItem) {
@@ -73,10 +65,11 @@ impl GrepExcuses {
         );
         // TODO: print other fields
     }
+}
 
-    pub(crate) async fn run(self) -> Result<()> {
-        self.download_to_cache().await?;
-
+#[async_trait]
+impl<'a> Command for GrepExcuses<'a> {
+    async fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
         // parse autoremovals
@@ -103,5 +96,9 @@ impl GrepExcuses {
         }
 
         Ok(())
+    }
+
+    fn downloads(&self) -> Vec<CacheEntries> {
+        [CacheEntries::Excuses, CacheEntries::AutoRemovals].into()
     }
 }
