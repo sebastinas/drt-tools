@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
@@ -13,12 +13,13 @@ use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Suite, SuiteOrCodename},
     rfc822_like,
+    version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use async_trait::async_trait;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
-use itertools::sorted;
+use itertools::{sorted, Itertools};
 use log::{debug, trace};
 use serde::Deserialize;
 
@@ -80,8 +81,41 @@ impl PackageReader {
     }
 }
 
+#[derive(Debug)]
+struct OutdatedPackage {
+    source: String,
+    outdated_dependency: String,
+    new_version: PackageVersion,
+}
+
+#[derive(Debug)]
+struct CombinedOutdatedPackage {
+    source: String,
+    outdated_dependencies: Vec<(String, PackageVersion)>,
+}
+
+impl PartialEq for CombinedOutdatedPackage {
+    fn eq(&self, other: &Self) -> bool {
+        self.source == other.source && self.outdated_dependencies == other.outdated_dependencies
+    }
+}
+
+impl Eq for CombinedOutdatedPackage {}
+
+impl PartialOrd for CombinedOutdatedPackage {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.source.partial_cmp(&other.source)
+    }
+}
+
+impl Ord for CombinedOutdatedPackage {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.source.cmp(&other.source)
+    }
+}
+
 impl Iterator for PackageReader {
-    type Item = String;
+    type Item = OutdatedPackage;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut line = String::new();
@@ -108,6 +142,19 @@ impl Iterator for PackageReader {
             }
 
             let source = split[1].trim().to_owned();
+            let outdated_dependency = split[2].trim().to_owned();
+            let new_version = match PackageVersion::try_from(split[4].trim()) {
+                Ok(version) => version,
+                Err(_) => {
+                    debug!(
+                        "Skipping {}: unable to parse version {}",
+                        source,
+                        split[4].trim()
+                    );
+                    continue;
+                }
+            };
+
             // not-binNMUable as the Built-Using package is binary-independent
             if !self.actionable_sources.contains(&source) {
                 debug!("Skipping {}: not actionable", source);
@@ -141,7 +188,11 @@ impl Iterator for PackageReader {
                 continue;
             }
 
-            return Some(source);
+            return Some(OutdatedPackage {
+                source,
+                outdated_dependency,
+                new_version,
+            });
         }
 
         None
@@ -198,7 +249,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             .collect())
     }
 
-    async fn load_eso(&self, suite: Suite) -> Result<Vec<String>> {
+    fn load_eso(&self, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
         let codename = suite.into();
         let ftbfs_bugs = self.load_bugs(codename)?;
         let mut actionable_sources = HashSet::<String>::new();
@@ -207,16 +258,31 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             actionable_sources.extend(sources?);
         }
 
-        let result: HashSet<String> = PackageReader::new(
+        let mut result = HashMap::<String, Vec<(String, PackageVersion)>>::new();
+        for outdated_package in PackageReader::new(
             self.cache.get_cache_bufreader("outdated-built-using.txt")?,
             suite,
             actionable_sources,
             ftbfs_bugs,
-        )
-        .into_iter()
-        .collect();
+        ) {
+            result.entry(outdated_package.source).or_default().push((
+                outdated_package.outdated_dependency,
+                outdated_package.new_version,
+            ));
+        }
 
-        Ok(sorted(result.into_iter()).collect())
+        Ok(sorted(
+            result
+                .into_iter()
+                .map(|(source, mut outdated_dependencies)| {
+                    outdated_dependencies.sort();
+                    CombinedOutdatedPackage {
+                        source,
+                        outdated_dependencies,
+                    }
+                }),
+        )
+        .collect())
     }
 }
 
@@ -224,16 +290,24 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 impl<'a> Command for NMUOutdatedBuiltUsing<'a> {
     async fn run(&self) -> Result<()> {
         let suite = self.options.suite.into();
-        let eso_sources = self.load_eso(suite).await?;
+        let eso_sources = self.load_eso(suite)?;
 
-        for source in eso_sources {
-            let mut source = SourceSpecifier::new(&source);
+        for outdated_package in eso_sources {
+            let mut source = SourceSpecifier::new(&outdated_package.source);
             source.with_suite(&self.options.suite);
             if let Some(architectures) = &self.options.architecture {
                 source.with_archive_architectures(architectures);
             }
 
-            let mut binnmu = BinNMU::new(&source, "Rebuild for outdated Built-Using")?;
+            let message = format!(
+                "Rebuild for outdated Built-Using ({})",
+                outdated_package
+                    .outdated_dependencies
+                    .into_iter()
+                    .map(|(source, version)| format!("{}/{}", source, version))
+                    .join(", ")
+            );
+            let mut binnmu = BinNMU::new(&source, &message)?;
             binnmu.with_build_priority(self.options.build_priority);
 
             let command = binnmu.build();
