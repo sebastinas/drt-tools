@@ -77,37 +77,39 @@ pub enum Architecture {
 
 impl Display for Architecture {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Architecture::All => "all",
-                Architecture::Alpha => "alpha",
-                Architecture::Amd64 => "amd64",
-                Architecture::Arc => "arc",
-                Architecture::Arm64 => "arm64",
-                Architecture::Armel => "armel",
-                Architecture::Armhf => "armhf",
-                Architecture::Hppa => "hppa",
-                Architecture::HurdI386 => "hurd-i386",
-                Architecture::I386 => "i386",
-                Architecture::Ia64 => "ia64",
-                Architecture::KFreeBSDAmd64 => "kfreebsd-amd64",
-                Architecture::KFreeBSDI386 => "kfreebsd-i386",
-                Architecture::M68k => "m68k",
-                Architecture::Mips64el => "mips64el",
-                Architecture::Mipsel => "mipsel",
-                Architecture::PowerPC => "powerpc",
-                Architecture::Ppc64 => "ppc64",
-                Architecture::Ppc64el => "ppc64el",
-                Architecture::Riscv64 => "riscv64",
-                Architecture::S390x => "s390x",
-                Architecture::Sh4 => "sh4",
-                Architecture::Sparc64 => "sparc64",
-                Architecture::X32 => "x32",
-                Architecture::Source => "source",
-            }
-        )
+        write!(f, "{}", self.as_ref())
+    }
+}
+
+impl AsRef<str> for Architecture {
+    fn as_ref(&self) -> &str {
+        match self {
+            Architecture::All => "all",
+            Architecture::Alpha => "alpha",
+            Architecture::Amd64 => "amd64",
+            Architecture::Arc => "arc",
+            Architecture::Arm64 => "arm64",
+            Architecture::Armel => "armel",
+            Architecture::Armhf => "armhf",
+            Architecture::Hppa => "hppa",
+            Architecture::HurdI386 => "hurd-i386",
+            Architecture::I386 => "i386",
+            Architecture::Ia64 => "ia64",
+            Architecture::KFreeBSDAmd64 => "kfreebsd-amd64",
+            Architecture::KFreeBSDI386 => "kfreebsd-i386",
+            Architecture::M68k => "m68k",
+            Architecture::Mips64el => "mips64el",
+            Architecture::Mipsel => "mipsel",
+            Architecture::PowerPC => "powerpc",
+            Architecture::Ppc64 => "ppc64",
+            Architecture::Ppc64el => "ppc64el",
+            Architecture::Riscv64 => "riscv64",
+            Architecture::S390x => "s390x",
+            Architecture::Sh4 => "sh4",
+            Architecture::Sparc64 => "sparc64",
+            Architecture::X32 => "x32",
+            Architecture::Source => "source",
+        }
     }
 }
 

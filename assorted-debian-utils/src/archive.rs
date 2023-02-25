@@ -30,18 +30,20 @@ pub enum Extension {
     ProposedUpdates,
 }
 
+impl AsRef<str> for Extension {
+    fn as_ref(&self) -> &str {
+        match self {
+            Extension::Backports => "backports",
+            Extension::Security => "security",
+            Extension::Updates => "updates",
+            Extension::ProposedUpdates => "proposed-updates",
+        }
+    }
+}
+
 impl Display for Extension {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Extension::Backports => "backports",
-                Extension::Security => "security",
-                Extension::Updates => "updates",
-                Extension::ProposedUpdates => "proposed-updates",
-            }
-        )
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -307,14 +309,20 @@ pub enum MultiArch {
     Same,
 }
 
+impl AsRef<str> for MultiArch {
+    fn as_ref(&self) -> &str {
+        match self {
+            MultiArch::Allowed => "allowed",
+            MultiArch::Foreign => "foreign",
+            MultiArch::No => "no",
+            MultiArch::Same => "same",
+        }
+    }
+}
+
 impl Display for MultiArch {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MultiArch::Allowed => write!(f, "allowed"),
-            MultiArch::Foreign => write!(f, "foreign"),
-            MultiArch::No => write!(f, "no"),
-            MultiArch::Same => write!(f, "same"),
-        }
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -356,14 +364,20 @@ pub enum Component {
     NonFreeFirmware,
 }
 
+impl AsRef<str> for Component {
+    fn as_ref(&self) -> &str {
+        match self {
+            Component::Main => "main",
+            Component::Contrib => "contrib",
+            Component::NonFree => "non-free",
+            Component::NonFreeFirmware => "non-free-firmware",
+        }
+    }
+}
+
 impl Display for Component {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Component::Main => write!(f, "main"),
-            Component::Contrib => write!(f, "contrib"),
-            Component::NonFree => write!(f, "non-free"),
-            Component::NonFreeFirmware => write!(f, "non-free-firmware"),
-        }
+        write!(f, "{}", self.as_ref())
     }
 }
 
