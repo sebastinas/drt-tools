@@ -58,37 +58,12 @@ pub(crate) struct NMUOutdatedBuiltUsing<'a> {
     options: NMUOutdatedBuiltUsingOptions,
 }
 
-struct PackageReader {
-    reader: BufReader<File>,
-    suite: Suite,
-    actionable_sources: HashSet<String>,
-    ftbfs_bugs: UDDBugs,
-}
-
-impl PackageReader {
-    fn new(
-        reader: BufReader<File>,
-        suite: Suite,
-        actionable_sources: HashSet<String>,
-        ftbfs_bugs: UDDBugs,
-    ) -> Self {
-        Self {
-            reader,
-            suite,
-            actionable_sources,
-            ftbfs_bugs,
-        }
-    }
-}
-
-#[derive(Debug)]
 struct OutdatedPackage {
     source: String,
     outdated_dependency: String,
     new_version: PackageVersion,
 }
 
-#[derive(Debug)]
 struct CombinedOutdatedPackage {
     source: String,
     outdated_dependencies: Vec<(String, PackageVersion)>,
@@ -114,7 +89,30 @@ impl Ord for CombinedOutdatedPackage {
     }
 }
 
-impl Iterator for PackageReader {
+struct OutdatedPackageReader {
+    reader: BufReader<File>,
+    suite: Suite,
+    actionable_sources: HashSet<String>,
+    ftbfs_bugs: UDDBugs,
+}
+
+impl OutdatedPackageReader {
+    fn new(
+        reader: BufReader<File>,
+        suite: Suite,
+        actionable_sources: HashSet<String>,
+        ftbfs_bugs: UDDBugs,
+    ) -> Self {
+        Self {
+            reader,
+            suite,
+            actionable_sources,
+            ftbfs_bugs,
+        }
+    }
+}
+
+impl Iterator for OutdatedPackageReader {
     type Item = OutdatedPackage;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -259,7 +257,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         }
 
         let mut result = HashMap::<String, HashSet<(String, PackageVersion)>>::new();
-        for outdated_package in PackageReader::new(
+        for outdated_package in OutdatedPackageReader::new(
             self.cache.get_cache_bufreader("outdated-built-using.txt")?,
             suite,
             actionable_sources,
