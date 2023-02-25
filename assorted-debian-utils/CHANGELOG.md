@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.7 (2023-02-25)
+
+* Implement `AsRef<str>` for enums where possible.
+
 ## 0.5.6 (2023-01-17)
 
 * Make overall verdict available.
