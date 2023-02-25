@@ -48,7 +48,7 @@ impl<'a> ProcessUnblocks<'a> {
         if item.is_binnmu() {
             unblock.push('/');
             match item.binnmu_arch() {
-                Some(arch) => unblock.push_str(&arch.to_string()),
+                Some(arch) => unblock.push_str(arch.as_ref()),
                 None => {
                     // this will never happen
                     error!("{}: binNMU but unable to extract architecture", item.source);
