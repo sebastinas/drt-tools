@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.12 (2023-02-25)
+
+* `nmu-eso`: skip `-signed` packages
+* `nmu-eso`: mention cause for rebuilds in binNMU message
+* Refactor command implementaton
+
 ## 0.2.11 (2023-01-17)
 
 * Implement new sub-command:
