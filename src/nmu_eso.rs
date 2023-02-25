@@ -258,31 +258,28 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             actionable_sources.extend(sources?);
         }
 
-        let mut result = HashMap::<String, Vec<(String, PackageVersion)>>::new();
+        let mut result = HashMap::<String, HashSet<(String, PackageVersion)>>::new();
         for outdated_package in PackageReader::new(
             self.cache.get_cache_bufreader("outdated-built-using.txt")?,
             suite,
             actionable_sources,
             ftbfs_bugs,
         ) {
-            result.entry(outdated_package.source).or_default().push((
+            result.entry(outdated_package.source).or_default().insert((
                 outdated_package.outdated_dependency,
                 outdated_package.new_version,
             ));
         }
 
-        Ok(sorted(
-            result
-                .into_iter()
-                .map(|(source, mut outdated_dependencies)| {
-                    outdated_dependencies.sort();
-                    CombinedOutdatedPackage {
-                        source,
-                        outdated_dependencies,
-                    }
-                }),
+        Ok(
+            sorted(result.into_iter().map(|(source, outdated_dependencies)| {
+                CombinedOutdatedPackage {
+                    source,
+                    outdated_dependencies: outdated_dependencies.into_iter().sorted().collect(),
+                }
+            }))
+            .collect(),
         )
-        .collect())
     }
 }
 
