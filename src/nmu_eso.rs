@@ -139,22 +139,11 @@ impl Iterator for OutdatedPackageReader {
                 }
             }
 
-            let source = split[1].trim().to_owned();
-            let outdated_dependency = split[2].trim().to_owned();
-            let new_version = match PackageVersion::try_from(split[4].trim()) {
-                Ok(version) => version,
-                Err(_) => {
-                    debug!(
-                        "Skipping {}: unable to parse version {}",
-                        source,
-                        split[4].trim()
-                    );
-                    continue;
-                }
-            };
+            let source = split[1].trim();
+            let outdated_dependency = split[2].trim();
 
             // not-binNMUable as the Built-Using package is binary-independent
-            if !self.actionable_sources.contains(&source) {
+            if !self.actionable_sources.contains(source) {
                 debug!("Skipping {}: not actionable", source);
                 continue;
             }
@@ -175,7 +164,7 @@ impl Iterator for OutdatedPackageReader {
             }
 
             // check if package FTBFS
-            if let Some(bugs) = self.ftbfs_bugs.bugs_for_source(&source) {
+            if let Some(bugs) = self.ftbfs_bugs.bugs_for_source(source) {
                 println!("# Skipping {} due to FTBFS bugs ...", source);
                 for bug in bugs {
                     debug!(
@@ -186,9 +175,21 @@ impl Iterator for OutdatedPackageReader {
                 continue;
             }
 
+            let new_version = match PackageVersion::try_from(split[4].trim()) {
+                Ok(version) => version,
+                Err(_) => {
+                    debug!(
+                        "Skipping {}: unable to parse version {}",
+                        source,
+                        split[4].trim()
+                    );
+                    continue;
+                }
+            };
+
             return Some(OutdatedPackage {
-                source,
-                outdated_dependency,
+                source: source.to_owned(),
+                outdated_dependency: outdated_dependency.to_owned(),
                 new_version,
             });
         }
