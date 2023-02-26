@@ -30,9 +30,9 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
 pub(crate) enum CacheEntries {
     Excuses,
     Packages,
+    Sources,
     FTBFSBugs(Codename),
     AutoRemovals,
-    OutdatedBuiltUsing,
     Contents(Suite),
 }
 
@@ -178,13 +178,6 @@ fn auto_removals_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
     )]
 }
 
-fn outdateed_builtusing_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
-    vec![(
-        "https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt".into(),
-        "outdated-built-using.txt".into(),
-    )]
-}
-
 #[derive(Debug)]
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
@@ -235,6 +228,17 @@ impl Cache {
             .collect()
     }
 
+    fn source_urls(&self) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+        vec![(
+            format!(
+                "{}/dists/unstable/main/source/Sources.xz",
+                self.archive_mirror
+            )
+            .into(),
+            "Sources".into(),
+        )]
+    }
+
     fn cache_entries_to_urls_dests(
         &self,
         entries: &[CacheEntries],
@@ -245,9 +249,9 @@ impl Cache {
                 match entry {
                     CacheEntries::Excuses => excuses_urls(),
                     CacheEntries::Packages => self.packages_urls(),
+                    CacheEntries::Sources => self.source_urls(),
                     CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls(*codename),
                     CacheEntries::AutoRemovals => auto_removals_urls(),
-                    CacheEntries::OutdatedBuiltUsing => outdateed_builtusing_urls(),
                     CacheEntries::Contents(suite) => self.contents_urls(*suite),
                 }
                 .into_iter()

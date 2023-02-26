@@ -3,8 +3,6 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
-    io::{BufRead, BufReader},
     path::Path,
 };
 
@@ -39,6 +37,21 @@ struct BinaryPackage {
     built_using: Option<String>,
 }
 
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum ExtraSourceOnly {
+    Yes,
+}
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+struct SourcePackage {
+    package: String,
+    version: PackageVersion,
+    #[serde(rename = "Extra-Source-Only")]
+    extra_source_only: Option<ExtraSourceOnly>,
+}
+
 #[derive(Debug, Parser)]
 pub(crate) struct NMUOutdatedBuiltUsingOptions {
     /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
@@ -52,16 +65,11 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
     architecture: Option<Vec<Architecture>>,
 }
 
-pub(crate) struct NMUOutdatedBuiltUsing<'a> {
-    cache: &'a Cache,
-    base_options: &'a BaseOptions,
-    options: NMUOutdatedBuiltUsingOptions,
-}
-
+#[derive(PartialEq, Eq, Hash)]
 struct OutdatedPackage {
     source: String,
     outdated_dependency: String,
-    new_version: PackageVersion,
+    outdated_version: PackageVersion,
 }
 
 struct CombinedOutdatedPackage {
@@ -89,113 +97,18 @@ impl Ord for CombinedOutdatedPackage {
     }
 }
 
-struct OutdatedPackageReader {
-    reader: BufReader<File>,
-    suite: Suite,
-    actionable_sources: HashSet<String>,
-    ftbfs_bugs: UDDBugs,
+fn split_dependency(dependency: &str) -> (String, PackageVersion) {
+    let (source, version) = dependency.split_once(' ').unwrap();
+    (
+        source.to_string(),
+        PackageVersion::try_from(&version[3..version.len() - 1]).unwrap(),
+    )
 }
 
-impl OutdatedPackageReader {
-    fn new(
-        reader: BufReader<File>,
-        suite: Suite,
-        actionable_sources: HashSet<String>,
-        ftbfs_bugs: UDDBugs,
-    ) -> Self {
-        Self {
-            reader,
-            suite,
-            actionable_sources,
-            ftbfs_bugs,
-        }
-    }
-}
-
-impl Iterator for OutdatedPackageReader {
-    type Item = OutdatedPackage;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut line = String::new();
-        while let Ok(size) = {
-            line.clear();
-            self.reader.read_line(&mut line)
-        } {
-            if size == 0 {
-                break;
-            }
-
-            trace!("Processing line: {}", line);
-            let split: Vec<&str> = line.split(" | ").collect();
-            if split.len() != 5 {
-                continue;
-            }
-
-            // check if suite matches
-            match Suite::try_from(split[0].trim()) {
-                Ok(source_suite) if source_suite == self.suite => {}
-                _ => {
-                    continue;
-                }
-            }
-
-            let source = split[1].trim();
-            let outdated_dependency = split[2].trim();
-
-            // not-binNMUable as the Built-Using package is binary-independent
-            if !self.actionable_sources.contains(source) {
-                debug!("Skipping {}: not actionable", source);
-                continue;
-            }
-            // skip some packages that either make no sense to binNMU or fail to be binNMUed
-            if source.starts_with("gcc-") || source.starts_with("binutils") {
-                debug!("Skipping {}: either gcc or binuitls", source);
-                continue;
-            }
-            // skip grub/linux/... signed packages
-            if source.ends_with("-signed")
-                && (source.starts_with("grub-")
-                    || source.starts_with("linux-")
-                    || source.starts_with("shim-")
-                    || source.starts_with("fwupd-"))
-            {
-                debug!("Skipping {}: signed package", source);
-                continue;
-            }
-
-            // check if package FTBFS
-            if let Some(bugs) = self.ftbfs_bugs.bugs_for_source(source) {
-                println!("# Skipping {} due to FTBFS bugs ...", source);
-                for bug in bugs {
-                    debug!(
-                        "Skipping {}: #{} - {}: {}",
-                        source, bug.id, bug.severity, bug.title
-                    );
-                }
-                continue;
-            }
-
-            let new_version = match PackageVersion::try_from(split[4].trim()) {
-                Ok(version) => version,
-                Err(_) => {
-                    debug!(
-                        "Skipping {}: unable to parse version {}",
-                        source,
-                        split[4].trim()
-                    );
-                    continue;
-                }
-            };
-
-            return Some(OutdatedPackage {
-                source: source.to_owned(),
-                outdated_dependency: outdated_dependency.to_owned(),
-                new_version,
-            });
-        }
-
-        None
-    }
+pub(crate) struct NMUOutdatedBuiltUsing<'a> {
+    cache: &'a Cache,
+    base_options: &'a BaseOptions,
+    options: NMUOutdatedBuiltUsingOptions,
 }
 
 impl<'a> NMUOutdatedBuiltUsing<'a> {
@@ -218,7 +131,29 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         )
     }
 
-    fn parse_packages<P>(path: P) -> Result<HashSet<String>>
+    fn load_extra_sources<P>(path: P) -> Result<HashSet<(String, PackageVersion)>>
+    where
+        P: AsRef<Path>,
+    {
+        let sources: Vec<SourcePackage> = rfc822_like::from_file(path.as_ref())?;
+        Ok(sources
+            .into_iter()
+            .filter(|source| source.extra_source_only.is_some())
+            .map(|source| {
+                trace!(
+                    "Found outdated source package: {}/{}",
+                    source.package,
+                    source.version
+                );
+                (source.package, source.version)
+            })
+            .collect())
+    }
+
+    fn parse_packages<P>(
+        eso_sources: &HashSet<(String, PackageVersion)>,
+        path: P,
+    ) -> Result<HashMap<String, HashSet<(String, PackageVersion)>>>
     where
         P: AsRef<Path>,
     {
@@ -229,7 +164,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
         )?);
         pb.set_message(format!("Processing {}", path.as_ref().display()));
-        // collect all sources with arch dependent binaries having Built-Using set
+        // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
         Ok(binary_packages
             .into_iter()
             .progress_with(pb)
@@ -238,12 +173,22 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                     && binary_package.architecture != Architecture::All
             })
             .map(|binary_package| {
-                if let Some(source_package) = &binary_package.source {
-                    source_package.split_whitespace().next().unwrap().into()
-                } else {
-                    // no Source set, so Source == Package
-                    binary_package.package
-                }
+                (
+                    if let Some(source_package) = &binary_package.source {
+                        source_package.split_whitespace().next().unwrap().into()
+                    } else {
+                        // no Source set, so Source == Package
+                        binary_package.package
+                    },
+                    // safety: is_some checked before
+                    binary_package
+                        .built_using
+                        .unwrap()
+                        .split(", ")
+                        .map(split_dependency)
+                        .filter(|dependency| eso_sources.contains(dependency))
+                        .collect::<HashSet<_>>(),
+                )
             })
             .collect())
     }
@@ -251,22 +196,62 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
     fn load_eso(&self, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
         let codename = suite.into();
         let ftbfs_bugs = self.load_bugs(codename)?;
-        let mut actionable_sources = HashSet::<String>::new();
+        let eso_sources = Self::load_extra_sources(self.cache.get_cache_path("Sources")?)?;
+        let mut packages = HashSet::new();
         for path in self.cache.get_package_paths(false)? {
-            let sources = Self::parse_packages(path);
-            actionable_sources.extend(sources?);
+            let sources_and_esos = Self::parse_packages(&eso_sources, path)?;
+            for (source, dependencies) in sources_and_esos {
+                packages.extend(dependencies.into_iter().map(
+                    |(outdated_dependency, outdated_version)| OutdatedPackage {
+                        source: source.clone(),
+                        outdated_dependency,
+                        outdated_version,
+                    },
+                ))
+            }
         }
 
         let mut result = HashMap::<String, HashSet<(String, PackageVersion)>>::new();
-        for outdated_package in OutdatedPackageReader::new(
-            self.cache.get_cache_bufreader("outdated-built-using.txt")?,
-            suite,
-            actionable_sources,
-            ftbfs_bugs,
-        ) {
+        for outdated_package in packages {
+            // skip some packages that either make no sense to binNMU or fail to be binNMUed
+            if outdated_package.source.starts_with("gcc-")
+                || outdated_package.source.starts_with("binutils")
+            {
+                debug!(
+                    "Skipping {}: either gcc or binuitls",
+                    outdated_package.source
+                );
+                continue;
+            }
+            // skip grub/linux/... signed packages
+            if outdated_package.source.ends_with("-signed")
+                && (outdated_package.source.starts_with("grub-")
+                    || outdated_package.source.starts_with("linux-")
+                    || outdated_package.source.starts_with("shim-")
+                    || outdated_package.source.starts_with("fwupd-"))
+            {
+                debug!("Skipping {}: signed package", outdated_package.source);
+                continue;
+            }
+
+            // check if package FTBFS
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&outdated_package.source) {
+                println!(
+                    "# Skipping {} due to FTBFS bugs ...",
+                    outdated_package.source
+                );
+                for bug in bugs {
+                    debug!(
+                        "Skipping {}: #{} - {}: {}",
+                        outdated_package.source, bug.id, bug.severity, bug.title
+                    );
+                }
+                continue;
+            }
+
             result.entry(outdated_package.source).or_default().insert((
                 outdated_package.outdated_dependency,
-                outdated_package.new_version,
+                outdated_package.outdated_version,
             ));
         }
 
@@ -317,14 +302,13 @@ impl<'a> Command for NMUOutdatedBuiltUsing<'a> {
     }
 
     fn downloads(&self) -> Vec<CacheEntries> {
-        [
+        vec![
             CacheEntries::Packages,
             CacheEntries::FTBFSBugs(self.options.suite.into()),
         ]
-        .into()
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        [CacheEntries::OutdatedBuiltUsing].into()
+        vec![CacheEntries::Sources]
     }
 }

@@ -106,10 +106,8 @@ enum DrtToolsCommands {
     GrepExcuses(GrepExcusesOptions),
     /// Prepare binNMUs to rebuild for outdated Built-Using
     ///
-    /// Based on
-    /// `https://ftp-master.debian.org/users/ansgar/outdated-built-using.txt`,
-    /// this command prepares and schedules binNMUs for packages with outdated
-    /// `Built-Using` fields.
+    /// Based on the `Extra-Source-Only` flag, this command prepares and
+    /// schedules binNMUs for packages with outdated `Built-Using` fields.
     #[clap(name = "nmu-eso")]
     NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
     /// Check state of /usr-merged bugs
