@@ -216,9 +216,10 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             // skip some packages that either make no sense to binNMU or fail to be binNMUed
             if outdated_package.source.starts_with("gcc-")
                 || outdated_package.source.starts_with("binutils")
+                || outdated_package.source == "debian-installer"
             {
                 debug!(
-                    "Skipping {}: either gcc or binuitls",
+                    "Skipping {}: either gcc, binutils or debian-installer",
                     outdated_package.source
                 );
                 continue;
