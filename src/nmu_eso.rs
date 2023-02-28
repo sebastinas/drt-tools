@@ -3,7 +3,9 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    iter::FusedIterator,
     path::Path,
+    rc::Rc,
 };
 
 use anyhow::Result;
@@ -105,6 +107,66 @@ fn split_dependency(dependency: &str) -> (String, PackageVersion) {
     )
 }
 
+struct BinaryPackageParser {
+    iterator: Box<dyn Iterator<Item = (String, HashSet<(String, PackageVersion)>)>>,
+}
+
+impl BinaryPackageParser {
+    // TODO: not sure if an `Rc` is required here
+    fn new<P>(eso_sources: Rc<HashSet<(String, PackageVersion)>>, path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        // read Package file
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
+        let pb = ProgressBar::new(binary_packages.len() as u64);
+        pb.set_style(default_progress_style().template(
+            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+        )?);
+        pb.set_message(format!("Processing {}", path.as_ref().display()));
+        // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
+        Ok(Self {
+            iterator: Box::new(
+                binary_packages
+                    .into_iter()
+                    .progress_with(pb)
+                    .filter(|binary_package| {
+                        binary_package.built_using.is_some()
+                            && binary_package.architecture != Architecture::All
+                    })
+                    .map(move |binary_package| {
+                        (
+                            if let Some(source_package) = &binary_package.source {
+                                source_package.split_whitespace().next().unwrap().into()
+                            } else {
+                                // no Source set, so Source == Package
+                                binary_package.package
+                            },
+                            // safety: is_some checked before
+                            binary_package
+                                .built_using
+                                .unwrap()
+                                .split(", ")
+                                .map(split_dependency)
+                                .filter(|dependency| eso_sources.contains(dependency))
+                                .collect::<HashSet<_>>(),
+                        )
+                    }),
+            ),
+        })
+    }
+}
+
+impl Iterator for BinaryPackageParser {
+    type Item = (String, HashSet<(String, PackageVersion)>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iterator.next()
+    }
+}
+
+impl FusedIterator for BinaryPackageParser {}
+
 pub(crate) struct NMUOutdatedBuiltUsing<'a> {
     cache: &'a Cache,
     base_options: &'a BaseOptions,
@@ -150,57 +212,15 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             .collect())
     }
 
-    fn parse_packages<P>(
-        eso_sources: &HashSet<(String, PackageVersion)>,
-        path: P,
-    ) -> Result<HashMap<String, HashSet<(String, PackageVersion)>>>
-    where
-        P: AsRef<Path>,
-    {
-        // read Package file
-        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
-        let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        )?);
-        pb.set_message(format!("Processing {}", path.as_ref().display()));
-        // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
-        Ok(binary_packages
-            .into_iter()
-            .progress_with(pb)
-            .filter(|binary_package| {
-                binary_package.built_using.is_some()
-                    && binary_package.architecture != Architecture::All
-            })
-            .map(|binary_package| {
-                (
-                    if let Some(source_package) = &binary_package.source {
-                        source_package.split_whitespace().next().unwrap().into()
-                    } else {
-                        // no Source set, so Source == Package
-                        binary_package.package
-                    },
-                    // safety: is_some checked before
-                    binary_package
-                        .built_using
-                        .unwrap()
-                        .split(", ")
-                        .map(split_dependency)
-                        .filter(|dependency| eso_sources.contains(dependency))
-                        .collect::<HashSet<_>>(),
-                )
-            })
-            .collect())
-    }
-
     fn load_eso(&self, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
         let codename = suite.into();
         let ftbfs_bugs = self.load_bugs(codename)?;
-        let eso_sources = Self::load_extra_sources(self.cache.get_cache_path("Sources")?)?;
+        let eso_sources = Rc::new(Self::load_extra_sources(
+            self.cache.get_cache_path("Sources")?,
+        )?);
         let mut packages = HashSet::new();
         for path in self.cache.get_package_paths(false)? {
-            let sources_and_esos = Self::parse_packages(&eso_sources, path)?;
-            for (source, dependencies) in sources_and_esos {
+            for (source, dependencies) in BinaryPackageParser::new(Rc::clone(&eso_sources), path)? {
                 packages.extend(dependencies.into_iter().map(
                     |(outdated_dependency, outdated_version)| OutdatedPackage {
                         source: source.clone(),
