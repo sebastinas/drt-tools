@@ -213,13 +213,12 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 
         let mut result = HashMap::<String, HashSet<(String, PackageVersion)>>::new();
         for outdated_package in packages {
-            // skip some packages that either make no sense to binNMU or fail to be binNMUed
-            if outdated_package.source.starts_with("gcc-")
-                || outdated_package.source.starts_with("binutils")
-                || outdated_package.source == "debian-installer"
+            // skip some packages that make no sense to binNMU
+            if outdated_package.source == "debian-installer"
+                || outdated_package.source == "debian-installer-netboot-images"
             {
                 debug!(
-                    "Skipping {}: either gcc, binutils or debian-installer",
+                    "Skipping {}: debian-installer or debian-installer-netboot-images",
                     outdated_package.source
                 );
                 continue;
