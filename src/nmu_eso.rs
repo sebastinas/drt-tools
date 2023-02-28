@@ -322,13 +322,10 @@ impl<'a> Command for NMUOutdatedBuiltUsing<'a> {
     }
 
     fn downloads(&self) -> Vec<CacheEntries> {
-        vec![
-            CacheEntries::Packages,
-            CacheEntries::FTBFSBugs(self.options.suite.into()),
-        ]
+        vec![CacheEntries::FTBFSBugs(self.options.suite.into())]
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::Sources]
+        vec![CacheEntries::Packages, CacheEntries::Sources]
     }
 }
