@@ -6,7 +6,7 @@ use std::cmp::min;
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::Component,
+    archive::{Component, Suite},
     excuses::{self, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
@@ -220,7 +220,8 @@ impl<'a> ProcessExcuses<'a> {
 #[async_trait]
 impl<'a> Command for ProcessExcuses<'a> {
     async fn run(&self) -> Result<()> {
-        let source_packages = SourcePackages::new(&self.cache.get_package_paths(false)?)?;
+        let source_packages =
+            SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 
@@ -260,10 +261,10 @@ impl<'a> Command for ProcessExcuses<'a> {
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        [CacheEntries::Excuses].into()
+        vec![CacheEntries::Excuses]
     }
 
     fn downloads(&self) -> Vec<CacheEntries> {
-        [CacheEntries::Packages].into()
+        vec![CacheEntries::Packages(Suite::Unstable)]
     }
 }

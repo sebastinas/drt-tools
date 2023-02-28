@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{anyhow, Result};
-use assorted_debian_utils::archive::Codename;
+use assorted_debian_utils::archive::{Codename, Suite};
 use assorted_debian_utils::rfc822_like;
 use assorted_debian_utils::version::PackageVersion;
 use assorted_debian_utils::{
@@ -193,7 +193,7 @@ impl<'a> Command for BinNMUBuildinfo<'a> {
     async fn run(&self) -> Result<()> {
         // store latest version of all source packages
         let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
-        for path in self.cache.get_package_paths(true)? {
+        for path in self.cache.get_package_paths(Suite::Unstable, true)? {
             for (source, version) in Self::parse_packages(path)?.into_iter() {
                 match source_versions.get_mut(&source) {
                     Some(old_ver) => {
@@ -207,7 +207,8 @@ impl<'a> Command for BinNMUBuildinfo<'a> {
                 }
             }
         }
-        let source_packages = SourcePackages::new(&self.cache.get_package_paths(false)?)?;
+        let source_packages =
+            SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;
 
         let ftbfs_bugs = if !self.base_options.force_processing {
             self.load_bugs()?
@@ -236,7 +237,7 @@ impl<'a> Command for BinNMUBuildinfo<'a> {
 
     fn downloads(&self) -> Vec<CacheEntries> {
         [
-            CacheEntries::Packages,
+            CacheEntries::Packages(self.options.binnmu_options.suite.into()),
             CacheEntries::FTBFSBugs(self.options.binnmu_options.suite.into()),
         ]
         .into()

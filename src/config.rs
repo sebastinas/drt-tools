@@ -29,8 +29,8 @@ pub(crate) fn default_progress_style() -> ProgressStyle {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum CacheEntries {
     Excuses,
-    Packages,
-    Sources,
+    Packages(Suite),
+    Sources(Suite),
     FTBFSBugs(Codename),
     AutoRemovals,
     Contents(Suite),
@@ -211,31 +211,31 @@ impl Cache {
             .collect()
     }
 
-    fn packages_urls(&self) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+    fn packages_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
         RELEASE_ARCHITECTURES
             .into_iter()
             .chain([Architecture::All].into_iter())
             .map(|architecture| {
                 (
                     format!(
-                        "{}/dists/unstable/main/binary-{}/Packages.xz",
-                        self.archive_mirror, architecture
+                        "{}/dists/{}/main/binary-{}/Packages.xz",
+                        self.archive_mirror, suite, architecture
                     )
                     .into(),
-                    format!("Packages_{}", architecture).into(),
+                    format!("Packages_{}_{}", suite, architecture).into(),
                 )
             })
             .collect()
     }
 
-    fn source_urls(&self) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+    fn source_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
         vec![(
             format!(
-                "{}/dists/unstable/main/source/Sources.xz",
-                self.archive_mirror
+                "{}/dists/{}/main/source/Sources.xz",
+                self.archive_mirror, suite
             )
             .into(),
-            "Sources".into(),
+            format!("Sources_{}", suite).into(),
         )]
     }
 
@@ -248,8 +248,8 @@ impl Cache {
             .flat_map(|entry| {
                 match entry {
                     CacheEntries::Excuses => excuses_urls(),
-                    CacheEntries::Packages => self.packages_urls(),
-                    CacheEntries::Sources => self.source_urls(),
+                    CacheEntries::Packages(suite) => self.packages_urls(*suite),
+                    CacheEntries::Sources(suite) => self.source_urls(*suite),
                     CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls(*codename),
                     CacheEntries::AutoRemovals => auto_removals_urls(),
                     CacheEntries::Contents(suite) => self.contents_urls(*suite),
@@ -331,15 +331,23 @@ impl Cache {
         )?))
     }
 
-    pub fn get_package_paths(&self, with_all: bool) -> Result<Vec<PathBuf>> {
+    pub fn get_package_paths(&self, suite: Suite, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
         for architecture in RELEASE_ARCHITECTURES {
-            all_paths.push(self.get_cache_path(format!("Packages_{}", architecture))?);
+            all_paths.push(self.get_cache_path(format!("Packages_{}_{}", suite, architecture))?);
         }
         if with_all {
-            all_paths.push(self.get_cache_path(format!("Packages_{}", Architecture::All))?);
+            all_paths.push(self.get_cache_path(format!(
+                "Packages_{}_{}",
+                suite,
+                Architecture::All
+            ))?);
         }
         Ok(all_paths)
+    }
+
+    pub fn get_source_path(&self, suite: Suite) -> Result<PathBuf> {
+        self.get_cache_path(format!("Sources_{}", suite))
     }
 
     pub fn get_content_paths(&self, suite: Suite) -> Result<Vec<(Architecture, PathBuf)>> {
