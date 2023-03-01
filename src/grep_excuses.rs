@@ -1,4 +1,4 @@
-// Copyright 2022 Sebastian Ramacher
+// Copyright 2022-2023 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 use anyhow::Result;
