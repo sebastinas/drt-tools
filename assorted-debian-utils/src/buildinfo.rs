@@ -5,7 +5,7 @@
 //!
 //! This module provides `Buildinfo` to represent some fields of a `.buildinfo` file.
 
-use std::{fmt, io::BufRead};
+use std::{fmt::Formatter, io::BufRead};
 
 use serde::{
     de::{self, Visitor},
@@ -23,7 +23,7 @@ where
     impl<'de> Visitor<'de> for StringVisitor {
         type Value = Vec<Architecture>;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
             formatter.write_str("one or more architectures")
         }
 

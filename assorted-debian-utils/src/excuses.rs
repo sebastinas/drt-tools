@@ -6,7 +6,7 @@
 //! This module provides helpers to deserialize [excuses.yaml](https://release.debian.org/britney/excuses.yaml)
 //! with [serde]. Note however, that this module only handles a biased selection of fields.
 
-use std::{collections::HashMap, fmt, io};
+use std::{collections::HashMap, fmt::Formatter, io};
 
 use chrono::{DateTime, Utc};
 use serde::{de, Deserialize, Deserializer};
@@ -40,7 +40,7 @@ where
     impl<'de> de::Visitor<'de> for Visitor {
         type Value = Option<PackageVersion>;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
             write!(formatter, "a package version or '-'")
         }
 

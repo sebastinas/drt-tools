@@ -24,7 +24,7 @@
 
 use std::{
     cmp::Ordering,
-    fmt::{self, Display},
+    fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
 
@@ -281,7 +281,7 @@ impl TryFrom<&str> for PackageVersion {
 }
 
 impl Display for PackageVersion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if let Some(epoch) = self.epoch {
             write!(f, "{}:", epoch)?;
         }
@@ -312,7 +312,7 @@ impl<'de> Deserialize<'de> for PackageVersion {
         impl<'de> de::Visitor<'de> for VersionVisitor {
             type Value = PackageVersion;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 write!(formatter, "a version string")
             }
 

@@ -3,7 +3,7 @@
 
 //! # Utils used by other modules.
 
-use std::fmt;
+use std::fmt::Formatter;
 
 use chrono::{DateTime, TimeZone, Utc};
 use serde::de;
@@ -15,7 +15,7 @@ pub(crate) struct DateTimeVisitor(pub &'static str);
 impl<'de> de::Visitor<'de> for DateTimeVisitor {
     type Value = DateTime<Utc>;
 
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
         write!(formatter, "a date and time formatted as '{}'", self.0)
     }
 

@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::Display, io::Read};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+    io::Read,
+};
 
 use anyhow::Result;
 use serde::Deserialize;
@@ -36,7 +40,7 @@ impl Severity {
 */
 
 impl Display for Severity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_ref())
     }
 }
