@@ -14,6 +14,19 @@ pub enum Severity {
     Critical,
 }
 
+impl AsRef<str> for Severity {
+    fn as_ref(&self) -> &str {
+        match self {
+            Severity::Wishlist => "wishlist",
+            Severity::Normal => "normal",
+            Severity::Important => "important",
+            Severity::Serious => "serious",
+            Severity::Grave => "grave",
+            Severity::Critical => "critical",
+        }
+    }
+}
+
 /*
 impl Severity {
     fn is_rc(&self) -> bool {
@@ -24,14 +37,7 @@ impl Severity {
 
 impl Display for Severity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Severity::Wishlist => write!(f, "wishlist"),
-            Severity::Normal => write!(f, "normal"),
-            Severity::Important => write!(f, "important"),
-            Severity::Serious => write!(f, "serious"),
-            Severity::Grave => write!(f, "grave"),
-            Severity::Critical => write!(f, "critical"),
-        }
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -57,15 +63,11 @@ impl UDDBugs {
         };
 
         for (idx, bug) in udd_bugs.bugs.iter().enumerate() {
-            if udd_bugs.source_index.contains_key(&bug.source) {
-                udd_bugs
-                    .source_index
-                    .get_mut(&bug.source)
-                    .unwrap()
-                    .push(idx);
-            } else {
-                udd_bugs.source_index.insert(bug.source.clone(), vec![idx]);
-            }
+            udd_bugs
+                .source_index
+                .entry(bug.source.clone())
+                .or_default()
+                .push(idx);
         }
 
         udd_bugs
