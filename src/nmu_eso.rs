@@ -99,12 +99,13 @@ impl Ord for CombinedOutdatedPackage {
     }
 }
 
-fn split_dependency(dependency: &str) -> (String, PackageVersion) {
-    let (source, version) = dependency.split_once(' ').unwrap();
-    (
-        source.to_string(),
-        PackageVersion::try_from(&version[3..version.len() - 1]).unwrap(),
-    )
+fn split_dependency(dependency: &str) -> Option<(String, PackageVersion)> {
+    // this should never fail unless the archive is broken
+    dependency.split_once(' ').and_then(|(source, version)| {
+        PackageVersion::try_from(&version[3..version.len() - 1])
+            .map(|version| (source.to_string(), version))
+            .ok()
+    })
 }
 
 struct BinaryPackageParser<'a> {
@@ -132,32 +133,36 @@ impl<'a> BinaryPackageParser<'a> {
     }
 }
 
-impl<'a> Iterator for BinaryPackageParser<'a> {
+impl Iterator for BinaryPackageParser<'_> {
     type Item = (String, HashSet<(String, PackageVersion)>);
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(binary_package) = self.iterator.next() {
-            if binary_package.built_using.is_none()
-                || binary_package.architecture == Architecture::All
-            {
+            // skip Arch: all packages
+            if binary_package.architecture == Architecture::All {
                 continue;
             }
+            // skip packages without Built-Using
+            let built_using = match binary_package.built_using {
+                Some(ref built_using) => built_using,
+                None => continue,
+            };
 
             return Some((
                 if let Some(source_package) = &binary_package.source {
-                    source_package.split_whitespace().next().unwrap().into()
+                    match source_package.split_whitespace().next() {
+                        Some(package) => package.into(),
+                        None => continue,
+                    }
                 } else {
                     // no Source set, so Source == Package
                     binary_package.package
                 },
-                // safety: is_some checked before
-                binary_package
-                    .built_using
-                    .unwrap()
+                built_using
                     .split(", ")
-                    .map(split_dependency)
+                    .filter_map(split_dependency)
                     .filter(|dependency| self.eso_sources.contains(dependency))
-                    .collect::<HashSet<_>>(),
+                    .collect(),
             ));
         }
 
@@ -165,7 +170,7 @@ impl<'a> Iterator for BinaryPackageParser<'a> {
     }
 }
 
-impl<'a> FusedIterator for BinaryPackageParser<'a> {}
+impl FusedIterator for BinaryPackageParser<'_> {}
 
 pub(crate) struct NMUOutdatedBuiltUsing<'a> {
     cache: &'a Cache,
