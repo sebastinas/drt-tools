@@ -1,10 +1,15 @@
 # Changelog
 
+## 0.2.13 (2023-03-16)
+
+* `nmu-eso`: Take `Package` and `Source` files from the archive to build list of packages needing a rebuild.
+* `nmu-eso`: Only skip `debian-installer` and `-signed` packages.
+
 ## 0.2.12 (2023-02-25)
 
-* `nmu-eso`: skip `-signed` packages
-* `nmu-eso`: mention cause for rebuilds in binNMU message
-* Refactor command implementaton
+* `nmu-eso`: Skip `-signed` packages.
+* `nmu-eso`: Mention cause for rebuilds in binNMU message.
+* Refactor command implementaton.
 
 ## 0.2.11 (2023-01-17)
 
