@@ -189,7 +189,7 @@ impl<'a> BinNMUBuildinfo<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for BinNMUBuildinfo<'a> {
+impl Command for BinNMUBuildinfo<'_> {
     async fn run(&self) -> Result<()> {
         // store latest version of all source packages
         let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();

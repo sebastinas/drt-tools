@@ -57,7 +57,7 @@ impl<'a> PrepareBinNMUs<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for PrepareBinNMUs<'a> {
+impl Command for PrepareBinNMUs<'_> {
     async fn run(&self) -> Result<()> {
         let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if !self.base_options.force_processing {

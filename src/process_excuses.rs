@@ -218,7 +218,7 @@ impl<'a> ProcessExcuses<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for ProcessExcuses<'a> {
+impl Command for ProcessExcuses<'_> {
     async fn run(&self) -> Result<()> {
         let source_packages =
             SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;

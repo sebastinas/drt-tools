@@ -68,7 +68,7 @@ impl<'a> GrepExcuses<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for GrepExcuses<'a> {
+impl Command for GrepExcuses<'_> {
     async fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;

@@ -92,7 +92,7 @@ impl<'a> ProcessUnblocks<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for ProcessUnblocks<'a> {
+impl Command for ProcessUnblocks<'_> {
     async fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;

@@ -118,7 +118,7 @@ impl<'a> UsrMerged<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for UsrMerged<'a> {
+impl Command for UsrMerged<'_> {
     async fn run(&self) -> Result<()> {
         // Check if file from stable on $architecture moved to other
         // packages on testing on $architecture | all. If architecture ==

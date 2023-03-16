@@ -291,7 +291,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 }
 
 #[async_trait]
-impl<'a> Command for NMUOutdatedBuiltUsing<'a> {
+impl Command for NMUOutdatedBuiltUsing<'_> {
     async fn run(&self) -> Result<()> {
         let suite = self.options.suite.into();
         let eso_sources = self.load_eso(suite)?;
