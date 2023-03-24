@@ -11,8 +11,8 @@ jobs:
     strategy:
       matrix:
         toolchain:
+          - "1.60"
           - stable
-          - beta
     name: Test with ${{matrix.toolchain}} toolchain
     steps:
       - uses: actions/checkout@v3
