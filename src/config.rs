@@ -17,6 +17,7 @@ use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{debug, trace};
 use reqwest::{header, Client, Response, StatusCode};
+use tempfile::NamedTempFile;
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
 
@@ -139,19 +140,22 @@ impl Downloader {
             Some(val) => val,
         };
 
-        let mut file = File::create(&path)
-            .with_context(|| format!("Failed to create file '{}'", path.as_ref().display()))?;
+        let directory = path.as_ref().parent().unwrap();
+        let mut file =
+            NamedTempFile::new_in(directory).with_context(|| "Failed to create temporary file")?;
         if url.ends_with(".xz") {
-            self.download_internal(res, &pb, &mut XzDecoder::new(file))
+            self.download_internal(res, &pb, &mut XzDecoder::new(&mut file))
                 .await?;
         } else if url.ends_with(".gz") {
-            let mut writer = flate2::write::GzDecoder::new(file);
+            let mut writer = flate2::write::GzDecoder::new(&mut file);
             self.download_internal(res, &pb, &mut writer).await?;
             writer.try_finish()?;
         } else {
             self.download_internal(res, &pb, &mut file).await?;
         }
         pb.finish_with_message(format!("Downloaded {}", url));
+        file.persist(path.as_ref())
+            .with_context(|| format!("Failed to move temporary file to '{:?}'", path.as_ref()))?;
         debug!("Download of {} to {:?} done", url, path.as_ref());
         Ok(CacheState::FreshFiles)
     }
