@@ -117,10 +117,10 @@ impl Downloader {
     ) -> Result<()> {
         let mut stream = res.bytes_stream();
         while let Some(item) = stream.next().await {
-            let chunk = item.with_context(|| "Error while downloading file".to_string())?;
+            let chunk = item.with_context(|| "Error while downloading file")?;
             writer
                 .write_all(&chunk)
-                .with_context(|| "Error while writing to file".to_string())?;
+                .with_context(|| "Error while writing to file")?;
             pb.inc(chunk.len() as u64);
         }
         Ok(())
