@@ -17,7 +17,6 @@ use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{debug, trace};
 use reqwest::{header, Client, Response, StatusCode};
-use tempfile::NamedTempFile;
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
 
@@ -57,16 +56,13 @@ impl Downloader {
         }
     }
 
-    async fn download_init<P>(
+    async fn download_init(
         &self,
         url: &str,
-        path: P,
+        path: &Path,
         mp: MultiProgress,
-    ) -> Result<Option<(Response, ProgressBar)>>
-    where
-        P: AsRef<Path>,
-    {
-        debug!("Starting download of {} to {:?}", url, path.as_ref());
+    ) -> Result<Option<(Response, ProgressBar)>> {
+        debug!("Starting download of {} to {:?}", url, path);
         let res = self.client.get(url);
         let res = if !self.always_download {
             if let Ok(dst_metadata) = fs::metadata(path) {
@@ -135,28 +131,45 @@ impl Downloader {
     where
         P: AsRef<Path>,
     {
-        let (res, pb) = match self.download_init(url, &path, mp).await? {
+        self._download_file(url, path.as_ref(), mp).await
+    }
+
+    async fn _download_file(
+        &self,
+        url: &str,
+        path: &Path,
+        mp: MultiProgress,
+    ) -> Result<CacheState> {
+        let (res, pb) = match self.download_init(url, path, mp).await? {
             None => return Ok(CacheState::NoUpdate),
             Some(val) => val,
         };
 
-        let directory = path.as_ref().parent().unwrap();
-        let mut file =
-            NamedTempFile::new_in(directory).with_context(|| "Failed to create temporary file")?;
+        let tmp_file = path.with_file_name({
+            let mut tmp = path.file_name().unwrap().to_owned();
+            tmp.push(".tmp");
+            tmp
+        });
+        let mut file = File::create(&tmp_file)
+            .with_context(|| format!("Failed to create temporary file '{:?}'", tmp_file))?;
         if url.ends_with(".xz") {
-            self.download_internal(res, &pb, &mut XzDecoder::new(&mut file))
+            self.download_internal(res, &pb, &mut XzDecoder::new(file))
                 .await?;
         } else if url.ends_with(".gz") {
-            let mut writer = flate2::write::GzDecoder::new(&mut file);
+            let mut writer = flate2::write::GzDecoder::new(file);
             self.download_internal(res, &pb, &mut writer).await?;
             writer.try_finish()?;
         } else {
             self.download_internal(res, &pb, &mut file).await?;
         }
         pb.finish_with_message(format!("Downloaded {}", url));
-        file.persist(path.as_ref())
-            .with_context(|| format!("Failed to move temporary file to '{:?}'", path.as_ref()))?;
-        debug!("Download of {} to {:?} done", url, path.as_ref());
+        fs::rename(&tmp_file, path).with_context(|| {
+            format!(
+                "Failed to move temporary file '{:?}' to '{:?}'",
+                tmp_file, path
+            )
+        })?;
+        debug!("Download of {} to {:?} done", url, path);
         Ok(CacheState::FreshFiles)
     }
 }
