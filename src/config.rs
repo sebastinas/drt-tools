@@ -13,6 +13,7 @@ use assorted_debian_utils::{
     architectures::{Architecture, RELEASE_ARCHITECTURES},
     archive::{Codename, Suite},
 };
+use flate2::write::GzDecoder;
 use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{debug, trace};
@@ -156,7 +157,7 @@ impl Downloader {
             self.download_internal(res, &pb, &mut XzDecoder::new(file))
                 .await?;
         } else if url.ends_with(".gz") {
-            let mut writer = flate2::write::GzDecoder::new(file);
+            let mut writer = GzDecoder::new(file);
             self.download_internal(res, &pb, &mut writer).await?;
             writer.try_finish()?;
         } else {
