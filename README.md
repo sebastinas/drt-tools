@@ -20,6 +20,9 @@ The following commands are provided:
    * `--bp priority`: specify a build priority
    * `--suite suite`: specify a suite
    * `-a architecture`: use a different architecture than `ANY`
+* `nmu-eso`: Produce and schedule a list of rebuilds for packages having Built-Using on source packages with `Extra-Source-Only: yes` set. This command supports the following options:
+   * `--bp priority`: specifiy a build priority (default: -50)
+   * `--suite suite`: specify a suite
 * `usrmerged`: Check for packages moving files from / to /usr or vice versa.
 
 
