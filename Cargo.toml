@@ -19,6 +19,7 @@ assorted-debian-utils = { version = "0.5.6", path = "assorted-debian-utils" }
 async-trait = { version = "0.1", default-features = false }
 chrono = { version = "0.4", default-features = false }
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
+clap-verbosity-flag = "2"
 flate2 = { version = "1", default-features = false, features = ["zlib"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 httpdate = "1"

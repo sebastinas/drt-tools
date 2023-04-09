@@ -1,10 +1,10 @@
 // Copyright 2021-2023 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use assorted_debian_utils::{architectures::Architecture, archive::SuiteOrCodename};
 use async_trait::async_trait;
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use config::{CacheEntries, CacheState};
 use log::trace;
 
@@ -41,9 +41,8 @@ pub(crate) struct BaseOptions {
     /// Quiet mode
     #[clap(short = 'q', long)]
     quiet: bool,
-    /// Verbose mode (-v, -vv, -vvv, etc)
-    #[clap(short = 'v', long, action(ArgAction::Count))]
-    verbose: u8,
+    #[clap(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
     /// Archive mirror
     #[clap(long, default_value = "https://deb.debian.org/debian")]
     mirror: String,
@@ -169,8 +168,9 @@ async fn main() -> Result<()> {
 
     stderrlog::new()
         .quiet(opts.base_options.quiet)
-        .verbosity(opts.base_options.verbose as usize)
-        .init()?;
+        .verbosity(opts.base_options.verbose.log_level_filter())
+        .init()
+        .with_context(|| "Failed to initialize `stderrlog`.")?;
     trace!("base options {:?}", opts.base_options);
     trace!("command: {:?}", opts.command);
 
