@@ -4,6 +4,8 @@
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::iter::FusedIterator;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use assorted_debian_utils::architectures::{Architecture, RELEASE_ARCHITECTURES};
@@ -12,25 +14,35 @@ use async_trait::async_trait;
 use clap::Parser;
 use log::{debug, info, trace, warn};
 use smallvec::SmallVec;
-use smartstring::{LazyCompact, SmartString};
 
 use crate::config::{self, CacheEntries};
 use crate::Command;
 
-type SmallString = SmartString<LazyCompact>;
-// if there is a file in more than one package, the most common case are two packages
-type LoadIterator = dyn Iterator<Item = (SmallString, SmallVec<[SmallString; 2]>)>;
+type SmallString = smartstring::alias::String;
+
+const SKIP: [&str; 6] = [
+    "boot/",
+    "etc/",
+    "lib/modules/",
+    "usr/src/",
+    "usr/share/doc",
+    "var/",
+];
 
 fn strip_section(package: &str) -> SmallString {
     package.split_once('/').map_or(package, |(_, p)| p).into()
 }
 
-fn compute_path_to_test(path: impl AsRef<str>) -> String {
-    if let Some(stripped) = path.as_ref().strip_prefix("usr/") {
+fn compute_path_to_test_impl(path: &str) -> SmallString {
+    if let Some(stripped) = path.strip_prefix("usr/") {
         stripped.into()
     } else {
-        format!("usr/{}", path.as_ref())
+        format!("usr/{}", path).into()
     }
+}
+
+fn compute_path_to_test(path: impl AsRef<str>) -> SmallString {
+    compute_path_to_test_impl(path.as_ref())
 }
 
 #[derive(Debug, Parser)]
@@ -48,61 +60,89 @@ pub(crate) struct UsrMerged<'a> {
     options: UsrMergedOptions,
 }
 
+struct LoadIterator {
+    reader: BufReader<File>,
+    suite: Suite,
+    arch: Architecture,
+    no_skip: bool,
+}
+
+impl Iterator for LoadIterator {
+    // if there is a file in more than one package, the most common case are two packages
+    type Item = (SmallString, SmallVec<[SmallString; 2]>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut line = String::new();
+        while let Ok(size) = self.reader.read_line({
+            line.clear();
+            &mut line
+        }) {
+            if size == 0 {
+                // reached EOF
+                return None;
+            }
+            let line = line
+                .strip_suffix("\r\n")
+                .or(line.strip_suffix('\n'))
+                .unwrap_or(&line);
+            trace!("{}/{}: processing: {}", self.suite, self.arch, line);
+
+            let mut split = line.split_whitespace();
+            let (path, packages) = match (split.next(), split.next()) {
+                (Some(path), Some(packages)) => (path, packages),
+                _ => {
+                    warn!("Unable to process line: {}", line);
+                    continue;
+                }
+            };
+
+            // skip some well-known locations which should not be an issue: boot/, usr/etc/, usr/lib/modules/, ...
+            if !self.no_skip && SKIP.into_iter().any(|prefix| path.starts_with(prefix)) {
+                debug!("Skipping '{}'", path);
+                continue;
+            }
+
+            return Some((
+                path.into(),
+                packages.split(',').map(strip_section).collect(),
+            ));
+        }
+        // Error
+        None
+    }
+}
+
+impl FusedIterator for LoadIterator {}
+
+fn load_contents_iter(
+    suite: Suite,
+    arch: Architecture,
+    path: PathBuf,
+    no_skip: bool,
+) -> Result<LoadIterator> {
+    debug!("Processing contents for {} on {}: {:?}", suite, arch, path);
+
+    let reader = BufReader::new(File::open(path)?);
+    Ok(LoadIterator {
+        reader,
+        suite,
+        arch,
+        no_skip,
+    })
+}
+
 impl<'a> UsrMerged<'a> {
     pub(crate) fn new(cache: &'a config::Cache, options: UsrMergedOptions) -> Self {
         Self { cache, options }
     }
 
-    fn load_contents_iter(&self, suite: Suite, arch: Architecture) -> Result<Box<LoadIterator>> {
+    fn load_contents_iter(&self, suite: Suite, arch: Architecture) -> Result<LoadIterator> {
         for (architecture, path) in self.cache.get_content_paths(suite)? {
-            if arch != architecture {
+            if architecture != arch {
                 continue;
             }
 
-            debug!(
-                "Processing contents for {} on {}: {:?}",
-                suite, architecture, path
-            );
-
-            let no_skip = self.options.no_skip;
-            let reader = BufReader::new(File::open(path)?);
-            return Ok(Box::new(reader.lines().filter_map(move |line| {
-                let line = match line {
-                    Ok(line) => line,
-                    _ => {
-                        return None;
-                    }
-                };
-                trace!("Processing: {}", line);
-
-                let mut split = line.split_whitespace();
-                let (path, packages) = match (split.next(), split.next()) {
-                    (Some(path), Some(packages)) => (path, packages),
-                    _ => {
-                        warn!("Unable to process line: {}", line);
-                        return None;
-                    }
-                };
-
-                // skip some well-known locations which should not be an issue: boot/, usr/etc/, usr/lib/modules/, ...
-                const SKIP: [&str; 6] = [
-                    "boot/",
-                    "etc/",
-                    "lib/modules/",
-                    "usr/src/",
-                    "usr/share/doc",
-                    "var/",
-                ];
-                if !no_skip && SKIP.into_iter().any(|prefix| path.starts_with(prefix)) {
-                    debug!("Skipping {}", path);
-                    return None;
-                }
-
-                Some((
-                    path.into(),
-                    packages.split(',').map(strip_section).collect(),
-                ))
-            })));
+            return load_contents_iter(suite, arch, path, self.options.no_skip);
         }
 
         unreachable!("This will never be reached.");
@@ -113,7 +153,20 @@ impl<'a> UsrMerged<'a> {
         suite: Suite,
         arch: Architecture,
     ) -> Result<HashMap<SmallString, SmallVec<[SmallString; 2]>>> {
-        Ok(HashMap::from_iter(self.load_contents_iter(suite, arch)?))
+        for (architecture, path) in self.cache.get_content_paths(suite)? {
+            if architecture != arch {
+                continue;
+            }
+
+            return Ok(HashMap::from_iter(load_contents_iter(
+                suite,
+                arch,
+                path,
+                self.options.no_skip,
+            )?));
+        }
+
+        unreachable!("This will never be reached.");
     }
 }
 
@@ -145,8 +198,8 @@ impl Command for UsrMerged<'_> {
                 );
 
                 let testing_packages_set = match (
-                    testing_file_map.get(path_to_test.as_str()),
-                    testing_all_file_map.get(path_to_test.as_str()),
+                    testing_file_map.get(&path_to_test),
+                    testing_all_file_map.get(&path_to_test),
                 ) {
                     (None, None) => {
                         debug!("{}: {} not found", architecture, path_to_test);
@@ -163,24 +216,22 @@ impl Command for UsrMerged<'_> {
                     ),
                 };
 
-                let testing_packages_set_original_path = match (
-                    testing_file_map.get(path.as_str()),
-                    testing_all_file_map.get(path.as_str()),
-                ) {
-                    (None, None) => {
-                        debug!("{}: {} not found", architecture, path_to_test);
-                        continue;
-                    }
-                    (None, Some(packages)) | (Some(packages), None) => {
-                        HashSet::from_iter(packages.iter().map(|v| v.as_str()))
-                    }
-                    (Some(arch_packages), Some(all_packages)) => HashSet::from_iter(
-                        arch_packages
-                            .iter()
-                            .chain(all_packages.iter())
-                            .map(|v| v.as_str()),
-                    ),
-                };
+                let testing_packages_set_original_path =
+                    match (testing_file_map.get(&path), testing_all_file_map.get(&path)) {
+                        (None, None) => {
+                            debug!("{}: {} not found", architecture, path_to_test);
+                            HashSet::new()
+                        }
+                        (None, Some(packages)) | (Some(packages), None) => {
+                            HashSet::from_iter(packages.iter().map(|v| v.as_str()))
+                        }
+                        (Some(arch_packages), Some(all_packages)) => HashSet::from_iter(
+                            arch_packages
+                                .iter()
+                                .chain(all_packages.iter())
+                                .map(|v| v.as_str()),
+                        ),
+                    };
 
                 let stable_packages_set: HashSet<&str> =
                     HashSet::from_iter(stable_packages.iter().map(|v| v.as_str()));
