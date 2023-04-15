@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.14 (2023-04-15)
+
+* Bump MSRV to 1.64
+* `usrmerged`: Find more moved files.
+
 ## 0.2.13 (2023-03-16)
 
 * `nmu-eso`: Take `Package` and `Source` files from the archive to build list of packages needing a rebuild.
