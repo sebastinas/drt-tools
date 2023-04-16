@@ -126,9 +126,8 @@ impl Command for PrepareBinNMUs<'_> {
     }
 
     fn downloads(&self) -> Vec<CacheEntries> {
-        [CacheEntries::FTBFSBugs(
+        vec![CacheEntries::FTBFSBugs(
             self.options.binnmu_options.suite.into(),
         )]
-        .into()
     }
 }

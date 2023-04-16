@@ -99,6 +99,6 @@ impl Command for GrepExcuses<'_> {
     }
 
     fn downloads(&self) -> Vec<CacheEntries> {
-        [CacheEntries::Excuses, CacheEntries::AutoRemovals].into()
+        vec![CacheEntries::Excuses, CacheEntries::AutoRemovals]
     }
 }
