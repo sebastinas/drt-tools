@@ -141,9 +141,8 @@ impl Downloader {
         path: &Path,
         mp: MultiProgress,
     ) -> Result<CacheState> {
-        let (res, pb) = match self.download_init(url, path, mp).await? {
-            None => return Ok(CacheState::NoUpdate),
-            Some(val) => val,
+        let Some((res, pb)) = self.download_init(url, path, mp).await? else {
+            return Ok(CacheState::NoUpdate);
         };
 
         let tmp_file = path.with_file_name({

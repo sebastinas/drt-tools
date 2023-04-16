@@ -143,9 +143,8 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             }
             // skip packages without Built-Using
-            let built_using = match binary_package.built_using {
-                Some(ref built_using) => built_using,
-                None => continue,
+            let Some(ref built_using) = binary_package.built_using else {
+                continue;
             };
 
             return Some((
