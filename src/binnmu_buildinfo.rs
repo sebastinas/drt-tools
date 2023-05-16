@@ -254,7 +254,7 @@ fn strip_signature(input: impl BufRead) -> Result<Vec<u8>> {
             .map(|line| !line.starts_with("Format: "))
             .unwrap_or(true)
     }) {
-        let Ok(line) =  line else { break; };
+        let Ok(line) = line else { break; };
 
         // Read until beginning of the signature block
         if line.starts_with("-----BEGIN") {
