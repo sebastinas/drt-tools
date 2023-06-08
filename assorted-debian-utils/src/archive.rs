@@ -143,11 +143,11 @@ pub enum Codename {
     /// The unstable suite
     Sid,
     /// The testing suite
-    Bookworm(Option<Extension>),
+    Trixie(Option<Extension>),
     /// The stable suite
-    Bullseye(Option<Extension>),
+    Bookworm(Option<Extension>),
     /// The oldstable suite
-    Buster(Option<Extension>),
+    Bullseye(Option<Extension>),
     /// The experimental suite
     RCBuggy,
 }
@@ -156,13 +156,13 @@ impl Display for Codename {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
             Codename::Sid => write!(f, "sid"),
+            Codename::Trixie(None) => write!(f, "trixie"),
             Codename::Bookworm(None) => write!(f, "bookworm"),
             Codename::Bullseye(None) => write!(f, "bullseye"),
-            Codename::Buster(None) => write!(f, "buster"),
             Codename::RCBuggy => write!(f, "rc-buggy"),
+            Codename::Trixie(Some(ext)) => write!(f, "trixie-{}", ext),
             Codename::Bookworm(Some(ext)) => write!(f, "bookworm-{}", ext),
             Codename::Bullseye(Some(ext)) => write!(f, "bullseye-{}", ext),
-            Codename::Buster(Some(ext)) => write!(f, "buster-{}", ext),
         }
     }
 }
@@ -173,17 +173,17 @@ impl TryFrom<&str> for Codename {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "sid" => Ok(Codename::Sid),
+            "trixie" => Ok(Codename::Trixie(None)),
             "bookworm" => Ok(Codename::Bookworm(None)),
             "bullseye" => Ok(Codename::Bullseye(None)),
-            "buster" => Ok(Codename::Buster(None)),
             "rc-buggy" => Ok(Codename::RCBuggy),
             _ => {
                 let s = value.split_once('-').ok_or(ParseError::InvalidCodename)?;
                 let ext = Extension::try_from(s.1)?;
                 match s.0 {
+                    "trixie" => Ok(Codename::Trixie(Some(ext))),
                     "bookworm" => Ok(Codename::Bookworm(Some(ext))),
                     "bullseye" => Ok(Codename::Bullseye(Some(ext))),
-                    "buster" => Ok(Codename::Buster(Some(ext))),
                     _ => Err(ParseError::InvalidCodename),
                 }
             }
@@ -203,9 +203,9 @@ impl From<Suite> for Codename {
     fn from(suite: Suite) -> Self {
         match suite {
             Suite::Unstable => Codename::Sid,
-            Suite::Testing(ext) => Codename::Bookworm(ext),
-            Suite::Stable(ext) => Codename::Bullseye(ext),
-            Suite::OldStable(ext) => Codename::Buster(ext),
+            Suite::Testing(ext) => Codename::Trixie(ext),
+            Suite::Stable(ext) => Codename::Bookworm(ext),
+            Suite::OldStable(ext) => Codename::Bullseye(ext),
             Suite::Experimental => Codename::RCBuggy,
         }
     }
@@ -215,9 +215,9 @@ impl From<Codename> for Suite {
     fn from(codename: Codename) -> Self {
         match codename {
             Codename::Sid => Suite::Unstable,
-            Codename::Bookworm(ext) => Suite::Testing(ext),
-            Codename::Bullseye(ext) => Suite::Stable(ext),
-            Codename::Buster(ext) => Suite::OldStable(ext),
+            Codename::Trixie(ext) => Suite::Testing(ext),
+            Codename::Bookworm(ext) => Suite::Stable(ext),
+            Codename::Bullseye(ext) => Suite::OldStable(ext),
             Codename::RCBuggy => Suite::Experimental,
         }
     }
@@ -435,7 +435,7 @@ mod test {
         assert_eq!(Codename::from(Suite::Unstable), Codename::Sid);
         assert_eq!(
             Codename::from(Suite::Stable(Some(Extension::Backports))),
-            Codename::Bullseye(Some(Extension::Backports))
+            Codename::Bookworm(Some(Extension::Backports))
         );
     }
 
@@ -443,7 +443,7 @@ mod test {
     fn suite_from_codename() {
         assert_eq!(Suite::from(Codename::Sid), Suite::Unstable);
         assert_eq!(
-            Suite::from(Codename::Bullseye(Some(Extension::Backports))),
+            Suite::from(Codename::Bookworm(Some(Extension::Backports))),
             Suite::Stable(Some(Extension::Backports))
         );
     }
