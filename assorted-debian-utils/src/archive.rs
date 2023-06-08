@@ -147,7 +147,7 @@ pub enum Codename {
     /// The stable suite
     Bullseye(Option<Extension>),
     /// The oldstable suite
-    Stretch(Option<Extension>),
+    Buster(Option<Extension>),
     /// The experimental suite
     RCBuggy,
 }
@@ -158,11 +158,11 @@ impl Display for Codename {
             Codename::Sid => write!(f, "sid"),
             Codename::Bookworm(None) => write!(f, "bookworm"),
             Codename::Bullseye(None) => write!(f, "bullseye"),
-            Codename::Stretch(None) => write!(f, "stretch"),
+            Codename::Buster(None) => write!(f, "buster"),
             Codename::RCBuggy => write!(f, "rc-buggy"),
             Codename::Bookworm(Some(ext)) => write!(f, "bookworm-{}", ext),
             Codename::Bullseye(Some(ext)) => write!(f, "bullseye-{}", ext),
-            Codename::Stretch(Some(ext)) => write!(f, "stretch-{}", ext),
+            Codename::Buster(Some(ext)) => write!(f, "buster-{}", ext),
         }
     }
 }
@@ -175,7 +175,7 @@ impl TryFrom<&str> for Codename {
             "sid" => Ok(Codename::Sid),
             "bookworm" => Ok(Codename::Bookworm(None)),
             "bullseye" => Ok(Codename::Bullseye(None)),
-            "stretch" => Ok(Codename::Stretch(None)),
+            "buster" => Ok(Codename::Buster(None)),
             "rc-buggy" => Ok(Codename::RCBuggy),
             _ => {
                 let s = value.split_once('-').ok_or(ParseError::InvalidCodename)?;
@@ -183,7 +183,7 @@ impl TryFrom<&str> for Codename {
                 match s.0 {
                     "bookworm" => Ok(Codename::Bookworm(Some(ext))),
                     "bullseye" => Ok(Codename::Bullseye(Some(ext))),
-                    "stretch" => Ok(Codename::Stretch(Some(ext))),
+                    "buster" => Ok(Codename::Buster(Some(ext))),
                     _ => Err(ParseError::InvalidCodename),
                 }
             }
@@ -205,7 +205,7 @@ impl From<Suite> for Codename {
             Suite::Unstable => Codename::Sid,
             Suite::Testing(ext) => Codename::Bookworm(ext),
             Suite::Stable(ext) => Codename::Bullseye(ext),
-            Suite::OldStable(ext) => Codename::Stretch(ext),
+            Suite::OldStable(ext) => Codename::Buster(ext),
             Suite::Experimental => Codename::RCBuggy,
         }
     }
@@ -217,7 +217,7 @@ impl From<Codename> for Suite {
             Codename::Sid => Suite::Unstable,
             Codename::Bookworm(ext) => Suite::Testing(ext),
             Codename::Bullseye(ext) => Suite::Stable(ext),
-            Codename::Stretch(ext) => Suite::OldStable(ext),
+            Codename::Buster(ext) => Suite::OldStable(ext),
             Codename::RCBuggy => Suite::Experimental,
         }
     }
