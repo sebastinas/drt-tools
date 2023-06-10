@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 (2023-06-10)
+
+* Update for release of Debian bookworm.
+
 ## 0.5.7 (2023-02-25)
 
 * Implement `AsRef<str>` for enums where possible.
