@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.15 (2023-06-10)
+
+* Upgrade `assorted-debian-utils` to 0.6.
+* Bump MSRV to 1.65
+
 ## 0.2.14 (2023-04-15)
 
 * Bump MSRV to 1.64
