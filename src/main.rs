@@ -38,9 +38,6 @@ pub(crate) struct BaseOptions {
     /// Only print actions to perform without running any commands
     #[clap(short = 'n')]
     dry_run: bool,
-    /// Quiet mode
-    #[clap(short = 'q', long)]
-    quiet: bool,
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
     /// Archive mirror
@@ -167,7 +164,6 @@ async fn main() -> Result<()> {
     let opts = DrtToolsOptions::parse();
 
     stderrlog::new()
-        .quiet(opts.base_options.quiet)
         .verbosity(opts.base_options.verbose.log_level_filter())
         .init()
         .with_context(|| "Failed to initialize `stderrlog`.")?;
