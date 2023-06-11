@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.16 (2023-06-11)
+
+* Fix handling of `verbose` and `quiet` flags.
+
 ## 0.2.15 (2023-06-10)
 
 * Upgrade `assorted-debian-utils` to 0.6.
