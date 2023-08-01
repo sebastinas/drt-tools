@@ -43,12 +43,6 @@ pub enum Architecture {
     I386,
     /// The `ia64` architecture
     Ia64,
-    /// The `kfreebsd-amd64` architecture
-    #[serde(rename = "kfreebsd-amd64")]
-    KFreeBSDAmd64,
-    /// The `kfreebsd-i386` architecture
-    #[serde(rename = "kfreebsd-i386")]
-    KFreeBSDI386,
     /// The `m68k` architecture
     M68k,
     /// The `mips64el` architecture
@@ -95,8 +89,6 @@ impl AsRef<str> for Architecture {
             Architecture::HurdI386 => "hurd-i386",
             Architecture::I386 => "i386",
             Architecture::Ia64 => "ia64",
-            Architecture::KFreeBSDAmd64 => "kfreebsd-amd64",
-            Architecture::KFreeBSDI386 => "kfreebsd-i386",
             Architecture::M68k => "m68k",
             Architecture::Mips64el => "mips64el",
             Architecture::Mipsel => "mipsel",
@@ -129,8 +121,6 @@ impl TryFrom<&str> for Architecture {
             "hurd-i386" => Ok(Architecture::HurdI386),
             "i386" => Ok(Architecture::I386),
             "ia64" => Ok(Architecture::Ia64),
-            "kfreebsd-amd64" => Ok(Architecture::KFreeBSDAmd64),
-            "kfreebsd-i386" => Ok(Architecture::KFreeBSDI386),
             "m68k" => Ok(Architecture::M68k),
             "mips64el" => Ok(Architecture::Mips64el),
             "mipsel" => Ok(Architecture::Mipsel),
