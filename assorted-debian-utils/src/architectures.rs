@@ -156,7 +156,7 @@ impl FromStr for Architecture {
     }
 }
 
-/// Release architectures for bookworm
+/// Release architectures for trixie
 pub const RELEASE_ARCHITECTURES: [Architecture; 9] = [
     Architecture::Amd64,
     Architecture::Arm64,
