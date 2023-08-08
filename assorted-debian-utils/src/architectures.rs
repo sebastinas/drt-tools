@@ -147,14 +147,13 @@ impl FromStr for Architecture {
 }
 
 /// Release architectures for trixie
-pub const RELEASE_ARCHITECTURES: [Architecture; 9] = [
+pub const RELEASE_ARCHITECTURES: [Architecture; 8] = [
     Architecture::Amd64,
     Architecture::Arm64,
     Architecture::Armel,
     Architecture::Armhf,
     Architecture::I386,
     Architecture::Ppc64el,
-    Architecture::Mipsel,
     Architecture::Mips64el,
     Architecture::S390x,
 ];
