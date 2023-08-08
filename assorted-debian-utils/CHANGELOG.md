@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 (2023-08-08)
+
+* Remove `mipsel` from release architectures.
+
 ## 0.6.0 (2023-06-10)
 
 * Update for release of Debian bookworm.
