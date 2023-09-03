@@ -214,7 +214,7 @@ impl Cache {
     fn contents_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
         RELEASE_ARCHITECTURES
             .into_iter()
-            .chain([Architecture::All].into_iter())
+            .chain([Architecture::All])
             .map(|architecture| {
                 (
                     format!(
@@ -231,7 +231,7 @@ impl Cache {
     fn packages_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
         RELEASE_ARCHITECTURES
             .into_iter()
-            .chain([Architecture::All].into_iter())
+            .chain([Architecture::All])
             .map(|architecture| {
                 (
                     format!(
