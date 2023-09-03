@@ -75,7 +75,9 @@ impl Command for PrepareBinNMUs<'_> {
 
         let mut wb_commands = Vec::new();
         for line in reader.lines() {
-            let Ok(line) = line else { break; };
+            let Ok(line) = line else {
+                break;
+            };
             if line.starts_with("Dependency level") {
                 continue;
             }
