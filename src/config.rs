@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
+    architectures::{Architecture, ARCHIVE_ARCHITECTURES, RELEASE_ARCHITECTURES},
     archive::{Codename, Suite},
 };
 use flate2::write::GzDecoder;
@@ -195,6 +195,13 @@ fn auto_removals_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
     )]
 }
 
+fn architectures_for_suite(suite: Suite) -> &'static [Architecture] {
+    match suite {
+        Suite::Unstable | Suite::Experimental => &ARCHIVE_ARCHITECTURES,
+        _ => &RELEASE_ARCHITECTURES,
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
@@ -212,9 +219,9 @@ impl Cache {
     }
 
     fn contents_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
-        RELEASE_ARCHITECTURES
-            .into_iter()
-            .chain([Architecture::All])
+        architectures_for_suite(suite)
+            .iter()
+            .chain(&[Architecture::All])
             .map(|architecture| {
                 (
                     format!(
@@ -229,9 +236,9 @@ impl Cache {
     }
 
     fn packages_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
-        RELEASE_ARCHITECTURES
-            .into_iter()
-            .chain([Architecture::All])
+        architectures_for_suite(suite)
+            .iter()
+            .chain(&[Architecture::All])
             .map(|architecture| {
                 (
                     format!(
@@ -350,7 +357,7 @@ impl Cache {
 
     pub fn get_package_paths(&self, suite: Suite, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
-        for architecture in RELEASE_ARCHITECTURES {
+        for architecture in architectures_for_suite(suite) {
             all_paths.push(self.get_cache_path(format!("Packages_{}_{}", suite, architecture))?);
         }
         if with_all {
@@ -369,12 +376,12 @@ impl Cache {
 
     pub fn get_content_paths(&self, suite: Suite) -> Result<Vec<(Architecture, PathBuf)>> {
         let mut all_paths = vec![];
-        for architecture in RELEASE_ARCHITECTURES
-            .into_iter()
-            .chain([Architecture::All].into_iter())
+        for architecture in architectures_for_suite(suite)
+            .iter()
+            .chain(&[Architecture::All])
         {
             all_paths.push((
-                architecture,
+                *architecture,
                 self.get_cache_path(format!("Contents_{}_{}", suite, architecture))?,
             ));
         }

@@ -12,6 +12,7 @@ mod binnmu_buildinfo;
 pub(crate) mod config;
 mod grep_excuses;
 mod nmu_eso;
+mod nmu_versionskew;
 mod prepare_binnmus;
 mod process_excuses;
 mod process_unblocks;
@@ -22,6 +23,7 @@ mod usrmerged;
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
+use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
 use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 use process_unblocks::ProcessUnblocks;
@@ -123,6 +125,9 @@ enum DrtToolsCommands {
     /// in testing-proposed-updates and packages that have been rebuilt in
     /// unstable but are blocked by the freeze.
     ProcessUnblocks,
+    /// Prepare rebuilds for version skew in Multi-Arch: same packages
+    #[clap(name = "nmu-version-skew")]
+    NMUVersionSkew(NMUVersionSkewOptions),
 }
 
 #[async_trait]
@@ -188,6 +193,9 @@ async fn main() -> Result<()> {
             ),
             DrtToolsCommands::UsrMerged(um_opts) => Box::new(UsrMerged::new(&cache, um_opts)),
             DrtToolsCommands::ProcessUnblocks => Box::new(ProcessUnblocks::new(&cache)),
+            DrtToolsCommands::NMUVersionSkew(vs_opts) => {
+                Box::new(NMUVersionSkew::new(&cache, &opts.base_options, vs_opts))
+            }
         };
     execute_command(&cache, command.as_ref(), opts.base_options.force_processing).await
 }
