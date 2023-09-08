@@ -159,14 +159,13 @@ pub const RELEASE_ARCHITECTURES: [Architecture; 8] = [
 ];
 
 /// Architectures in the Debian archive (unstable)
-pub const ARCHIVE_ARCHITECTURES: [Architecture; 10] = [
+pub const ARCHIVE_ARCHITECTURES: [Architecture; 9] = [
     Architecture::Amd64,
     Architecture::Arm64,
     Architecture::Armel,
     Architecture::Armhf,
     Architecture::I386,
     Architecture::Ppc64el,
-    Architecture::Mipsel,
     Architecture::Mips64el,
     Architecture::Riscv64,
     Architecture::S390x,
