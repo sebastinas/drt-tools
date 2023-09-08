@@ -24,7 +24,7 @@ use log::{debug, error};
 use serde::Deserialize;
 
 use crate::{
-    config::{default_progress_style, Cache, CacheEntries},
+    config::{default_progress_style, source_skip_binnmu, Cache, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, Command,
 };
@@ -79,13 +79,9 @@ impl Iterator for BinaryPackageParser {
     fn next(&mut self) -> Option<Self::Item> {
         for binary_package in self.iterator.by_ref() {
             // skip packages that are not MA: same
-            match binary_package.multi_arch {
-                Some(MultiArch::Same) => {}
-                _ => {
-                    continue;
-                }
+            if binary_package.multi_arch != Some(MultiArch::Same) {
+                continue;
             }
-
             // skip Arch: all packages
             if binary_package.architecture == Architecture::All {
                 continue;
@@ -148,13 +144,7 @@ impl<'a> NMUVersionSkew<'a> {
         for path in self.cache.get_package_paths(suite, false)? {
             for (source, architecture, version) in BinaryPackageParser::new(path)? {
                 // skip some packages that make no sense to binNMU
-                if source.starts_with("debian-installer")
-                    || (source.ends_with("-signed")
-                        && (source.starts_with("grub-")
-                            || source.starts_with("linux-")
-                            || source.starts_with("shim-")
-                            || source.starts_with("fwupd-")))
-                {
+                if source_skip_binnmu(&source) {
                     continue;
                 }
 

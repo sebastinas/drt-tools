@@ -24,7 +24,7 @@ use log::{debug, trace};
 use serde::Deserialize;
 
 use crate::{
-    config::{default_progress_style, Cache, CacheEntries},
+    config::{default_progress_style, source_skip_binnmu, Cache, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, Command,
 };
@@ -236,23 +236,11 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         let mut result = HashMap::<String, HashSet<(String, PackageVersion)>>::new();
         for outdated_package in packages {
             // skip some packages that make no sense to binNMU
-            if outdated_package.source == "debian-installer"
-                || outdated_package.source == "debian-installer-netboot-images"
-            {
+            if source_skip_binnmu(&outdated_package.source) {
                 debug!(
-                    "Skipping {}: debian-installer or debian-installer-netboot-images",
+                    "Skipping {}: signed or d-i package",
                     outdated_package.source
                 );
-                continue;
-            }
-            // skip grub/linux/... signed packages
-            if outdated_package.source.ends_with("-signed")
-                && (outdated_package.source.starts_with("grub-")
-                    || outdated_package.source.starts_with("linux-")
-                    || outdated_package.source.starts_with("shim-")
-                    || outdated_package.source.starts_with("fwupd-"))
-            {
-                debug!("Skipping {}: signed package", outdated_package.source);
                 continue;
             }
 
