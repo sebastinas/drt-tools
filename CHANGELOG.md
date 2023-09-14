@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.17 (2023-09-14)
+
+* Implement new sub-command:
+  * `nmu-version-skew`: binNMU MA: same packages which out-of-sync versions
+* Bump MSRV to 1.70 due to dependencies
+
 ## 0.2.16 (2023-06-11)
 
 * Fix handling of `verbose` and `quiet` flags.
