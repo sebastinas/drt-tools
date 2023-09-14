@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2 (2023-09-14)
+
+* Remove `mipsel` from unstable architectures.
+
 ## 0.6.1 (2023-08-08)
 
 * Remove `mipsel` from release architectures.
