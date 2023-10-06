@@ -89,7 +89,7 @@ impl Eq for CombinedOutdatedPackage {}
 
 impl PartialOrd for CombinedOutdatedPackage {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.source.partial_cmp(&other.source)
+        Some(self.cmp(other))
     }
 }
 
