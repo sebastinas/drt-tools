@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.18 (2023-11-21)
+
+* Some internal refactoring
+* Bump `itertools` to 0.12.
+
 ## 0.2.17 (2023-09-14)
 
 * Implement new sub-command:
