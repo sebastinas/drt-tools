@@ -22,24 +22,24 @@ use crate::{
 };
 
 #[derive(Debug, Parser)]
-pub(crate) struct PrepareBinNMUsOptions {
+pub(crate) struct NMUTransitionOptions {
     #[clap(flatten)]
     binnmu_options: BinNMUsOptions,
     /// Input file with a list of packages. If not specified, the list of packages will be read from the standard input.
     input: Option<PathBuf>,
 }
 
-pub(crate) struct PrepareBinNMUs<'a> {
+pub(crate) struct NMUTransition<'a> {
     cache: &'a config::Cache,
     base_options: &'a BaseOptions,
-    options: PrepareBinNMUsOptions,
+    options: NMUTransitionOptions,
 }
 
-impl<'a> PrepareBinNMUs<'a> {
+impl<'a> NMUTransition<'a> {
     pub(crate) fn new(
         cache: &'a config::Cache,
         base_options: &'a BaseOptions,
-        options: PrepareBinNMUsOptions,
+        options: NMUTransitionOptions,
     ) -> Self {
         Self {
             cache,
@@ -57,7 +57,7 @@ impl<'a> PrepareBinNMUs<'a> {
 }
 
 #[async_trait]
-impl Command for PrepareBinNMUs<'_> {
+impl Command for NMUTransition<'_> {
     async fn run(&self) -> Result<()> {
         let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if !self.base_options.force_processing {

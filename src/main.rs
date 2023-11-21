@@ -12,8 +12,8 @@ mod binnmu_buildinfo;
 pub(crate) mod config;
 mod grep_excuses;
 mod nmu_eso;
+mod nmu_transition;
 mod nmu_versionskew;
-mod prepare_binnmus;
 mod process_excuses;
 mod process_unblocks;
 pub(crate) mod source_packages;
@@ -23,8 +23,8 @@ mod usrmerged;
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
+use nmu_transition::{NMUTransition, NMUTransitionOptions};
 use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
-use prepare_binnmus::{PrepareBinNMUs, PrepareBinNMUsOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 use process_unblocks::ProcessUnblocks;
 use usrmerged::{UsrMerged, UsrMergedOptions};
@@ -95,10 +95,10 @@ enum DrtToolsCommands {
     /// The list of packages can be either given on the standard input or they
     /// are read from a file.
     #[clap(name = "nmu-transition")]
-    PrepareBinNMUs(PrepareBinNMUsOptions),
+    NMUTransition(NMUTransitionOptions),
     /// Prepare binNMUs based on a list of buildinfo files
     #[clap(name = "nmu-buildinfo")]
-    BinNMUBuildinfo(BinNMUBuildinfoOptions),
+    NMUBuildinfo(BinNMUBuildinfoOptions),
     /// Grep excuses
     #[clap(name = "grep-excuses")]
     GrepExcuses(GrepExcusesOptions),
@@ -181,10 +181,10 @@ async fn main() -> Result<()> {
             DrtToolsCommands::ProcessExcuses(pe_opts) => {
                 Box::new(ProcessExcuses::new(&cache, &opts.base_options, pe_opts))
             }
-            DrtToolsCommands::PrepareBinNMUs(pbm_opts) => {
-                Box::new(PrepareBinNMUs::new(&cache, &opts.base_options, pbm_opts))
+            DrtToolsCommands::NMUTransition(pbm_opts) => {
+                Box::new(NMUTransition::new(&cache, &opts.base_options, pbm_opts))
             }
-            DrtToolsCommands::BinNMUBuildinfo(bb_opts) => {
+            DrtToolsCommands::NMUBuildinfo(bb_opts) => {
                 Box::new(BinNMUBuildinfo::new(&cache, &opts.base_options, bb_opts))
             }
             DrtToolsCommands::GrepExcuses(ge_opts) => Box::new(GrepExcuses::new(&cache, ge_opts)),
