@@ -19,7 +19,7 @@ use assorted_debian_utils::{
 use async_trait::async_trait;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
-use itertools::{sorted, Itertools};
+use itertools::Itertools;
 use log::{debug, trace};
 use serde::Deserialize;
 
@@ -265,15 +265,14 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             ));
         }
 
-        Ok(
-            sorted(result.into_iter().map(|(source, outdated_dependencies)| {
-                CombinedOutdatedPackage {
-                    source,
-                    outdated_dependencies: outdated_dependencies.into_iter().sorted().collect(),
-                }
-            }))
-            .collect(),
-        )
+        Ok(result
+            .into_iter()
+            .map(|(source, outdated_dependencies)| CombinedOutdatedPackage {
+                source,
+                outdated_dependencies: outdated_dependencies.into_iter().sorted().collect(),
+            })
+            .sorted()
+            .collect())
     }
 }
 
