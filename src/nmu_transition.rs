@@ -12,7 +12,7 @@ use assorted_debian_utils::{
 };
 use async_trait::async_trait;
 use clap::Parser;
-use log::debug;
+use log::{debug, warn};
 
 use crate::Command;
 use crate::{
@@ -95,7 +95,10 @@ impl Command for NMUTransition<'_> {
                 }
 
                 let mut source = SourceSpecifier::new(source);
-                let version = version.try_into()?;
+                let Ok(version) = version.try_into() else {
+                    warn!("Unable to parse version: {:?} / {:?}", source, version);
+                    continue;
+                };
                 source
                     .with_version(&version)
                     .with_suite(&self.options.binnmu_options.suite);
