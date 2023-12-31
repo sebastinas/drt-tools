@@ -66,8 +66,6 @@ impl Command for NMUTransition<'_> {
             UDDBugs::new(vec![])
         };
 
-        let matcher = regex::Regex::new("([a-z0-9+.-]+)[ \t].* \\(?([0-9][^() \t]*)\\)?")?;
-
         let reader: Box<dyn BufRead> = match &self.options.input {
             None => Box::new(BufReader::new(io::stdin())),
             Some(filename) => Box::new(BufReader::new(File::open(filename)?)),
@@ -78,46 +76,56 @@ impl Command for NMUTransition<'_> {
             let Ok(line) = line else {
                 break;
             };
-            if line.starts_with("Dependency level") {
+            if line.starts_with("Dependency level") || line.is_empty() {
                 continue;
             }
 
-            if let Some(capture) = matcher.captures(&line) {
-                let (source, version) = match (capture.get(1), capture.get(2)) {
-                    (Some(package), Some(version)) => (package.as_str(), version.as_str()),
-                    _ => continue,
-                };
-
-                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
-                    debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
-                    println!("# Skipping {} due to FTBFS bugs", source);
-                    continue;
-                }
-
-                let mut source = SourceSpecifier::new(source);
-                let Ok(version) = version.try_into() else {
-                    warn!("Unable to parse version: {:?} / {:?}", source, version);
-                    continue;
-                };
-                source
-                    .with_version(&version)
-                    .with_suite(&self.options.binnmu_options.suite);
-                if let Some(architectures) = &self.options.binnmu_options.architecture {
-                    source.with_archive_architectures(architectures);
-                }
-
-                let mut binnmu = BinNMU::new(&source, &self.options.binnmu_options.message)?;
-                if let Some(bp) = self.options.binnmu_options.build_priority {
-                    binnmu.with_build_priority(bp);
-                }
-                if let Some(dw) = &self.options.binnmu_options.dep_wait {
-                    binnmu.with_dependency_wait(dw);
-                }
-                if let Some(extra_depends) = &self.options.binnmu_options.extra_depends {
-                    binnmu.with_extra_depends(extra_depends);
-                }
-                wb_commands.push(binnmu.build())
+            // possible formats:
+            // package [build logs] (version) ...
+            // package (sid only) [build logs] (version) ...
+            let version_index = if line.contains("(sid only)") { 5 } else { 3 };
+            let split_line: Vec<_> = line.split_whitespace().collect();
+            if split_line.len() <= version_index {
+                println!("Skipping unsupported format: {}", line);
+                continue;
             }
+
+            let source = split_line[0];
+            let version = split_line[version_index];
+            let Some(version) = version.strip_prefix('(').and_then(|v| v.strip_suffix(')')) else {
+                warn!("Unable to parse version: {:?} / {:?}", source, version);
+                continue;
+            };
+
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
+                debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
+                println!("# Skipping {} due to FTBFS bugs", source);
+                continue;
+            }
+
+            let mut source = SourceSpecifier::new(source);
+            let Ok(version) = version.try_into() else {
+                warn!("Unable to parse version: {:?} / {:?}", source, version);
+                continue;
+            };
+            source
+                .with_version(&version)
+                .with_suite(&self.options.binnmu_options.suite);
+            if let Some(architectures) = &self.options.binnmu_options.architecture {
+                source.with_archive_architectures(architectures);
+            }
+
+            let mut binnmu = BinNMU::new(&source, &self.options.binnmu_options.message)?;
+            if let Some(bp) = self.options.binnmu_options.build_priority {
+                binnmu.with_build_priority(bp);
+            }
+            if let Some(dw) = &self.options.binnmu_options.dep_wait {
+                binnmu.with_dependency_wait(dw);
+            }
+            if let Some(extra_depends) = &self.options.binnmu_options.extra_depends {
+                binnmu.with_extra_depends(extra_depends);
+            }
+            wb_commands.push(binnmu.build())
         }
 
         for commands in wb_commands {
