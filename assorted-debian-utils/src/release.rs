@@ -156,6 +156,26 @@ pub struct Release {
     pub files: HashMap<String, FileInfo>,
 }
 
+impl Release {
+    /// Lookup path for a specific file honoring `Acquire-By-Hash``
+    pub fn lookup_url(&self, file: &str) -> Option<String> {
+        let Some(info) = self.files.get(file) else {
+            return None;
+        };
+
+        if self
+            .acquire_by_hash
+            .is_some_and(|by_hash| by_hash == AcquireByHash::Yes)
+        {
+            file.rsplit_once('/').map(|(component, _)| {
+                format!("{}/by-hash/SHA256/{}", component, hex::encode(info.hash))
+            })
+        } else {
+            Some(file.to_string())
+        }
+    }
+}
+
 /// Read release from a reader
 pub fn from_reader(reader: impl BufRead) -> Result<Release, rfc822_like::de::Error> {
     rfc822_like::from_reader(reader)
