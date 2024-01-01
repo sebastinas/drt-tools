@@ -106,6 +106,16 @@ pub struct FileInfo {
     hash: [u8; 32],
 }
 
+/// Possible values for `Acquire-By-Hash`
+#[derive(Debug, Deserialize, PartialEq, Eq, Copy, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum AcquireByHash {
+    /// Aqcuire by hash
+    Yes,
+    /// Do not acquire by hash
+    No,
+}
+
 /// Representation of a `Release` file`
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
@@ -130,9 +140,9 @@ pub struct Release {
     )]
     /// Validity of the release
     pub valid_until: Option<DateTime<Utc>>,
-    #[serde(rename = "Acquire-by-Hash")]
+    #[serde(rename = "Acquire-By-Hash")]
     /// Whether files should be acquired by hash
-    pub acquire_by_hash: Option<bool>,
+    pub acquire_by_hash: Option<AcquireByHash>,
     /// Supported architectures of the release
     #[serde(deserialize_with = "deserialize_architectures")]
     pub architectures: Vec<Architecture>,
