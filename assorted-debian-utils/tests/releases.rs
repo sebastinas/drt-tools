@@ -50,4 +50,13 @@ fn parse_release(data_file: &str) {
     asserting!("has components")
         .that(&archive.components.len())
         .is_not_equal_to(0);
+    asserting!("has Origin")
+        .that(&archive.origin.len())
+        .is_not_equal_to(0);
+    asserting!("has Label")
+        .that(&archive.label.len())
+        .is_not_equal_to(0);
+    asserting!("has Files")
+        .that(&archive.files.len())
+        .is_not_equal_to(0);
 }

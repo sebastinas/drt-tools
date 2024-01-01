@@ -3,7 +3,9 @@
 
 //! # Helper to handle `Release` files`
 
-use std::io::BufRead;
+use std::collections::HashMap;
+use std::fmt::Formatter;
+use std::io::{BufRead, Cursor};
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -44,6 +46,66 @@ where
     deserializer.deserialize_str(WhitespaceListVisitor::<Component>::new())
 }
 
+#[derive(Debug)]
+struct SHA256Visitor;
+
+impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
+    type Value = HashMap<String, FileInfo>;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        write!(formatter, "a list of files")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let cursor = Cursor::new(s);
+        // cursor.lines().filter_map(|line| if let Ok(line) = line { line.split_whitespace()} )
+        let mut ret: HashMap<String, FileInfo> = Default::default();
+        for line in cursor.lines() {
+            let Ok(line) = line else {
+                break;
+            };
+
+            let fields: Vec<_> = line.split_ascii_whitespace().collect();
+            if fields.len() != 3 {
+                return Err(E::invalid_value(serde::de::Unexpected::Str(&line), &self));
+            }
+
+            let file = fields[2];
+            let file_size = fields[1].parse().map_err(E::custom)?;
+            let hash = hex::decode(fields[0]).map_err(E::custom)?;
+
+            ret.insert(
+                file.to_string(),
+                FileInfo {
+                    file_size,
+                    hash: hash.try_into().map_err(|_| {
+                        E::invalid_value(serde::de::Unexpected::Str(fields[0]), &self)
+                    })?,
+                },
+            );
+        }
+        Ok(ret)
+    }
+}
+
+/// Deserialize files listed as SHA256
+fn deserialize_sha256<'de, D>(deserializer: D) -> Result<HashMap<String, FileInfo>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    deserializer.deserialize_str(SHA256Visitor)
+}
+
+/// Representation of a `Release` file`
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub struct FileInfo {
+    file_size: u64,
+    hash: [u8; 32],
+}
+
 /// Representation of a `Release` file`
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
@@ -79,6 +141,9 @@ pub struct Release {
     pub components: Vec<Component>,
     /// Release description
     pub description: String,
+    /// Referenced `Package` files and others from the release
+    #[serde(rename = "SHA256", deserialize_with = "deserialize_sha256")]
+    pub files: HashMap<String, FileInfo>,
 }
 
 /// Read release from a reader
@@ -157,5 +222,17 @@ SHA256:
         assert_eq!(release.components, vec![Component::Main]);
         assert_eq!(release.suite, Suite::Unstable);
         assert_eq!(release.codename, Codename::Sid);
+        assert!(release.files.contains_key("main/source/Release"));
+        assert_eq!(
+            release.files["main/source/Release"],
+            FileInfo {
+                file_size: 193,
+                hash: [
+                    0x36, 0x37, 0x55, 0x9f, 0x78, 0xac, 0x17, 0xd0, 0xe5, 0x5b, 0xce, 0x46, 0x5d,
+                    0x51, 0x0e, 0xf9, 0x12, 0xd5, 0x39, 0xe4, 0xb8, 0x10, 0xa6, 0x6b, 0x32, 0x43,
+                    0x1d, 0xd7, 0x6f, 0x59, 0x29, 0xd8
+                ]
+            }
+        );
     }
 }
