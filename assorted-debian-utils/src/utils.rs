@@ -33,6 +33,37 @@ impl<'de> de::Visitor<'de> for DateTimeVisitor {
     }
 }
 
+/// Helper to parse whitespace seperated list of T
+#[derive(Debug)]
+pub(crate) struct WhitespaceListVisitor<T>(PhantomData<T>);
+
+impl<T> WhitespaceListVisitor<T> {
+    pub(crate) fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<'de, T> serde::de::Visitor<'de> for WhitespaceListVisitor<T>
+where
+    for<'a> T: TryFrom<&'a str>,
+    for<'a> <T as TryFrom<&'a str>>::Error: Display,
+{
+    type Value = Vec<T>;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        write!(formatter, "a list of {}", type_name::<T>())
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        s.split_whitespace()
+            .map(|a| T::try_from(a).map_err(E::custom))
+            .collect()
+    }
+}
+
 /// Helper to parse anything that implements `TryFrom<&str>``
 #[derive(Debug)]
 pub(crate) struct TryFromStrVisitor<T>(PhantomData<T>);

@@ -21,6 +21,7 @@ pub mod archive;
 pub mod autoremovals;
 pub mod buildinfo;
 pub mod excuses;
+pub mod release;
 mod utils;
 pub mod version;
 pub mod wb;
