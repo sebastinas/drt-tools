@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Sebastian Ramacher
+// Copyright 2021-2024 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
@@ -10,8 +10,9 @@ use std::{
 
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
-    architectures::{Architecture, ARCHIVE_ARCHITECTURES, RELEASE_ARCHITECTURES},
+    architectures::Architecture,
     archive::{Codename, Suite},
+    release,
 };
 use flate2::write::GzDecoder;
 use futures_util::StreamExt;
@@ -35,12 +36,20 @@ pub(crate) enum CacheEntries {
     FTBFSBugs(Codename),
     AutoRemovals,
     Contents(Suite),
+    Release(Suite),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum CacheState {
     NoUpdate,
     FreshFiles,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum Compressor {
+    Xz,
+    Gz,
+    None,
 }
 
 #[derive(Debug, Clone)]
@@ -127,18 +136,21 @@ impl Downloader {
         &self,
         url: &str,
         path: P,
+        compressor: Compressor,
         mp: MultiProgress,
     ) -> Result<CacheState>
     where
         P: AsRef<Path>,
     {
-        self._download_file(url, path.as_ref(), mp).await
+        self._download_file(url, path.as_ref(), compressor, mp)
+            .await
     }
 
     async fn _download_file(
         &self,
         url: &str,
         path: &Path,
+        compressor: Compressor,
         mp: MultiProgress,
     ) -> Result<CacheState> {
         let Some((res, pb)) = self.download_init(url, path, mp).await? else {
@@ -152,10 +164,10 @@ impl Downloader {
         });
         let mut file = File::create(&tmp_file)
             .with_context(|| format!("Failed to create temporary file '{:?}'", tmp_file))?;
-        if url.ends_with(".xz") {
+        if compressor == Compressor::Xz {
             self.download_internal(res, &pb, &mut XzDecoder::new(file))
                 .await?;
-        } else if url.ends_with(".gz") {
+        } else if compressor == Compressor::Gz {
             let mut writer = GzDecoder::new(file);
             self.download_internal(res, &pb, &mut writer).await?;
             writer.try_finish()?;
@@ -174,32 +186,28 @@ impl Downloader {
     }
 }
 
-fn excuses_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+fn excuses_urls() -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
     vec![(
         "https://release.debian.org/britney/excuses.yaml.gz".into(),
+        Compressor::Gz,
         "excuses.yaml".into(),
     )]
 }
 
-fn ftbfs_bugs_urls(codename: Codename) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+fn ftbfs_bugs_urls(codename: Codename) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
     vec![(
         format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename).into(),
+        Compressor::None,
         format!("udd-ftbfs-bugs-{}.yaml", codename).into()
     )]
 }
 
-fn auto_removals_urls() -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+fn auto_removals_urls() -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
     vec![(
         "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi".into(),
+        Compressor::None,
         "autoremovals.yaml".into(),
     )]
-}
-
-fn architectures_for_suite(suite: Suite) -> &'static [Architecture] {
-    match suite {
-        Suite::Unstable | Suite::Experimental => &ARCHIVE_ARCHITECTURES,
-        _ => &RELEASE_ARCHITECTURES,
-    }
 }
 
 #[derive(Debug)]
@@ -207,66 +215,134 @@ pub(crate) struct Cache {
     base_directory: BaseDirectories,
     downloader: Downloader,
     archive_mirror: String,
+    unstable: release::Release,
+    testing: release::Release,
+    stable: release::Release,
+}
+
+fn empty_release() -> release::Release {
+    release::Release {
+        origin: Default::default(),
+        label: Default::default(),
+        suite: Suite::Unstable,
+        codename: Codename::Sid,
+        version: Default::default(),
+        date: Default::default(),
+        valid_until: Default::default(),
+        acquire_by_hash: Default::default(),
+        architectures: Default::default(),
+        components: Default::default(),
+        description: Default::default(),
+        files: Default::default(),
+    }
 }
 
 impl Cache {
-    pub fn new(force_download: bool, archive_mirror: &str) -> Result<Self> {
-        Ok(Self {
+    pub async fn new(force_download: bool, archive_mirror: &str) -> Result<Self> {
+        let mut cache = Self {
             base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
             downloader: Downloader::new(force_download),
             archive_mirror: archive_mirror.into(),
-        })
+            unstable: empty_release(),
+            testing: empty_release(),
+            stable: empty_release(),
+        };
+
+        // download Release files for unstable, testing and stable
+        cache
+            .download(&[
+                CacheEntries::Release(Suite::Unstable),
+                CacheEntries::Release(Suite::Testing(None)),
+                CacheEntries::Release(Suite::Stable(None)),
+            ])
+            .await?;
+
+        cache.unstable = release::from_reader(
+            cache.get_cache_bufreader(format!("Release_{}", Suite::Unstable))?,
+        )?;
+        cache.testing = release::from_reader(
+            cache.get_cache_bufreader(format!("Release_{}", Suite::Testing(None)))?,
+        )?;
+        cache.stable = release::from_reader(
+            cache.get_cache_bufreader(format!("Release_{}", Suite::Stable(None)))?,
+        )?;
+
+        Ok(cache)
     }
 
-    fn contents_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
-        architectures_for_suite(suite)
-            .iter()
-            .chain(&[Architecture::All])
+    fn lookup_url(&self, suite: Suite, path: &str) -> String {
+        format!(
+            "{}/dists/{}/{}",
+            self.archive_mirror,
+            suite,
+            match suite {
+                Suite::Unstable => &self.unstable,
+                Suite::Testing(_) => &self.testing,
+                Suite::Stable(_) => &self.stable,
+                _ => unreachable!(),
+            }
+            .lookup_url(path)
+            .expect("file needs to be available")
+        )
+    }
+
+    fn contents_urls(
+        &self,
+        suite: Suite,
+    ) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
+        self.architectures_for_suite(suite)
+            .into_iter()
             .map(|architecture| {
                 (
-                    format!(
-                        "{}/dists/{}/main/Contents-{}.gz",
-                        self.archive_mirror, suite, architecture
-                    )
-                    .into(),
+                    self.lookup_url(suite, &format!("main/Contents-{}.gz", architecture))
+                        .into(),
+                    Compressor::Gz,
                     format!("Contents_{}_{}", suite, architecture).into(),
                 )
             })
             .collect()
     }
 
-    fn packages_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
-        architectures_for_suite(suite)
-            .iter()
-            .chain(&[Architecture::All])
+    fn packages_urls(
+        &self,
+        suite: Suite,
+    ) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
+        self.architectures_for_suite(suite)
+            .into_iter()
             .map(|architecture| {
                 (
-                    format!(
-                        "{}/dists/{}/main/binary-{}/Packages.xz",
-                        self.archive_mirror, suite, architecture
-                    )
-                    .into(),
+                    self.lookup_url(suite, &format!("main/binary-{}/Packages.xz", architecture))
+                        .into(),
+                    Compressor::Xz,
                     format!("Packages_{}_{}", suite, architecture).into(),
                 )
             })
             .collect()
     }
 
-    fn source_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Cow<'static, str>)> {
+    fn source_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
         vec![(
-            format!(
-                "{}/dists/{}/main/source/Sources.xz",
-                self.archive_mirror, suite
-            )
-            .into(),
+            self.lookup_url(suite, "main/source/Sources.xz").into(),
+            Compressor::Xz,
             format!("Sources_{}", suite).into(),
+        )]
+    }
+
+    fn release_urls(
+        &self,
+        suite: Suite,
+    ) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
+        vec![(
+            format!("{}/dists/{}/Release", self.archive_mirror, suite).into(),
+            Compressor::None,
+            format!("Release_{}", suite).into(),
         )]
     }
 
     fn cache_entries_to_urls_dests(
         &self,
         entries: &[CacheEntries],
-    ) -> Result<Vec<(Cow<'static, str>, PathBuf)>> {
+    ) -> Result<Vec<(Cow<'static, str>, Compressor, PathBuf)>> {
         entries
             .iter()
             .flat_map(|entry| {
@@ -277,10 +353,13 @@ impl Cache {
                     CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls(*codename),
                     CacheEntries::AutoRemovals => auto_removals_urls(),
                     CacheEntries::Contents(suite) => self.contents_urls(*suite),
+                    CacheEntries::Release(suite) => self.release_urls(*suite),
                 }
                 .into_iter()
             })
-            .map(|(url, dest)| Ok((url, self.get_cache_path(dest.as_ref())?)))
+            .map(|(url, compressor, dest)| {
+                Ok((url, compressor, self.get_cache_path(dest.as_ref())?))
+            })
             .collect()
     }
 
@@ -295,12 +374,12 @@ impl Cache {
         let mp = MultiProgress::new();
         let join_handles: Vec<_> = urls_and_dests
             .into_iter()
-            .map(|(url, dest)| {
+            .map(|(url, compressor, dest)| {
                 let downloader = self.downloader.clone();
                 let mp = mp.clone();
                 tokio::spawn(async move {
                     debug!("Starting task to download {}", url);
-                    downloader.download_file(&url, dest, mp).await
+                    downloader.download_file(&url, dest, compressor, mp).await
                 })
             })
             .collect();
@@ -357,15 +436,12 @@ impl Cache {
 
     pub fn get_package_paths(&self, suite: Suite, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
-        for architecture in architectures_for_suite(suite) {
+        for architecture in self.architectures_for_suite(suite) {
+            if !with_all && architecture == Architecture::All {
+                continue;
+            }
+
             all_paths.push(self.get_cache_path(format!("Packages_{}_{}", suite, architecture))?);
-        }
-        if with_all {
-            all_paths.push(self.get_cache_path(format!(
-                "Packages_{}_{}",
-                suite,
-                Architecture::All
-            ))?);
         }
         Ok(all_paths)
     }
@@ -376,16 +452,22 @@ impl Cache {
 
     pub fn get_content_paths(&self, suite: Suite) -> Result<Vec<(Architecture, PathBuf)>> {
         let mut all_paths = vec![];
-        for architecture in architectures_for_suite(suite)
-            .iter()
-            .chain(&[Architecture::All])
-        {
+        for architecture in self.architectures_for_suite(suite) {
             all_paths.push((
-                *architecture,
+                architecture,
                 self.get_cache_path(format!("Contents_{}_{}", suite, architecture))?,
             ));
         }
         Ok(all_paths)
+    }
+
+    // Architectures for a suite (including Arch: all)
+    pub fn architectures_for_suite(&self, suite: Suite) -> Vec<Architecture> {
+        match suite {
+            Suite::Unstable | Suite::Experimental => self.unstable.architectures.clone(),
+            Suite::Testing(_) => self.testing.architectures.clone(),
+            _ => self.stable.architectures.clone(),
+        }
     }
 }
 

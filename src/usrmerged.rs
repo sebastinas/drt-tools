@@ -8,7 +8,7 @@ use std::iter::FusedIterator;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use assorted_debian_utils::architectures::{Architecture, RELEASE_ARCHITECTURES};
+use assorted_debian_utils::architectures::Architecture;
 use assorted_debian_utils::archive::Suite;
 use async_trait::async_trait;
 use clap::Parser;
@@ -173,15 +173,20 @@ impl<'a> UsrMerged<'a> {
 #[async_trait]
 impl Command for UsrMerged<'_> {
     async fn run(&self) -> Result<()> {
+        let release_architectures = self.cache.architectures_for_suite(Suite::Testing(None));
+        let stable_architectures = self.cache.architectures_for_suite(Suite::Stable(None));
+        // only consider release architectures that are also in stable
+        let release_architectures: Vec<_> = release_architectures
+            .into_iter()
+            .filter(|arch| stable_architectures.contains(arch))
+            .collect();
+
         // Check if file from stable on $architecture moved to other
         // packages on testing on $architecture | all. If architecture ==
         // all, this will check all -> all.
         let mut testing_all_file_map =
             self.load_contents(Suite::Testing(None), Architecture::All)?;
-        for architecture in RELEASE_ARCHITECTURES
-            .into_iter()
-            .chain([Architecture::All].into_iter())
-        {
+        for architecture in release_architectures.iter().copied() {
             let testing_file_map = if architecture != Architecture::All {
                 self.load_contents(Suite::Testing(None), architecture)?
             } else {
@@ -272,7 +277,10 @@ impl Command for UsrMerged<'_> {
 
         // Check if file from stable on all moved to other
         // packages on testing on $architecture for all architectures except all.
-        for testing_architecture in RELEASE_ARCHITECTURES.into_iter() {
+        for testing_architecture in release_architectures
+            .into_iter()
+            .filter(|arch| *arch != Architecture::All)
+        {
             let testing_file_map =
                 self.load_contents(Suite::Testing(None), testing_architecture)?;
             for (path, stable_packages) in

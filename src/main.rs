@@ -175,7 +175,8 @@ async fn main() -> Result<()> {
     trace!("base options {:?}", opts.base_options);
     trace!("command: {:?}", opts.command);
 
-    let cache = config::Cache::new(opts.base_options.force_download, &opts.base_options.mirror)?;
+    let cache =
+        config::Cache::new(opts.base_options.force_download, &opts.base_options.mirror).await?;
     let command: Box<dyn Command> =
         match opts.command {
             DrtToolsCommands::ProcessExcuses(pe_opts) => {
