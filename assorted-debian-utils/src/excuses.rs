@@ -13,9 +13,7 @@ use serde::{de, Deserialize, Deserializer};
 use smallvec::SmallVec;
 
 use crate::{
-    architectures::{Architecture, RELEASE_ARCHITECTURES},
-    archive::Component,
-    utils::DateTimeVisitor,
+    architectures::Architecture, archive::Component, utils::DateTimeVisitor,
     version::PackageVersion,
 };
 
@@ -161,7 +159,8 @@ pub struct PolicyInfo {
 #[serde(rename_all = "kebab-case")]
 pub struct MissingBuilds {
     /// Architectures where builds are missing
-    pub on_architectures: SmallVec<[Architecture; RELEASE_ARCHITECTURES.len()]>,
+    // 16 is arbitrary, but is large enough to hold all current release architectures
+    pub on_architectures: SmallVec<[Architecture; 16]>,
 }
 
 /// A source package's excuses
