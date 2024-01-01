@@ -147,6 +147,7 @@ impl FromStr for Architecture {
 }
 
 /// Release architectures for trixie
+#[deprecated]
 pub const RELEASE_ARCHITECTURES: [Architecture; 8] = [
     Architecture::Amd64,
     Architecture::Arm64,
@@ -159,6 +160,7 @@ pub const RELEASE_ARCHITECTURES: [Architecture; 8] = [
 ];
 
 /// Architectures in the Debian archive (unstable)
+#[deprecated]
 pub const ARCHIVE_ARCHITECTURES: [Architecture; 9] = [
     Architecture::Amd64,
     Architecture::Arm64,
