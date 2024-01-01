@@ -1,4 +1,4 @@
-// Copyright 2022 Sebastian Ramacher
+// Copyright 2022-2024 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Helpers to handle Debian archives
@@ -8,16 +8,16 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
+use crate::utils::TryFromStrVisitor;
 pub use crate::ParseError;
 
 /// "Extensions" to a codename or a suite
 ///
 /// This enum covers the archives for backports, security updates, (old)stable
 /// updates and (old)stable proposed-updates.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
 pub enum Extension {
     /// The backports extension
     Backports,
@@ -26,7 +26,6 @@ pub enum Extension {
     /// The updates extension
     Updates,
     /// The proposed-upates extension
-    #[serde(rename = "proposed-updates")]
     ProposedUpdates,
 }
 
@@ -72,8 +71,7 @@ impl FromStr for Extension {
 /// Debian archive suites
 ///
 /// This enum describes the suite names found in the Debian archive.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
 pub enum Suite {
     /// The unstable suite
     Unstable,
@@ -134,11 +132,28 @@ impl FromStr for Suite {
     }
 }
 
+impl Serialize for Suite {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Suite {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(TryFromStrVisitor::<Suite>::new())
+    }
+}
+
 /// Debian archive codenames
 ///
 /// This enum describes the codenames names found in the Debian archive.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
 pub enum Codename {
     /// The unstable suite
     Sid,
@@ -223,10 +238,28 @@ impl From<Codename> for Suite {
     }
 }
 
+impl Serialize for Codename {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Codename {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(TryFromStrVisitor::<Codename>::new())
+    }
+}
+
 /// Represents either a suite or codename
 ///
 /// This enum is useful whenever a suite name or codename works
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
 pub enum SuiteOrCodename {
     /// A suite
     Suite(Suite),
@@ -292,6 +325,24 @@ impl From<SuiteOrCodename> for Codename {
             SuiteOrCodename::Suite(suite) => Codename::from(suite),
             SuiteOrCodename::Codename(codename) => codename,
         }
+    }
+}
+
+impl Serialize for SuiteOrCodename {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for SuiteOrCodename {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(TryFromStrVisitor::<SuiteOrCodename>::new())
     }
 }
 
