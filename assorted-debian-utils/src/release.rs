@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 use std::io::{BufRead, Cursor};
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{de, Deserialize, Deserializer};
 
 use crate::architectures::Architecture;
 use crate::archive::{Codename, Component, Suite};
@@ -17,7 +17,7 @@ use crate::utils::{DateTimeVisitor, WhitespaceListVisitor};
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     deserializer.deserialize_str(DateTimeVisitor("%a, %d %b %Y %H:%M:%S %Z"))
 }
@@ -25,7 +25,7 @@ where
 /// Deserialize a datetime string into a `Option<DateTime<Utc>>`
 fn deserialize_datetime_option<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     deserialize_datetime(deserializer).map(Some)
 }
@@ -33,7 +33,7 @@ where
 /// Deserialize a list of architectures into a `Vec<Architecture>`
 fn deserialize_architectures<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     deserializer.deserialize_str(WhitespaceListVisitor::<Architecture>::new())
 }
@@ -41,14 +41,14 @@ where
 /// Deserialize a list of components into a `Vec<Component>`
 fn deserialize_components<'de, D>(deserializer: D) -> Result<Vec<Component>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     deserializer.deserialize_str(WhitespaceListVisitor::<Component>::new())
 }
 
 struct SHA256Visitor;
 
-impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
+impl<'de> de::Visitor<'de> for SHA256Visitor {
     type Value = HashMap<String, FileInfo>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -57,7 +57,7 @@ impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
 
     fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
     where
-        E: serde::de::Error,
+        E: de::Error,
     {
         let cursor = Cursor::new(s);
         // cursor.lines().filter_map(|line| if let Ok(line) = line { line.split_whitespace()} )
@@ -69,7 +69,7 @@ impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
 
             let fields: Vec<_> = line.split_ascii_whitespace().collect();
             if fields.len() != 3 {
-                return Err(E::invalid_value(serde::de::Unexpected::Str(&line), &self));
+                return Err(E::invalid_value(de::Unexpected::Str(&line), &self));
             }
 
             let file = fields[2];
@@ -80,9 +80,9 @@ impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
                 file.to_string(),
                 FileInfo {
                     file_size,
-                    hash: hash.try_into().map_err(|_| {
-                        E::invalid_value(serde::de::Unexpected::Str(fields[0]), &self)
-                    })?,
+                    hash: hash
+                        .try_into()
+                        .map_err(|_| E::invalid_value(de::Unexpected::Str(fields[0]), &self))?,
                 },
             );
         }
@@ -93,7 +93,7 @@ impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
 /// Deserialize files listed as SHA256
 fn deserialize_sha256<'de, D>(deserializer: D) -> Result<HashMap<String, FileInfo>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     deserializer.deserialize_str(SHA256Visitor)
 }
