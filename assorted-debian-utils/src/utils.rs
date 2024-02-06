@@ -13,7 +13,6 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::de;
 
 /// Helper to parse date-time strings as UTC based on a given format
-#[derive(Debug)]
 pub(crate) struct DateTimeVisitor(pub &'static str);
 
 impl<'de> de::Visitor<'de> for DateTimeVisitor {
@@ -34,7 +33,6 @@ impl<'de> de::Visitor<'de> for DateTimeVisitor {
 }
 
 /// Helper to parse whitespace seperated list of T
-#[derive(Debug)]
 pub(crate) struct WhitespaceListVisitor<T>(PhantomData<T>);
 
 impl<T> WhitespaceListVisitor<T> {
@@ -65,7 +63,6 @@ where
 }
 
 /// Helper to parse anything that implements `TryFrom<&str>``
-#[derive(Debug)]
 pub(crate) struct TryFromStrVisitor<T>(PhantomData<T>);
 
 impl<T> TryFromStrVisitor<T> {

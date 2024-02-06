@@ -46,7 +46,6 @@ where
     deserializer.deserialize_str(WhitespaceListVisitor::<Component>::new())
 }
 
-#[derive(Debug)]
 struct SHA256Visitor;
 
 impl<'de> serde::de::Visitor<'de> for SHA256Visitor {
