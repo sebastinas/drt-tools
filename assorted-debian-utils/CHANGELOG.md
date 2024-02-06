@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 (2024-02-06)
+
+* Fix serialization of codenames and suites.
+* Parse `Release` files to obtain list of architectures.
+* Deprecate the use of `RELEASE_ARCHITECTURES` and `ARCHIVE_ARCHITECTURES`.
+
 ## 0.6.2 (2023-09-14)
 
 * Remove `mipsel` from unstable architectures.
