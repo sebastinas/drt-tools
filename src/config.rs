@@ -89,6 +89,7 @@ impl Downloader {
         }
         .send()
         .await
+        .and_then(|response| response.error_for_status())
         .with_context(|| format!("Failed to GET from '{}'", &url))?;
 
         if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
