@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.19 (2024-02-02)
+
+* Parse `Release` files to determine list of architectures.
+* Remove use of `regex` crate.
+* Handle HTTP errors proberly.
+
 ## 0.2.18 (2023-11-21)
 
 * Some internal refactoring
