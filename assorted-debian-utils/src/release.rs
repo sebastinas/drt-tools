@@ -98,7 +98,7 @@ where
     deserializer.deserialize_str(SHA256Visitor)
 }
 
-/// Representation of a `Release` file`
+/// Representation of reference `Package` files in a `Release` file
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct FileInfo {
     file_size: u64,
@@ -109,13 +109,13 @@ pub struct FileInfo {
 #[derive(Debug, Deserialize, PartialEq, Eq, Copy, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum AcquireByHash {
-    /// Aqcuire by hash
+    /// Acquire by hash
     Yes,
     /// Do not acquire by hash
     No,
 }
 
-/// Representation of a `Release` file`
+/// Representation of a `Release` file
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Release {
