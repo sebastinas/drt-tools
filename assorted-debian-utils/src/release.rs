@@ -60,7 +60,6 @@ impl<'de> de::Visitor<'de> for SHA256Visitor {
         E: de::Error,
     {
         let cursor = Cursor::new(s);
-        // cursor.lines().filter_map(|line| if let Ok(line) = line { line.split_whitespace()} )
         let mut ret: HashMap<String, FileInfo> = Default::default();
         for line in cursor.lines() {
             let Ok(line) = line else {
