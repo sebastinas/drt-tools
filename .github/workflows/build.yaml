@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libdpkg-dev pkg-config
+          sudo apt-get install pkg-config
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{matrix.toolchain}}
@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libdpkg-dev pkg-config
+          sudo apt-get install pkg-config
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -53,7 +53,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libdpkg-dev pkg-config
+          sudo apt-get install pkg-config
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
