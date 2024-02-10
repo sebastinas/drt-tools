@@ -219,6 +219,7 @@ pub(crate) struct Cache {
     unstable: release::Release,
     testing: release::Release,
     stable: release::Release,
+    oldstable: release::Release,
 }
 
 fn empty_release() -> release::Release {
@@ -247,6 +248,7 @@ impl Cache {
             unstable: empty_release(),
             testing: empty_release(),
             stable: empty_release(),
+            oldstable: empty_release(),
         };
 
         // download Release files for unstable, testing and stable
@@ -255,6 +257,7 @@ impl Cache {
                 CacheEntries::Release(Suite::Unstable),
                 CacheEntries::Release(Suite::Testing(None)),
                 CacheEntries::Release(Suite::Stable(None)),
+                CacheEntries::Release(Suite::OldStable(None)),
             ])
             .await?;
 
@@ -266,6 +269,9 @@ impl Cache {
         )?;
         cache.stable = release::from_reader(
             cache.get_cache_bufreader(format!("Release_{}", Suite::Stable(None)))?,
+        )?;
+        cache.oldstable = release::from_reader(
+            cache.get_cache_bufreader(format!("Release_{}", Suite::OldStable(None)))?,
         )?;
 
         Ok(cache)
@@ -280,7 +286,8 @@ impl Cache {
                 Suite::Unstable => &self.unstable,
                 Suite::Testing(_) => &self.testing,
                 Suite::Stable(_) => &self.stable,
-                _ => unreachable!(),
+                Suite::OldStable(_) => &self.oldstable,
+                _ => unreachable!("Suite {} is currently not handled.", suite),
             }
             .lookup_url(path)
             .expect("file needs to be available")
