@@ -43,10 +43,10 @@ struct BinaryPackage {
 #[derive(Debug, Parser)]
 pub(crate) struct NMUVersionSkewOptions {
     /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
-    #[clap(long = "bp", default_value = "-50")]
+    #[clap(long = "bp", default_value_t = -50)]
     build_priority: i32,
     /// Suite for binNMUs.
-    #[clap(short, long, default_value = "unstable")]
+    #[clap(short, long, default_value_t = SuiteOrCodename::Suite(Suite::Unstable))]
     suite: SuiteOrCodename,
 }
 
