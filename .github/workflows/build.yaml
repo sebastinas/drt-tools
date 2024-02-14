@@ -25,7 +25,9 @@ jobs:
         with:
           toolchain: ${{matrix.toolchain}}
       - name: Install dependencies compatible with MSRV
-        run: cargo update -p clap --precise 4.4.18
+        run: |
+          cargo update -p clap --precise 4.4.18
+          cargo update -p clap-verbosity-flag --precise 2.1.2
         if: ${{matrix.toolchain != 'stable'}}
       - uses: Swatinem/rust-cache@v2
       - name: Test with default features
