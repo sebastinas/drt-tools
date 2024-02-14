@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Suite},
+    archive::{Codename, Extension, Suite},
     release,
 };
 use flate2::write::GzDecoder;
@@ -220,6 +220,11 @@ pub(crate) struct Cache {
     testing: release::Release,
     stable: release::Release,
     oldstable: release::Release,
+    experimental: release::Release,
+    stable_proposed_updates: release::Release,
+    oldstable_proposed_updates: release::Release,
+    stable_backports: release::Release,
+    // oldstable_backports: release::Release,
 }
 
 fn empty_release() -> release::Release {
@@ -249,6 +254,11 @@ impl Cache {
             testing: empty_release(),
             stable: empty_release(),
             oldstable: empty_release(),
+            experimental: empty_release(),
+            stable_proposed_updates: empty_release(),
+            oldstable_proposed_updates: empty_release(),
+            stable_backports: empty_release(),
+            // oldstable_backports: empty_release(),
         };
 
         // download Release files for unstable, testing and stable
@@ -258,6 +268,11 @@ impl Cache {
                 CacheEntries::Release(Suite::Testing(None)),
                 CacheEntries::Release(Suite::Stable(None)),
                 CacheEntries::Release(Suite::OldStable(None)),
+                CacheEntries::Release(Suite::Experimental),
+                CacheEntries::Release(Suite::Stable(Some(Extension::ProposedUpdates))),
+                CacheEntries::Release(Suite::OldStable(Some(Extension::ProposedUpdates))),
+                CacheEntries::Release(Suite::Stable(Some(Extension::Backports))),
+                // CacheEntries::Release(Suite::OldStable(Some(Extension::Backports))),
             ])
             .await?;
 
@@ -273,6 +288,27 @@ impl Cache {
         cache.oldstable = release::from_reader(
             cache.get_cache_bufreader(format!("Release_{}", Suite::OldStable(None)))?,
         )?;
+        cache.experimental = release::from_reader(
+            cache.get_cache_bufreader(format!("Release_{}", Suite::Experimental))?,
+        )?;
+        cache.stable_proposed_updates =
+            release::from_reader(cache.get_cache_bufreader(format!(
+                "Release_{}",
+                Suite::Stable(Some(Extension::ProposedUpdates))
+            ))?)?;
+        cache.oldstable_proposed_updates =
+            release::from_reader(cache.get_cache_bufreader(format!(
+                "Release_{}",
+                Suite::OldStable(Some(Extension::ProposedUpdates))
+            ))?)?;
+        cache.stable_backports = release::from_reader(cache.get_cache_bufreader(format!(
+            "Release_{}",
+            Suite::Stable(Some(Extension::Backports))
+        ))?)?;
+        // cache.oldstable_backports = release::from_reader(cache.get_cache_bufreader(format!(
+        //     "Release_{}",
+        //     Suite::OldStable(Some(Extension::Backports))
+        // ))?)?;
 
         Ok(cache)
     }
@@ -285,8 +321,14 @@ impl Cache {
             match suite {
                 Suite::Unstable => &self.unstable,
                 Suite::Testing(_) => &self.testing,
-                Suite::Stable(_) => &self.stable,
-                Suite::OldStable(_) => &self.oldstable,
+                Suite::Stable(None) => &self.stable,
+                Suite::OldStable(None) => &self.oldstable,
+                Suite::Experimental => &self.experimental,
+                Suite::Stable(Some(Extension::ProposedUpdates)) => &self.stable_proposed_updates,
+                Suite::OldStable(Some(Extension::ProposedUpdates)) =>
+                    &self.oldstable_proposed_updates,
+                Suite::Stable(Some(Extension::Backports)) => &self.stable_backports,
+                // Suite::OldStable(Some(Extension::Backports)) => &self.oldstable_backports,
                 _ => unreachable!("Suite {} is currently not handled.", suite),
             }
             .lookup_url(path)
