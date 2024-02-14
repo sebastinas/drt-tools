@@ -3,15 +3,17 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    fmt,
     iter::FusedIterator,
     path::Path,
+    str::FromStr,
     vec::IntoIter,
 };
 
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Suite, SuiteOrCodename},
+    archive::{Codename, Extension, Suite, SuiteOrCodename},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
@@ -37,12 +39,8 @@ struct BinaryPackage {
     architecture: Architecture,
     #[serde(rename = "Built-Using")]
     built_using: Option<String>,
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
-enum ExtraSourceOnly {
-    Yes,
+    #[serde(rename = "Static-Built-Using")]
+    static_built_using: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -50,8 +48,42 @@ enum ExtraSourceOnly {
 struct SourcePackage {
     package: String,
     version: PackageVersion,
-    #[serde(rename = "Extra-Source-Only")]
-    extra_source_only: Option<ExtraSourceOnly>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Field {
+    BuiltUsing,
+    StaticBuiltUsing,
+}
+
+impl fmt::Display for Field {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Field::BuiltUsing => write!(f, "Built-Using"),
+            Field::StaticBuiltUsing => write!(f, "Static-Built-Using"),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub struct ParseError;
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid reference field")
+    }
+}
+
+impl FromStr for Field {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "Built-Using" => Ok(Field::BuiltUsing),
+            "Static-Built-Using" => Ok(Field::StaticBuiltUsing),
+            _ => Err(ParseError),
+        }
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -65,23 +97,29 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
     /// Set architectures for binNMUs. If no archictures are specified, the binNMUs are scheduled with ANY.
     #[clap(short, long)]
     architecture: Option<Vec<Architecture>>,
+    #[clap(long, default_value_t = Field::BuiltUsing)]
+    field: Field,
 }
 
 #[derive(PartialEq, Eq, Hash)]
 struct OutdatedPackage {
     source: String,
+    suite: Suite,
     outdated_dependency: String,
     outdated_version: PackageVersion,
 }
 
 struct CombinedOutdatedPackage {
     source: String,
+    suite: Suite,
     outdated_dependencies: Vec<(String, PackageVersion)>,
 }
 
 impl PartialEq for CombinedOutdatedPackage {
     fn eq(&self, other: &Self) -> bool {
-        self.source == other.source && self.outdated_dependencies == other.outdated_dependencies
+        self.source == other.source
+            && self.suite == other.suite
+            && self.outdated_dependencies == other.outdated_dependencies
     }
 }
 
@@ -109,12 +147,13 @@ fn split_dependency(dependency: &str) -> Option<(String, PackageVersion)> {
 }
 
 struct BinaryPackageParser<'a> {
+    field: Field,
     iterator: ProgressBarIter<IntoIter<BinaryPackage>>,
-    eso_sources: &'a HashSet<(String, PackageVersion)>,
+    sources: &'a HashMap<String, PackageVersion>,
 }
 
 impl<'a> BinaryPackageParser<'a> {
-    fn new<P>(eso_sources: &'a HashSet<(String, PackageVersion)>, path: P) -> Result<Self>
+    fn new<P>(field: Field, sources: &'a HashMap<String, PackageVersion>, path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -127,8 +166,9 @@ impl<'a> BinaryPackageParser<'a> {
         pb.set_message(format!("Processing {}", path.as_ref().display()));
         // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
         Ok(Self {
+            field,
             iterator: binary_packages.into_iter().progress_with(pb),
-            eso_sources,
+            sources,
         })
     }
 }
@@ -143,26 +183,48 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             }
             // skip packages without Built-Using
-            let Some(ref built_using) = binary_package.built_using else {
+            let Some(ref built_using) = (match self.field {
+                Field::BuiltUsing => binary_package.built_using,
+                Field::StaticBuiltUsing => binary_package.static_built_using,
+            }) else {
                 continue;
             };
 
-            return Some((
-                if let Some(source_package) = &binary_package.source {
-                    match source_package.split_whitespace().next() {
-                        Some(package) => package.into(),
-                        None => continue,
+            let source_package = if let Some(source_package) = &binary_package.source {
+                match source_package.split_whitespace().next() {
+                    Some(package) => package.into(),
+                    None => continue,
+                }
+            } else {
+                // no Source set, so Source == Package
+                binary_package.package
+            };
+
+            let built_using: HashSet<_> = built_using
+                .split(", ")
+                .filter_map(split_dependency)
+                .filter(|(source, version)| {
+                    if let Some(max_version) = self.sources.get(source) {
+                        version < max_version
+                    } else {
+                        // This can happen when considering packages with
+                        // Static-Built-Using, but never with Built-Using. Let's
+                        // rebuild those packages in any case.
+                        trace!(
+                            "package '{}' refers to non-existing source package '{}'.",
+                            source_package,
+                            source
+                        );
+                        true
                     }
-                } else {
-                    // no Source set, so Source == Package
-                    binary_package.package
-                },
-                built_using
-                    .split(", ")
-                    .filter_map(split_dependency)
-                    .filter(|dependency| self.eso_sources.contains(dependency))
-                    .collect(),
-            ));
+                })
+                .collect();
+            // all packages in Built-Using are up to date
+            if built_using.is_empty() {
+                continue;
+            }
+
+            return Some((source_package, built_using));
         }
 
         None
@@ -197,43 +259,60 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         )
     }
 
-    fn load_extra_sources<P>(path: P) -> Result<HashSet<(String, PackageVersion)>>
+    /// Load source packages with the highest version
+    fn load_sources<P>(path: P, destination: &mut HashMap<String, PackageVersion>) -> Result<()>
     where
         P: AsRef<Path>,
     {
         let sources: Vec<SourcePackage> = rfc822_like::from_file(path.as_ref())?;
-        Ok(sources
-            .into_iter()
-            .filter(|source| source.extra_source_only.is_some())
-            .map(|source| {
-                trace!(
-                    "Found outdated source package: {}/{}",
-                    source.package,
-                    source.version
-                );
-                (source.package, source.version)
-            })
-            .collect())
+
+        for source in sources {
+            destination
+                .entry(source.package)
+                .and_modify(|version| {
+                    if source.version > *version {
+                        *version = source.version.clone()
+                    }
+                })
+                .or_insert(source.version);
+        }
+
+        Ok(())
     }
 
-    fn load_eso(&self, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
+    /// Load source packages from multiple suites with the highest version
+    fn load_sources_for_suites(&self, suites: &[Suite]) -> Result<HashMap<String, PackageVersion>> {
+        let mut ret: HashMap<String, PackageVersion> = Default::default();
+        for suite in suites {
+            Self::load_sources(self.cache.get_source_path(*suite)?, &mut ret)?;
+        }
+        Ok(ret)
+    }
+
+    fn load_eso(&self, field: Field, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
         let codename = suite.into();
         let ftbfs_bugs = self.load_bugs(codename)?;
-        let eso_sources = Self::load_extra_sources(self.cache.get_source_path(suite)?)?;
+        let suites = self.expand_suite();
+        let source_packages = self.load_sources_for_suites(&suites)?;
         let mut packages = HashSet::new();
-        for path in self.cache.get_package_paths(suite, false)? {
-            for (source, dependencies) in BinaryPackageParser::new(&eso_sources, path)? {
-                packages.extend(dependencies.into_iter().map(
-                    |(outdated_dependency, outdated_version)| OutdatedPackage {
-                        source: source.clone(),
-                        outdated_dependency,
-                        outdated_version,
-                    },
-                ))
+        for suite in suites {
+            for path in self.cache.get_package_paths(suite, false)? {
+                for (source, dependencies) in
+                    BinaryPackageParser::new(field, &source_packages, path)?
+                {
+                    packages.extend(dependencies.into_iter().map(
+                        |(outdated_dependency, outdated_version)| OutdatedPackage {
+                            source: source.clone(),
+                            suite,
+                            outdated_dependency,
+                            outdated_version,
+                        },
+                    ))
+                }
             }
         }
 
-        let mut result = HashMap::<String, HashSet<(String, PackageVersion)>>::new();
+        let mut result = HashMap::<(String, Suite), HashSet<(String, PackageVersion)>>::new();
         for outdated_package in packages {
             // skip some packages that make no sense to binNMU
             if source_skip_binnmu(&outdated_package.source) {
@@ -259,20 +338,39 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                 continue;
             }
 
-            result.entry(outdated_package.source).or_default().insert((
-                outdated_package.outdated_dependency,
-                outdated_package.outdated_version,
-            ));
+            result
+                .entry((outdated_package.source, outdated_package.suite))
+                .or_default()
+                .insert((
+                    outdated_package.outdated_dependency,
+                    outdated_package.outdated_version,
+                ));
         }
 
         Ok(result
             .into_iter()
-            .map(|(source, outdated_dependencies)| CombinedOutdatedPackage {
-                source,
-                outdated_dependencies: outdated_dependencies.into_iter().sorted().collect(),
-            })
+            .map(
+                |((source, suite), outdated_dependencies)| CombinedOutdatedPackage {
+                    source,
+                    suite,
+                    outdated_dependencies: outdated_dependencies.into_iter().sorted().collect(),
+                },
+            )
             .sorted()
             .collect())
+    }
+
+    fn expand_suite(&self) -> Vec<Suite> {
+        let suite: Suite = self.options.suite.into();
+        match suite {
+            Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![suite],
+            Suite::Stable(None) | Suite::OldStable(None) => {
+                vec![suite, suite.with_extension(Extension::ProposedUpdates)]
+            }
+            Suite::Stable(Some(e)) | Suite::OldStable(Some(e)) => {
+                vec![suite.without_extension(), suite.with_extension(e)]
+            }
+        }
     }
 }
 
@@ -280,17 +378,19 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 impl Command for NMUOutdatedBuiltUsing<'_> {
     async fn run(&self) -> Result<()> {
         let suite = self.options.suite.into();
-        let eso_sources = self.load_eso(suite)?;
+        let eso_sources = self.load_eso(self.options.field, suite)?;
 
         for outdated_package in eso_sources {
+            let suite = outdated_package.suite.into();
             let mut source = SourceSpecifier::new(&outdated_package.source);
-            source.with_suite(&self.options.suite);
+            source.with_suite(&suite);
             if let Some(architectures) = &self.options.architecture {
                 source.with_archive_architectures(architectures);
             }
 
             let message = format!(
-                "Rebuild for outdated Built-Using ({})",
+                "Rebuild for outdated {} ({})",
+                self.options.field,
                 outdated_package
                     .outdated_dependencies
                     .into_iter()
@@ -315,9 +415,11 @@ impl Command for NMUOutdatedBuiltUsing<'_> {
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        vec![
-            CacheEntries::Packages(self.options.suite.into()),
-            CacheEntries::Sources(self.options.suite.into()),
-        ]
+        let suites = self.expand_suite();
+        suites
+            .iter()
+            .map(|suite| CacheEntries::Packages(*suite))
+            .chain(suites.iter().map(|suite| CacheEntries::Sources(*suite)))
+            .collect()
     }
 }

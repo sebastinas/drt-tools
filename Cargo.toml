@@ -32,6 +32,7 @@ serde_yaml = "0.9"
 smartstring = "1"
 smallvec = { version = "1", default-features = false, features = ["union"] }
 stderrlog = "0.6"
+thiserror = { version = "1" }
 tokio = { version = "1.13", default-features = false, features = [
     "macros",
     "rt-multi-thread",
