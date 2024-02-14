@@ -85,6 +85,32 @@ pub enum Suite {
     Experimental,
 }
 
+impl Suite {
+    /// Extend suite with an extension archive.
+    ///
+    /// An existing extension will overriden and the method has no effect for`unstable` and `experimental`.`
+    pub fn with_extension(&self, extension: Extension) -> Self {
+        match self {
+            Suite::Unstable | Suite::Experimental => *self,
+            Suite::Testing(_) => Suite::Testing(Some(extension)),
+            Suite::Stable(_) => Suite::Stable(Some(extension)),
+            Suite::OldStable(_) => Suite::OldStable(Some(extension)),
+        }
+    }
+
+    /// Remove an extension archive from the suite.
+    ///
+    /// The method has no effect for`unstable` and `experimental`.`
+    pub fn without_extension(&self) -> Self {
+        match self {
+            Suite::Unstable | Suite::Experimental => *self,
+            Suite::Testing(_) => Suite::Testing(None),
+            Suite::Stable(_) => Suite::Stable(None),
+            Suite::OldStable(_) => Suite::OldStable(None),
+        }
+    }
+}
+
 impl Display for Suite {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
