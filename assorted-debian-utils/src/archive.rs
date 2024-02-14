@@ -109,6 +109,8 @@ impl TryFrom<&str> for Suite {
             "testing" => Ok(Suite::Testing(None)),
             "stable" => Ok(Suite::Stable(None)),
             "oldstable" => Ok(Suite::OldStable(None)),
+            // The Release file from stable-proposed-updates calls the suite proposed-updaptes.
+            "proposed-updates" => Ok(Suite::Stable(Some(Extension::ProposedUpdates))),
             "experimental" => Ok(Suite::Experimental),
             _ => {
                 let s = value.split_once('-').ok_or(ParseError::InvalidSuite)?;
