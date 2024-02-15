@@ -110,7 +110,7 @@ impl Command for NMUTransition<'_> {
             };
             source
                 .with_version(&version)
-                .with_suite(&self.options.binnmu_options.suite);
+                .with_suite(self.options.binnmu_options.suite);
             if let Some(architectures) = &self.options.binnmu_options.architecture {
                 source.with_archive_architectures(architectures);
             }

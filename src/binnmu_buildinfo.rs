@@ -126,7 +126,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         let version = buildinfo.version.without_binnmu_version();
         source
             .with_version(&version)
-            .with_suite(&self.options.binnmu_options.suite);
+            .with_suite(self.options.binnmu_options.suite);
         if !source_packages.is_ma_same(source_package) {
             // binNMU only on the architecture if no MA: same binary packages
             source.with_archive_architectures(&architectures);

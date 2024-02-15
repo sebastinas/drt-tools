@@ -118,7 +118,7 @@ pub struct SourceSpecifier<'a> {
     source: &'a str,
     version: Option<&'a PackageVersion>,
     architectures: Vec<WBArchitecture>,
-    suite: Option<&'a SuiteOrCodename>,
+    suite: Option<SuiteOrCodename>,
 }
 
 impl<'a> SourceSpecifier<'a> {
@@ -139,7 +139,7 @@ impl<'a> SourceSpecifier<'a> {
     }
 
     /// Specify suite. If not set, `unstable` is used.
-    pub fn with_suite(&mut self, suite: &'a SuiteOrCodename) -> &mut Self {
+    pub fn with_suite(&mut self, suite: SuiteOrCodename) -> &mut Self {
         self.suite = Some(suite);
         self
     }
@@ -180,7 +180,7 @@ impl<'a> Display for SourceSpecifier<'a> {
             f,
             ". {}",
             self.suite
-                .unwrap_or(&SuiteOrCodename::Suite(Suite::Unstable))
+                .unwrap_or(SuiteOrCodename::Suite(Suite::Unstable))
         )
     }
 }
@@ -471,7 +471,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new("zathura").with_suite(&TESTING),
+                SourceSpecifier::new("zathura").with_suite(TESTING),
                 "Rebuild on buildd"
             )
             .unwrap()
@@ -546,7 +546,7 @@ mod test {
             "bp 10 zathura . ANY -i386 . unstable"
         );
         assert_eq!(
-            BuildPriority::new(SourceSpecifier::new("zathura").with_suite(&TESTING), 10)
+            BuildPriority::new(SourceSpecifier::new("zathura").with_suite(TESTING), 10)
                 .unwrap()
                 .build()
                 .to_string(),
@@ -588,7 +588,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new("zathura").with_suite(&TESTING),
+                SourceSpecifier::new("zathura").with_suite(TESTING),
                 "libgirara-dev"
             )
             .unwrap()

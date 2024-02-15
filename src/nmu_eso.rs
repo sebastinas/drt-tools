@@ -381,9 +381,8 @@ impl Command for NMUOutdatedBuiltUsing<'_> {
         let eso_sources = self.load_eso(self.options.field, suite)?;
 
         for outdated_package in eso_sources {
-            let suite = outdated_package.suite.into();
             let mut source = SourceSpecifier::new(&outdated_package.source);
-            source.with_suite(&suite);
+            source.with_suite(outdated_package.suite.into());
             if let Some(architectures) = &self.options.architecture {
                 source.with_archive_architectures(architectures);
             }
