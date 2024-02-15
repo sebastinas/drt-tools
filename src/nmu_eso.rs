@@ -367,8 +367,8 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             Suite::Stable(None) | Suite::OldStable(None) => {
                 vec![suite, suite.with_extension(Extension::ProposedUpdates)]
             }
-            Suite::Stable(Some(e)) | Suite::OldStable(Some(e)) => {
-                vec![suite.without_extension(), suite.with_extension(e)]
+            Suite::Stable(Some(_)) | Suite::OldStable(Some(_)) => {
+                vec![suite.without_extension(), suite]
             }
         }
     }
