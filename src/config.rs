@@ -531,3 +531,14 @@ pub fn source_skip_binnmu(source: &str) -> bool {
                 || source.starts_with("shim-")
                 || source.starts_with("fwupd-")))
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn skip_binnmu() {
+        assert!(source_skip_binnmu("linux-signed-i386"));
+        assert!(!source_skip_binnmu("zathura-signed-foo"));
+    }
+}
