@@ -36,6 +36,7 @@ use crate::{
 struct BinaryPackage {
     source: Option<String>,
     package: String,
+    version: PackageVersion,
     architecture: Architecture,
     #[serde(rename = "Built-Using")]
     built_using: Option<String>,
@@ -104,26 +105,19 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
 #[derive(PartialEq, Eq, Hash)]
 struct OutdatedPackage {
     source: String,
+    version: PackageVersion,
     suite: Suite,
     outdated_dependency: String,
     outdated_version: PackageVersion,
 }
 
+#[derive(PartialEq, Eq)]
 struct CombinedOutdatedPackage {
     source: String,
+    version: PackageVersion,
     suite: Suite,
     outdated_dependencies: Vec<(String, PackageVersion)>,
 }
-
-impl PartialEq for CombinedOutdatedPackage {
-    fn eq(&self, other: &Self) -> bool {
-        self.source == other.source
-            && self.suite == other.suite
-            && self.outdated_dependencies == other.outdated_dependencies
-    }
-}
-
-impl Eq for CombinedOutdatedPackage {}
 
 impl PartialOrd for CombinedOutdatedPackage {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -133,7 +127,7 @@ impl PartialOrd for CombinedOutdatedPackage {
 
 impl Ord for CombinedOutdatedPackage {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.source.cmp(&other.source)
+        (&self.source, &self.version).cmp(&(&other.source, &other.version))
     }
 }
 
@@ -174,7 +168,7 @@ impl<'a> BinaryPackageParser<'a> {
 }
 
 impl Iterator for BinaryPackageParser<'_> {
-    type Item = (String, HashSet<(String, PackageVersion)>);
+    type Item = (String, PackageVersion, HashSet<(String, PackageVersion)>);
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(binary_package) = self.iterator.next() {
@@ -224,7 +218,11 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             }
 
-            return Some((source_package, built_using));
+            return Some((
+                source_package,
+                binary_package.version.without_binnmu_version(),
+                built_using,
+            ));
         }
 
         None
@@ -296,12 +294,13 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         let mut packages = HashSet::new();
         for suite in self.expand_suite_for_binaries() {
             for path in self.cache.get_package_paths(suite, false)? {
-                for (source, dependencies) in
+                for (source, version, dependencies) in
                     BinaryPackageParser::new(field, &source_packages, path)?
                 {
                     packages.extend(dependencies.into_iter().map(
                         |(outdated_dependency, outdated_version)| OutdatedPackage {
                             source: source.clone(),
+                            version: version.clone(),
                             suite,
                             outdated_dependency,
                             outdated_version,
@@ -311,7 +310,8 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             }
         }
 
-        let mut result = HashMap::<(String, Suite), HashSet<(String, PackageVersion)>>::new();
+        let mut result =
+            HashMap::<(String, Suite), HashSet<(PackageVersion, String, PackageVersion)>>::new();
         for outdated_package in packages {
             // skip some packages that make no sense to binNMU
             if source_skip_binnmu(&outdated_package.source) {
@@ -341,6 +341,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                 .entry((outdated_package.source, outdated_package.suite))
                 .or_default()
                 .insert((
+                    outdated_package.version,
                     outdated_package.outdated_dependency,
                     outdated_package.outdated_version,
                 ));
@@ -348,13 +349,32 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 
         Ok(result
             .into_iter()
-            .map(
-                |((source, suite), outdated_dependencies)| CombinedOutdatedPackage {
+            .filter_map(|((source, suite), outdated_dependencies)| {
+                let Some(max_version) = outdated_dependencies
+                    .iter()
+                    .map(|(version, _, _)| version)
+                    .max()
+                    .cloned()
+                else {
+                    return None;
+                };
+                Some(CombinedOutdatedPackage {
                     source,
+                    version: max_version.clone(),
                     suite,
-                    outdated_dependencies: outdated_dependencies.into_iter().sorted().collect(),
-                },
-            )
+                    outdated_dependencies: outdated_dependencies
+                        .into_iter()
+                        .filter_map(|(version, outdated_dependency, outdated_version)| {
+                            if version == max_version {
+                                Some((outdated_dependency, outdated_version))
+                            } else {
+                                None
+                            }
+                        })
+                        .sorted()
+                        .collect(),
+                })
+            })
             .sorted()
             .collect())
     }
@@ -399,6 +419,7 @@ impl Command for NMUOutdatedBuiltUsing<'_> {
 
         for outdated_package in eso_sources {
             let mut source = SourceSpecifier::new(&outdated_package.source);
+            source.with_version(&outdated_package.version);
             source.with_suite(outdated_package.suite.into());
             if let Some(architectures) = &self.options.architecture {
                 source.with_archive_architectures(architectures);
