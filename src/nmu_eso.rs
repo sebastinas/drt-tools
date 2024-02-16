@@ -292,10 +292,9 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
     fn load_eso(&self, field: Field, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
         let codename = suite.into();
         let ftbfs_bugs = self.load_bugs(codename)?;
-        let suites = self.expand_suite();
-        let source_packages = self.load_sources_for_suites(&suites)?;
+        let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
         let mut packages = HashSet::new();
-        for suite in suites {
+        for suite in self.expand_suite_for_binaries() {
             for path in self.cache.get_package_paths(suite, false)? {
                 for (source, dependencies) in
                     BinaryPackageParser::new(field, &source_packages, path)?
@@ -360,15 +359,33 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             .collect())
     }
 
-    fn expand_suite(&self) -> Vec<Suite> {
+    fn expand_suite_for_sources(&self) -> Vec<Suite> {
         let suite: Suite = self.options.suite.into();
         match suite {
+            // when looking at testing, ignore testing-proposed-updates
             Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![suite],
+            // when looking at stable, consider stable and proposed-updates
+            Suite::Stable(None) | Suite::OldStable(None) => {
+                vec![suite, suite.with_extension(Extension::ProposedUpdates)]
+            }
+            // always consider base suite as well
+            Suite::Stable(Some(_)) | Suite::OldStable(Some(_)) => {
+                vec![suite.without_extension(), suite]
+            }
+        }
+    }
+
+    fn expand_suite_for_binaries(&self) -> Vec<Suite> {
+        let suite: Suite = self.options.suite.into();
+        match suite {
+            // when looking at testing, ignore testing-proposed-updates
+            Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![suite],
+            // when looking at stable, consider stable and proposed-updates
             Suite::Stable(None) | Suite::OldStable(None) => {
                 vec![suite, suite.with_extension(Extension::ProposedUpdates)]
             }
             Suite::Stable(Some(_)) | Suite::OldStable(Some(_)) => {
-                vec![suite.without_extension(), suite]
+                vec![suite]
             }
         }
     }
@@ -414,11 +431,14 @@ impl Command for NMUOutdatedBuiltUsing<'_> {
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        let suites = self.expand_suite();
-        suites
-            .iter()
-            .map(|suite| CacheEntries::Packages(*suite))
-            .chain(suites.iter().map(|suite| CacheEntries::Sources(*suite)))
+        self.expand_suite_for_binaries()
+            .into_iter()
+            .map(CacheEntries::Packages)
+            .chain(
+                self.expand_suite_for_sources()
+                    .into_iter()
+                    .map(CacheEntries::Sources),
+            )
             .collect()
     }
 }
