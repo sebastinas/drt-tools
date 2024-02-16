@@ -516,7 +516,8 @@ impl Cache {
         match suite {
             Suite::Unstable | Suite::Experimental => self.unstable.architectures.clone(),
             Suite::Testing(_) => self.testing.architectures.clone(),
-            _ => self.stable.architectures.clone(),
+            Suite::Stable(_) => self.stable.architectures.clone(),
+            Suite::OldStable(_) => self.oldstable.architectures.clone(),
         }
     }
 }
