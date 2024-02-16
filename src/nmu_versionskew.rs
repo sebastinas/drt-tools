@@ -8,7 +8,7 @@ use std::{
     vec::IntoIter,
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, MultiArch, Suite, SuiteOrCodename},
@@ -60,7 +60,10 @@ impl BinaryPackageParser {
         P: AsRef<Path>,
     {
         // read Package file
-        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())
+            .with_context(|| {
+                format!("Failed to parse packages from {}", path.as_ref().display())
+            })?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(default_progress_style().template(
             "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
@@ -139,7 +142,9 @@ impl<'a> NMUVersionSkew<'a> {
         suite: Suite,
     ) -> Result<Vec<(String, PackageVersion, Vec<Architecture>)>> {
         let codename = suite.into();
-        let ftbfs_bugs = self.load_bugs(codename)?;
+        let ftbfs_bugs = self
+            .load_bugs(codename)
+            .with_context(|| format!("Failed to load bugs for {}", codename))?;
         let mut packages: HashMap<String, HashSet<(Architecture, PackageVersion)>> = HashMap::new();
         for path in self.cache.get_package_paths(suite, false)? {
             for (source, architecture, version) in BinaryPackageParser::new(path)? {
