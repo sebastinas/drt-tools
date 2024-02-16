@@ -522,8 +522,8 @@ impl Cache {
     }
 }
 
+/// Check if package should be skipped for binNMUs.
 pub fn source_skip_binnmu(source: &str) -> bool {
-    // skip some packages that make no sense to binNMU
     source.starts_with("debian-installer")
         || source == "linux"
         || (source.contains("-signed")
