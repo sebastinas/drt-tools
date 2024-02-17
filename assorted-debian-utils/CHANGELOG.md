@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 (2024-02-17)
+
+* Remove obsolete `version-compare` feature.
+* Handle binNMU versions of native packages.
+* Rewrite tests without spectral.
+
 ## 0.6.3 (2024-02-06)
 
 * Fix serialization of codenames and suites.
