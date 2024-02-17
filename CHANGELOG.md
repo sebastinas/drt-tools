@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.20 (2024-02-17)
+
+* Handle more releases.
+* `nmu-eso`: Add support for `Static-Built-Using`.
+
 ## 0.2.19 (2024-02-02)
 
 * Parse `Release` files to determine list of architectures.
