@@ -194,11 +194,6 @@ impl Iterator for BinaryPackageParser<'_> {
                 binary_package.package
             };
 
-            // skip non-binNMUable sources
-            if source_skip_binnmu(&source_package) {
-                continue;
-            }
-
             let built_using: HashSet<_> = built_using
                 .split(", ")
                 .filter_map(split_dependency)
