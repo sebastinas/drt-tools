@@ -176,12 +176,7 @@ impl<'a> Display for SourceSpecifier<'a> {
                 write!(f, "{} ", arch)?;
             }
         }
-        write!(
-            f,
-            ". {}",
-            self.suite
-                .unwrap_or(SuiteOrCodename::Suite(Suite::Unstable))
-        )
+        write!(f, ". {}", self.suite.unwrap_or(Suite::Unstable.into()))
     }
 }
 
