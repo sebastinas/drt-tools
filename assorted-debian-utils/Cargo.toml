@@ -22,6 +22,3 @@ smallvec = { version = "1", default-features = false, features = [
     "serde",
     "union",
 ] }
-
-[features]
-version-compare = []
