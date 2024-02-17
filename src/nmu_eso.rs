@@ -210,7 +210,7 @@ impl Iterator for BinaryPackageParser<'_> {
                         // Static-Built-Using, but never with Built-Using. Let's
                         // rebuild those packages in any case.
                         trace!(
-                            "package '{}' refers to non-existing source package '{}'.",
+                            "Package '{}' refers to non-existing source package '{}'.",
                             source_package,
                             source
                         );
@@ -220,6 +220,11 @@ impl Iterator for BinaryPackageParser<'_> {
                 .collect();
             // all packages in Built-Using are up to date
             if built_using.is_empty() {
+                trace!(
+                    "Skipping {}: all dependencies in {} are up-to-date.",
+                    source_package,
+                    self.field
+                );
                 continue;
             }
 
