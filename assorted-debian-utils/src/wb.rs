@@ -236,7 +236,11 @@ impl<'a> BinNMU<'a> {
 
     /// Specify build priority. If not set, the build priority will not be changed.
     pub fn with_build_priority(&mut self, priority: i32) -> &mut Self {
-        self.priority = Some(priority);
+        if priority != 0 {
+            self.priority = Some(priority);
+        } else {
+            self.priority = None;
+        }
         self
     }
 
@@ -507,6 +511,12 @@ mod test {
         let source = SourceSpecifier::new("zathura");
         let mut builder = BinNMU::new(&source, "Rebuild on buildd").unwrap();
         builder.with_nmu_version(3);
+        assert_eq!(
+            builder.build().to_string(),
+            "nmu 3 zathura . ANY . unstable . -m \"Rebuild on buildd\""
+        );
+
+        builder.with_build_priority(0);
         assert_eq!(
             builder.build().to_string(),
             "nmu 3 zathura . ANY . unstable . -m \"Rebuild on buildd\""
