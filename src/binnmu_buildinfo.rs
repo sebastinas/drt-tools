@@ -20,7 +20,7 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
-use crate::config::default_progress_style;
+use crate::config::{default_progress_style, default_progress_template};
 use crate::udd_bugs::{load_bugs_from_reader, UDDBugs};
 use crate::Command;
 use crate::{
@@ -68,9 +68,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        )?);
+        pb.set_style(default_progress_style().template(default_progress_template())?);
         pb.set_message(format!("Processing {}", path.as_ref().display()));
 
         Ok(binary_packages

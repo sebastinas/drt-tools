@@ -24,7 +24,9 @@ use log::{debug, error};
 use serde::Deserialize;
 
 use crate::{
-    config::{default_progress_style, source_skip_binnmu, Cache, CacheEntries},
+    config::{
+        default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
+    },
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, Command,
 };
@@ -65,9 +67,7 @@ impl BinaryPackageParser {
                 format!("Failed to parse packages from {}", path.as_ref().display())
             })?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        )?);
+        pb.set_style(default_progress_style().template(default_progress_template())?);
         pb.set_message(format!("Processing {}", path.as_ref().display()));
         // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
         Ok(Self {

@@ -17,7 +17,7 @@ use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::{self, CacheEntries},
+    config::{self, default_progress_template, CacheEntries},
     source_packages::SourcePackages,
     BaseOptions, Command,
 };
@@ -224,9 +224,7 @@ impl Command for ProcessExcuses<'_> {
 
         // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
-        pb.set_style(config::default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        )?);
+        pb.set_style(config::default_progress_style().template(default_progress_template())?);
         pb.set_message("Processing excuses");
         let to_binnmu: Vec<WBCommand> = excuses
             .sources

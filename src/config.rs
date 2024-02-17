@@ -22,10 +22,12 @@ use reqwest::{header, Client, Response, StatusCode};
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
 
-const PROGRESS_CHARS: &str = "█  ";
-
 pub(crate) fn default_progress_style() -> ProgressStyle {
-    ProgressStyle::default_bar().progress_chars(PROGRESS_CHARS)
+    ProgressStyle::default_bar().progress_chars("█  ")
+}
+
+pub(crate) fn default_progress_template() -> &'static str {
+    "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})"
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -104,9 +106,7 @@ impl Downloader {
 
         if let Some(total_size) = res.content_length() {
             let pb = mp.add(ProgressBar::new(total_size));
-            pb.set_style(default_progress_style()
-            .template("{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?
-            );
+            pb.set_style(default_progress_style().template( "{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?);
             pb.set_message(format!("Downloading {}", url));
             Ok(Some((res, pb)))
         } else {
