@@ -4,7 +4,6 @@
 use std::{fs::File, io::BufReader, path::PathBuf};
 
 use assorted_debian_utils::release;
-use spectral::prelude::*;
 
 #[test]
 fn parse_release_ramacher_unstable() {
@@ -33,30 +32,15 @@ fn parse_release_debian_bullseye() {
 
 fn parse_release(data_file: &str) {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let excuses_path = manifest_dir.join("tests").join("data").join(data_file);
+    let release_path = manifest_dir.join("tests").join("data").join(data_file);
 
-    let excuses_file = File::open(excuses_path);
-    asserting!("Release file exists")
-        .that(&excuses_file)
-        .is_ok();
+    let release_file = File::open(release_path).expect("Release file opened.");
+    let archive =
+        release::from_reader(BufReader::new(release_file)).expect("Release file parse correctly.");
 
-    let archive = release::from_reader(BufReader::new(excuses_file.unwrap()));
-    asserting!("Release file parsed").that(&archive).is_ok();
-    let archive = archive.unwrap();
-
-    asserting!("has architectures")
-        .that(&archive.architectures.len())
-        .is_not_equal_to(0);
-    asserting!("has components")
-        .that(&archive.components.len())
-        .is_not_equal_to(0);
-    asserting!("has Origin")
-        .that(&archive.origin.len())
-        .is_not_equal_to(0);
-    asserting!("has Label")
-        .that(&archive.label.len())
-        .is_not_equal_to(0);
-    asserting!("has Files")
-        .that(&archive.files.len())
-        .is_not_equal_to(0);
+    assert!(!archive.architectures.is_empty());
+    assert!(!archive.components.is_empty());
+    assert!(!archive.origin.is_empty());
+    assert!(!archive.label.is_empty());
+    assert!(!archive.files.is_empty());
 }
