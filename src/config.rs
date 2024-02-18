@@ -19,6 +19,7 @@ use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{debug, trace};
 use reqwest::{header, Client, Response, StatusCode};
+use tokio::task::JoinSet;
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;
 
@@ -422,21 +423,19 @@ impl Cache {
         );
 
         let mp = MultiProgress::new();
-        let join_handles: Vec<_> = urls_and_dests
-            .into_iter()
-            .map(|(url, compressor, dest)| {
-                let downloader = self.downloader.clone();
-                let mp = mp.clone();
-                tokio::spawn(async move {
-                    debug!("Starting task to download {}", url);
-                    downloader.download_file(&url, dest, compressor, mp).await
-                })
-            })
-            .collect();
+        let mut join_handles = JoinSet::new();
+        for (url, compressor, dest) in urls_and_dests {
+            let downloader = self.downloader.clone();
+            let mp = mp.clone();
+            join_handles.spawn(async move {
+                debug!("Starting task to download {}", url);
+                downloader.download_file(&url, dest, compressor, mp).await
+            });
+        }
 
         let mut state = Ok(CacheState::NoUpdate);
-        for handle in join_handles {
-            match handle.await {
+        while let Some(res) = join_handles.join_next().await {
+            match res {
                 Ok(download_result) => match download_result {
                     Ok(CacheState::FreshFiles) => {
                         if state.is_ok() {
@@ -446,7 +445,7 @@ impl Cache {
                     Err(err) => state = Err(err),
                     _ => {}
                 },
-                Err(err) => state = Err(err.into()),
+                Err(err) => state = Err(err).context("Failed to join task"),
             };
         }
         state
