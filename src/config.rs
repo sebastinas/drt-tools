@@ -38,7 +38,6 @@ pub(crate) enum CacheEntries {
     Sources(Suite),
     FTBFSBugs(Codename),
     AutoRemovals,
-    Contents(Suite),
     Release(Suite),
 }
 
@@ -337,23 +336,6 @@ impl Cache {
         )
     }
 
-    fn contents_urls(
-        &self,
-        suite: Suite,
-    ) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
-        self.architectures_for_suite(suite)
-            .into_iter()
-            .map(|architecture| {
-                (
-                    self.lookup_url(suite, &format!("main/Contents-{}.gz", architecture))
-                        .into(),
-                    Compressor::Gz,
-                    format!("Contents_{}_{}", suite, architecture).into(),
-                )
-            })
-            .collect()
-    }
-
     fn packages_urls(
         &self,
         suite: Suite,
@@ -403,7 +385,6 @@ impl Cache {
                     CacheEntries::Sources(suite) => self.source_urls(*suite),
                     CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls(*codename),
                     CacheEntries::AutoRemovals => auto_removals_urls(),
-                    CacheEntries::Contents(suite) => self.contents_urls(*suite),
                     CacheEntries::Release(suite) => self.release_urls(*suite),
                 }
                 .into_iter()
@@ -497,17 +478,6 @@ impl Cache {
 
     pub fn get_source_path(&self, suite: Suite) -> Result<PathBuf> {
         self.get_cache_path(format!("Sources_{}", suite))
-    }
-
-    pub fn get_content_paths(&self, suite: Suite) -> Result<Vec<(Architecture, PathBuf)>> {
-        let mut all_paths = vec![];
-        for architecture in self.architectures_for_suite(suite) {
-            all_paths.push((
-                architecture,
-                self.get_cache_path(format!("Contents_{}_{}", suite, architecture))?,
-            ));
-        }
-        Ok(all_paths)
     }
 
     // Architectures for a suite (including Arch: all)
