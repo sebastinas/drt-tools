@@ -6,13 +6,12 @@ use assorted_debian_utils::{
     autoremovals::{self, AutoRemoval},
     excuses::{self, ExcusesItem},
 };
-use async_trait::async_trait;
 use chrono::Utc;
 use clap::Parser;
 
 use crate::{
     config::{self, CacheEntries},
-    AsyncCommand, Downloads,
+    Command, Downloads,
 };
 
 #[derive(Debug, Parser)]
@@ -67,9 +66,8 @@ impl<'a> GrepExcuses<'a> {
     }
 }
 
-#[async_trait]
-impl AsyncCommand for GrepExcuses<'_> {
-    async fn run(&self) -> Result<()> {
+impl Command for GrepExcuses<'_> {
+    fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
         // parse autoremovals
