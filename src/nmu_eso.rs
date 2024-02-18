@@ -136,9 +136,11 @@ impl Ord for CombinedOutdatedPackage {
 fn split_dependency(dependency: &str) -> Option<(String, PackageVersion)> {
     // this should never fail unless the archive is broken
     dependency.split_once(' ').and_then(|(source, version)| {
-        PackageVersion::try_from(&version[3..version.len() - 1])
+        version
+            .strip_suffix(')')
+            .and_then(|version| version.strip_prefix("(= "))
+            .and_then(|version| PackageVersion::try_from(version).ok())
             .map(|version| (source.to_string(), version))
-            .ok()
     })
 }
 
@@ -466,5 +468,22 @@ impl Command for NMUOutdatedBuiltUsing<'_> {
                     .map(CacheEntries::Sources),
             )
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn dependencies() {
+        assert!(split_dependency("( =)").is_none());
+
+        let dependency = split_dependency("rustc (= 1.70.0+dfsg1-5)").unwrap();
+        assert_eq!(dependency.0, "rustc");
+        assert_eq!(
+            dependency.1,
+            PackageVersion::try_from("1.70.0+dfsg1-5").unwrap()
+        );
     }
 }
