@@ -11,7 +11,6 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
@@ -39,29 +38,16 @@ impl ScheduledBinNMUs {
     }
 }
 
-#[derive(Debug, Parser)]
-pub(crate) struct ProcessExcusesOptions {
-    /// Do not prepare binNMUs to allow testing migration
-    #[clap(long)]
-    no_rebuilds: bool,
-}
-
 pub(crate) struct ProcessExcuses<'a> {
     cache: &'a config::Cache,
     base_options: &'a BaseOptions,
-    options: ProcessExcusesOptions,
 }
 
 impl<'a> ProcessExcuses<'a> {
-    pub(crate) fn new(
-        cache: &'a config::Cache,
-        base_options: &'a BaseOptions,
-        options: ProcessExcusesOptions,
-    ) -> Self {
+    pub(crate) fn new(cache: &'a config::Cache, base_options: &'a BaseOptions) -> Self {
         Self {
             cache,
             base_options,
-            options,
         }
     }
 
@@ -236,17 +222,15 @@ impl AsyncCommand for ProcessExcuses<'_> {
         // load already scheduled binNMUs from cache
         let mut scheduled_binnmus = self.load_scheduled_binnmus();
 
-        if !self.options.no_rebuilds {
-            println!("# Rebuild on buildds for testing migration");
-            for binnmu in to_binnmu {
-                if scheduled_binnmus.contains(&binnmu) {
-                    info!("{}: skipping, already scheduled", binnmu);
-                } else {
-                    println!("{}", binnmu);
-                    if !self.base_options.dry_run {
-                        binnmu.execute()?;
-                        scheduled_binnmus.store(&binnmu);
-                    }
+        println!("# Rebuild on buildds for testing migration");
+        for binnmu in to_binnmu {
+            if scheduled_binnmus.contains(&binnmu) {
+                info!("{}: skipping, already scheduled", binnmu);
+            } else {
+                println!("{}", binnmu);
+                if !self.base_options.dry_run {
+                    binnmu.execute()?;
+                    scheduled_binnmus.store(&binnmu);
                 }
             }
         }

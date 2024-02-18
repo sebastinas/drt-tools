@@ -25,7 +25,7 @@ use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
 use nmu_transition::{NMUTransition, NMUTransitionOptions};
 use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
-use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
+use process_excuses::ProcessExcuses;
 use process_unblocks::ProcessUnblocks;
 use usrmerged::{UsrMerged, UsrMergedOptions};
 
@@ -80,7 +80,7 @@ struct DrtToolsOptions {
 #[derive(Debug, Subcommand)]
 enum DrtToolsCommands {
     /// Process current excuses.yaml and prepare a list of binNMUs required for testing migration.
-    ProcessExcuses(ProcessExcusesOptions),
+    ProcessExcuses,
     /// Prepare and schedule binNMUs for a transition.
     ///
     /// This command expects a list of packages with their respective versions
@@ -196,8 +196,8 @@ async fn main() -> Result<()> {
         config::Cache::new(opts.base_options.force_download, &opts.base_options.mirror).await?;
     let command: Box<dyn AsyncCommand> =
         match opts.command {
-            DrtToolsCommands::ProcessExcuses(pe_opts) => {
-                Box::new(ProcessExcuses::new(&cache, &opts.base_options, pe_opts))
+            DrtToolsCommands::ProcessExcuses => {
+                Box::new(ProcessExcuses::new(&cache, &opts.base_options))
             }
             DrtToolsCommands::NMUTransition(pbm_opts) => {
                 Box::new(NMUTransition::new(&cache, &opts.base_options, pbm_opts))
