@@ -16,7 +16,7 @@ use log::{debug, info, trace, warn};
 use smallvec::SmallVec;
 
 use crate::config::{self, CacheEntries};
-use crate::{Command, Downloads};
+use crate::{AsyncCommand, Downloads};
 
 type SmallString = smartstring::alias::String;
 
@@ -171,7 +171,7 @@ impl<'a> UsrMerged<'a> {
 }
 
 #[async_trait]
-impl Command for UsrMerged<'_> {
+impl AsyncCommand for UsrMerged<'_> {
     async fn run(&self) -> Result<()> {
         let release_architectures = self.cache.architectures_for_suite(Suite::Testing(None));
         let stable_architectures = self.cache.architectures_for_suite(Suite::Stable(None));

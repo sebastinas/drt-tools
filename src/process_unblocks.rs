@@ -9,7 +9,7 @@ use log::{debug, error, trace};
 
 use crate::{
     config::{self, default_progress_template, CacheEntries},
-    Command, Downloads,
+    AsyncCommand, Downloads,
 };
 
 pub(crate) struct ProcessUnblocks<'a> {
@@ -92,7 +92,7 @@ impl<'a> ProcessUnblocks<'a> {
 }
 
 #[async_trait]
-impl Command for ProcessUnblocks<'_> {
+impl AsyncCommand for ProcessUnblocks<'_> {
     async fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;

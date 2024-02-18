@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::{self, default_progress_template, CacheEntries},
     source_packages::SourcePackages,
-    BaseOptions, Command, Downloads,
+    AsyncCommand, BaseOptions, Downloads,
 };
 
 const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
@@ -215,7 +215,7 @@ impl<'a> ProcessExcuses<'a> {
 }
 
 #[async_trait]
-impl Command for ProcessExcuses<'_> {
+impl AsyncCommand for ProcessExcuses<'_> {
     async fn run(&self) -> Result<()> {
         let source_packages =
             SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;

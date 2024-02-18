@@ -19,7 +19,7 @@ use crate::{
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, BinNMUsOptions,
 };
-use crate::{Command, Downloads};
+use crate::{AsyncCommand, Downloads};
 
 #[derive(Debug, Parser)]
 pub(crate) struct NMUTransitionOptions {
@@ -57,7 +57,7 @@ impl<'a> NMUTransition<'a> {
 }
 
 #[async_trait]
-impl Command for NMUTransition<'_> {
+impl AsyncCommand for NMUTransition<'_> {
     async fn run(&self) -> Result<()> {
         let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if !self.base_options.force_processing {

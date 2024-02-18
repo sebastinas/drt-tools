@@ -28,7 +28,7 @@ use crate::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     udd_bugs::{load_bugs_from_reader, UDDBugs},
-    BaseOptions, Command, Downloads,
+    AsyncCommand, BaseOptions, Downloads,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -225,7 +225,7 @@ impl<'a> NMUVersionSkew<'a> {
 }
 
 #[async_trait]
-impl Command for NMUVersionSkew<'_> {
+impl AsyncCommand for NMUVersionSkew<'_> {
     async fn run(&self) -> Result<()> {
         let suite = self.options.suite.into();
         let sources = self.load_version_skew(suite)?;

@@ -27,7 +27,7 @@ use crate::{
     source_packages::SourcePackages,
     BaseOptions, BinNMUsOptions,
 };
-use crate::{Command, Downloads};
+use crate::{AsyncCommand, Downloads};
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -187,7 +187,7 @@ impl<'a> BinNMUBuildinfo<'a> {
 }
 
 #[async_trait]
-impl Command for BinNMUBuildinfo<'_> {
+impl AsyncCommand for BinNMUBuildinfo<'_> {
     async fn run(&self) -> Result<()> {
         // store latest version of all source packages
         let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();

@@ -143,14 +143,14 @@ pub(crate) trait Downloads {
 }
 
 #[async_trait]
-pub(crate) trait Command: Downloads {
+pub(crate) trait AsyncCommand: Downloads {
     /// Execture the command
     async fn run(&self) -> Result<()>;
 }
 
 async fn execute_command(
     cache: &config::Cache,
-    command: &dyn Command,
+    command: &dyn AsyncCommand,
     force_processing: bool,
 ) -> Result<()> {
     let to_download = command.required_downloads();
@@ -179,7 +179,7 @@ async fn main() -> Result<()> {
 
     let cache =
         config::Cache::new(opts.base_options.force_download, &opts.base_options.mirror).await?;
-    let command: Box<dyn Command> =
+    let command: Box<dyn AsyncCommand> =
         match opts.command {
             DrtToolsCommands::ProcessExcuses(pe_opts) => {
                 Box::new(ProcessExcuses::new(&cache, &opts.base_options, pe_opts))

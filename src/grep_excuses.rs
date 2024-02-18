@@ -12,7 +12,7 @@ use clap::Parser;
 
 use crate::{
     config::{self, CacheEntries},
-    Command, Downloads,
+    AsyncCommand, Downloads,
 };
 
 #[derive(Debug, Parser)]
@@ -68,7 +68,7 @@ impl<'a> GrepExcuses<'a> {
 }
 
 #[async_trait]
-impl Command for GrepExcuses<'_> {
+impl AsyncCommand for GrepExcuses<'_> {
     async fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;

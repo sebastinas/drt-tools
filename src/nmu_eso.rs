@@ -30,7 +30,7 @@ use crate::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     udd_bugs::{load_bugs_from_reader, UDDBugs},
-    BaseOptions, Command, Downloads,
+    AsyncCommand, BaseOptions, Downloads,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -440,7 +440,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 }
 
 #[async_trait]
-impl Command for NMUOutdatedBuiltUsing<'_> {
+impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
     async fn run(&self) -> Result<()> {
         let suite = self.options.suite.into();
         let eso_sources = self.load_eso(self.options.field, suite)?;
