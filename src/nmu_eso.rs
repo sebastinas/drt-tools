@@ -188,12 +188,12 @@ impl Iterator for BinaryPackageParser<'_> {
 
             let source_package = if let Some(source_package) = &binary_package.source {
                 match source_package.split_whitespace().next() {
-                    Some(package) => package.into(),
+                    Some(package) => package,
                     None => continue,
                 }
             } else {
                 // no Source set, so Source == Package
-                binary_package.package
+                &binary_package.package
             };
 
             let built_using: HashSet<_> = built_using
@@ -208,7 +208,7 @@ impl Iterator for BinaryPackageParser<'_> {
                         // rebuild those packages in any case.
                         trace!(
                             "Package '{}' refers to non-existing source package '{}'.",
-                            source_package,
+                            binary_package.package,
                             source
                         );
                         true
@@ -226,7 +226,7 @@ impl Iterator for BinaryPackageParser<'_> {
             }
 
             return Some((
-                source_package,
+                source_package.into(),
                 binary_package.version.without_binnmu_version(),
                 built_using,
             ));
