@@ -3,13 +3,12 @@
 
 use anyhow::Result;
 use assorted_debian_utils::excuses::{self, ExcusesItem, Verdict};
-use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, trace};
 
 use crate::{
     config::{self, default_progress_template, CacheEntries},
-    AsyncCommand, Downloads,
+    Command, Downloads,
 };
 
 pub(crate) struct ProcessUnblocks<'a> {
@@ -91,9 +90,8 @@ impl<'a> ProcessUnblocks<'a> {
     }
 }
 
-#[async_trait]
-impl AsyncCommand for ProcessUnblocks<'_> {
-    async fn run(&self) -> Result<()> {
+impl Command for ProcessUnblocks<'_> {
+    fn run(&self) -> Result<()> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 
