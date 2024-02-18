@@ -19,6 +19,7 @@ mod process_unblocks;
 pub(crate) mod source_packages;
 pub(crate) mod udd_bugs;
 mod usrmerged;
+pub(crate) mod utils;
 
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};

@@ -22,6 +22,7 @@ use serde::Deserialize;
 
 use crate::config::{default_progress_style, default_progress_template};
 use crate::udd_bugs::{load_bugs_from_reader, UDDBugs};
+use crate::utils::execute_wb_commands;
 use crate::{
     config::{Cache, CacheEntries},
     source_packages::SourcePackages,
@@ -223,14 +224,7 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
             );
         }
 
-        for commands in wb_commands {
-            println!("{}", commands);
-            if !self.base_options.dry_run {
-                commands.execute()?;
-            }
-        }
-
-        Ok(())
+        execute_wb_commands(wb_commands, self.base_options.dry_run).await
     }
 }
 

@@ -28,6 +28,7 @@ use crate::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     udd_bugs::{load_bugs_from_reader, UDDBugs},
+    utils::execute_wb_commands,
     AsyncCommand, BaseOptions, Downloads,
 };
 
@@ -230,6 +231,7 @@ impl AsyncCommand for NMUVersionSkew<'_> {
         let suite = self.options.suite.into();
         let sources = self.load_version_skew(suite)?;
 
+        let mut wb_commands = Vec::new();
         for (source, version, architectures) in sources {
             let mut source = SourceSpecifier::new(&source);
             source.with_suite(self.options.suite);
@@ -241,14 +243,10 @@ impl AsyncCommand for NMUVersionSkew<'_> {
             binnmu.with_build_priority(self.options.build_priority);
             binnmu.with_nmu_version(version.binnmu_version().unwrap());
 
-            let command = binnmu.build();
-            println!("{}", command);
-            if !self.base_options.dry_run {
-                command.execute()?;
-            }
+            wb_commands.push(binnmu.build());
         }
 
-        Ok(())
+        execute_wb_commands(wb_commands, self.base_options.dry_run).await
     }
 }
 

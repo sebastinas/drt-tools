@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::{self, default_progress_template, CacheEntries},
     source_packages::SourcePackages,
+    utils::execute_wb_commands,
     AsyncCommand, BaseOptions, Downloads,
 };
 
@@ -208,6 +209,9 @@ impl AsyncCommand for ProcessExcuses<'_> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 
+        // load already scheduled binNMUs from cache
+        let mut scheduled_binnmus = self.load_scheduled_binnmus();
+
         // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
         pb.set_style(config::default_progress_style().template(default_progress_template())?);
@@ -217,23 +221,21 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .iter()
             .progress_with(pb)
             .filter_map(|item| Self::build_binnmu(item, &source_packages))
+            .filter(|command| {
+                if scheduled_binnmus.contains(command) {
+                    info!("{}: skipping, already scheduled", command);
+                    false
+                } else {
+                    if !self.base_options.dry_run {
+                        scheduled_binnmus.store(command);
+                    }
+                    true
+                }
+            })
             .collect();
 
-        // load already scheduled binNMUs from cache
-        let mut scheduled_binnmus = self.load_scheduled_binnmus();
-
         println!("# Rebuild on buildds for testing migration");
-        for binnmu in to_binnmu {
-            if scheduled_binnmus.contains(&binnmu) {
-                info!("{}: skipping, already scheduled", binnmu);
-            } else {
-                println!("{}", binnmu);
-                if !self.base_options.dry_run {
-                    binnmu.execute()?;
-                    scheduled_binnmus.store(&binnmu);
-                }
-            }
-        }
+        execute_wb_commands(to_binnmu, self.base_options.dry_run).await?;
 
         // store scheduled binNMUs in cache
         self.store_scheduled_binnmus(scheduled_binnmus)

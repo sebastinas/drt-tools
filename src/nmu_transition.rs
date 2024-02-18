@@ -17,9 +17,9 @@ use log::{debug, warn};
 use crate::{
     config::{self, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
-    BaseOptions, BinNMUsOptions,
+    utils::execute_wb_commands,
+    AsyncCommand, BaseOptions, BinNMUsOptions, Downloads,
 };
-use crate::{AsyncCommand, Downloads};
 
 #[derive(Debug, Parser)]
 pub(crate) struct NMUTransitionOptions {
@@ -128,14 +128,7 @@ impl AsyncCommand for NMUTransition<'_> {
             wb_commands.push(binnmu.build())
         }
 
-        for commands in wb_commands {
-            println!("{}", commands);
-            if !self.base_options.dry_run {
-                commands.execute()?;
-            }
-        }
-
-        Ok(())
+        execute_wb_commands(wb_commands, self.base_options.dry_run).await
     }
 }
 

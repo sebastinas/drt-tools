@@ -30,6 +30,7 @@ use crate::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     udd_bugs::{load_bugs_from_reader, UDDBugs},
+    utils::execute_wb_commands,
     AsyncCommand, BaseOptions, Downloads,
 };
 
@@ -445,6 +446,7 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
         let suite = self.options.suite.into();
         let eso_sources = self.load_eso(self.options.field, suite)?;
 
+        let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
             let mut source = SourceSpecifier::new(&outdated_package.source);
             source.with_version(&outdated_package.version);
@@ -465,14 +467,10 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
             let mut binnmu = BinNMU::new(&source, &message)?;
             binnmu.with_build_priority(self.options.build_priority);
 
-            let command = binnmu.build();
-            println!("{}", command);
-            if !self.base_options.dry_run {
-                command.execute()?;
-            }
+            wb_commands.push(binnmu.build())
         }
 
-        Ok(())
+        execute_wb_commands(wb_commands, self.base_options.dry_run).await
     }
 }
 
