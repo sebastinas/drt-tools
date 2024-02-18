@@ -18,7 +18,6 @@ mod process_excuses;
 mod process_unblocks;
 pub(crate) mod source_packages;
 pub(crate) mod udd_bugs;
-mod usrmerged;
 pub(crate) mod utils;
 
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
@@ -28,7 +27,6 @@ use nmu_transition::{NMUTransition, NMUTransitionOptions};
 use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
 use process_excuses::ProcessExcuses;
 use process_unblocks::ProcessUnblocks;
-use usrmerged::{UsrMerged, UsrMergedOptions};
 
 #[derive(Debug, Parser)]
 pub(crate) struct BaseOptions {
@@ -109,17 +107,6 @@ enum DrtToolsCommands {
     /// schedules binNMUs for packages with outdated `Built-Using` fields.
     #[clap(name = "nmu-eso")]
     NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
-    /// Check state of /usr-merged bugs
-    ///
-    /// Currently, a moratorium is in place that forbids files to move from
-    /// `/{bin,lib}` to `/usr/{bin,lib}` or vice-versa if the file moves from
-    /// one binary package to another at the same time. This tool tries to find
-    /// all occurrences of all files violating this rule between stable and
-    /// testing.
-    ///
-    /// Note that this subcommand requires at least 2 GB of available RAM.
-    #[clap(name = "usrmerged")]
-    UsrMerged(UsrMergedOptions),
     /// Prepare a list of unblocks
     ///
     /// This command parses the current excuses and prepares a list of packages
@@ -210,7 +197,6 @@ async fn main() -> Result<()> {
             DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => Box::new(
                 NMUOutdatedBuiltUsing::new(&cache, &opts.base_options, eso_opts),
             ),
-            DrtToolsCommands::UsrMerged(um_opts) => Box::new(UsrMerged::new(&cache, um_opts)),
             DrtToolsCommands::ProcessUnblocks => Box::new(ProcessUnblocks::new(&cache)),
             DrtToolsCommands::NMUVersionSkew(vs_opts) => {
                 Box::new(NMUVersionSkew::new(&cache, &opts.base_options, vs_opts))
