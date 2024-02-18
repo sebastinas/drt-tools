@@ -22,7 +22,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
 use itertools::Itertools;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use serde::Deserialize;
 
 use crate::{
@@ -44,6 +44,8 @@ struct BinaryPackage {
     built_using: Option<String>,
     #[serde(rename = "Static-Built-Using")]
     static_built_using: Option<String>,
+    #[serde(rename = "X-Cargo-Built-Using")]
+    x_cargo_built_using: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -57,6 +59,7 @@ struct SourcePackage {
 pub enum Field {
     BuiltUsing,
     StaticBuiltUsing,
+    XCargoBuiltUsing,
 }
 
 impl fmt::Display for Field {
@@ -64,6 +67,7 @@ impl fmt::Display for Field {
         match self {
             Field::BuiltUsing => write!(f, "Built-Using"),
             Field::StaticBuiltUsing => write!(f, "Static-Built-Using"),
+            Field::XCargoBuiltUsing => write!(f, "X-Cargo-Built-Using"),
         }
     }
 }
@@ -84,6 +88,7 @@ impl FromStr for Field {
         match s {
             "Built-Using" => Ok(Field::BuiltUsing),
             "Static-Built-Using" => Ok(Field::StaticBuiltUsing),
+            "X-Cargo-Built-Using" => Ok(Field::XCargoBuiltUsing),
             _ => Err(ParseError),
         }
     }
@@ -182,6 +187,7 @@ impl Iterator for BinaryPackageParser<'_> {
             let Some(ref built_using) = (match self.field {
                 Field::BuiltUsing => binary_package.built_using,
                 Field::StaticBuiltUsing => binary_package.static_built_using,
+                Field::XCargoBuiltUsing => binary_package.x_cargo_built_using,
             }) else {
                 continue;
             };
@@ -196,9 +202,23 @@ impl Iterator for BinaryPackageParser<'_> {
                 &binary_package.package
             };
 
+            // remove trailing spaces found in X-Cargo-Built-Using
+            let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
+            // remove trailing commas found in X-Cargo-Built-Using
+            let built_using = built_using.strip_suffix(',').unwrap_or(built_using);
+
             let built_using: HashSet<_> = built_using
                 .split(", ")
-                .filter_map(split_dependency)
+                .filter_map(|dependency| {
+                    let split = split_dependency(dependency);
+                    if split.is_none() {
+                        warn!(
+                            "Package '{}' contains invalid dependency in {}: {}",
+                            binary_package.package, self.field, dependency
+                        );
+                    }
+                    split
+                })
                 .filter(|(source, version)| {
                     if let Some(max_version) = self.sources.get(source) {
                         version < max_version
