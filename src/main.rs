@@ -142,10 +142,25 @@ pub(crate) trait Downloads {
     }
 }
 
+pub(crate) trait Command: Downloads {
+    /// Execture the command
+    fn run(&self) -> Result<()>;
+}
+
 #[async_trait]
 pub(crate) trait AsyncCommand: Downloads {
     /// Execture the command
     async fn run(&self) -> Result<()>;
+}
+
+#[async_trait]
+impl<T> AsyncCommand for T
+where
+    T: Command + Sync,
+{
+    async fn run(&self) -> Result<()> {
+        <Self as Command>::run(self)
+    }
 }
 
 async fn execute_command(
