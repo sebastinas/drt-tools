@@ -9,7 +9,7 @@ use log::{debug, error, trace};
 
 use crate::{
     config::{self, default_progress_template, CacheEntries},
-    Command,
+    Command, Downloads,
 };
 
 pub(crate) struct ProcessUnblocks<'a> {
@@ -114,7 +114,9 @@ impl Command for ProcessUnblocks<'_> {
         }
         Ok(())
     }
+}
 
+impl Downloads for ProcessUnblocks<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
         [CacheEntries::Excuses].into()
     }

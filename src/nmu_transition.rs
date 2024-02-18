@@ -14,12 +14,12 @@ use async_trait::async_trait;
 use clap::Parser;
 use log::{debug, warn};
 
-use crate::Command;
 use crate::{
     config::{self, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     BaseOptions, BinNMUsOptions,
 };
+use crate::{Command, Downloads};
 
 #[derive(Debug, Parser)]
 pub(crate) struct NMUTransitionOptions {
@@ -137,7 +137,9 @@ impl Command for NMUTransition<'_> {
 
         Ok(())
     }
+}
 
+impl Downloads for NMUTransition<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
         vec![CacheEntries::FTBFSBugs(
             self.options.binnmu_options.suite.into(),

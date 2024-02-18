@@ -28,7 +28,7 @@ use crate::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     udd_bugs::{load_bugs_from_reader, UDDBugs},
-    BaseOptions, Command,
+    BaseOptions, Command, Downloads,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -250,7 +250,9 @@ impl Command for NMUVersionSkew<'_> {
 
         Ok(())
     }
+}
 
+impl Downloads for NMUVersionSkew<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
         vec![CacheEntries::FTBFSBugs(self.options.suite.into())]
     }

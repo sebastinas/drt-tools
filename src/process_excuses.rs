@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::{self, default_progress_template, CacheEntries},
     source_packages::SourcePackages,
-    BaseOptions, Command,
+    BaseOptions, Command, Downloads,
 };
 
 const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
@@ -254,7 +254,9 @@ impl Command for ProcessExcuses<'_> {
         // store scheduled binNMUs in cache
         self.store_scheduled_binnmus(scheduled_binnmus)
     }
+}
 
+impl Downloads for ProcessExcuses<'_> {
     fn required_downloads(&self) -> Vec<CacheEntries> {
         vec![CacheEntries::Excuses]
     }

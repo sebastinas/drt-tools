@@ -22,12 +22,12 @@ use serde::Deserialize;
 
 use crate::config::{default_progress_style, default_progress_template};
 use crate::udd_bugs::{load_bugs_from_reader, UDDBugs};
-use crate::Command;
 use crate::{
     config::{Cache, CacheEntries},
     source_packages::SourcePackages,
     BaseOptions, BinNMUsOptions,
 };
+use crate::{Command, Downloads};
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -232,7 +232,9 @@ impl Command for BinNMUBuildinfo<'_> {
 
         Ok(())
     }
+}
 
+impl Downloads for BinNMUBuildinfo<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
         [
             CacheEntries::Packages(self.options.binnmu_options.suite.into()),

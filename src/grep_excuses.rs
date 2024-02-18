@@ -12,7 +12,7 @@ use clap::Parser;
 
 use crate::{
     config::{self, CacheEntries},
-    Command,
+    Command, Downloads,
 };
 
 #[derive(Debug, Parser)]
@@ -97,7 +97,9 @@ impl Command for GrepExcuses<'_> {
 
         Ok(())
     }
+}
 
+impl Downloads for GrepExcuses<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
         vec![CacheEntries::Excuses, CacheEntries::AutoRemovals]
     }

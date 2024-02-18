@@ -130,8 +130,7 @@ enum DrtToolsCommands {
     NMUVersionSkew(NMUVersionSkewOptions),
 }
 
-#[async_trait]
-pub(crate) trait Command {
+pub(crate) trait Downloads {
     /// Cache entries that need to be downloaded and in fresh state.
     fn required_downloads(&self) -> Vec<CacheEntries> {
         Vec::new()
@@ -141,7 +140,10 @@ pub(crate) trait Command {
     fn downloads(&self) -> Vec<CacheEntries> {
         Vec::new()
     }
+}
 
+#[async_trait]
+pub(crate) trait Command: Downloads {
     /// Execture the command
     async fn run(&self) -> Result<()>;
 }

@@ -16,7 +16,7 @@ use log::{debug, info, trace, warn};
 use smallvec::SmallVec;
 
 use crate::config::{self, CacheEntries};
-use crate::Command;
+use crate::{Command, Downloads};
 
 type SmallString = smartstring::alias::String;
 
@@ -353,7 +353,9 @@ impl Command for UsrMerged<'_> {
 
         Ok(())
     }
+}
 
+impl Downloads for UsrMerged<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
         [
             CacheEntries::Contents(Suite::Stable(None)),
