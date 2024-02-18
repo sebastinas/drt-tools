@@ -56,6 +56,7 @@ struct SourcePackage {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum Field {
     BuiltUsing,
     StaticBuiltUsing,
