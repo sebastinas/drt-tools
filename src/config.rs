@@ -171,7 +171,9 @@ impl Downloader {
         } else if compressor == Compressor::Gz {
             let mut writer = GzDecoder::new(file);
             self.download_internal(res, &pb, &mut writer).await?;
-            writer.try_finish()?;
+            writer
+                .try_finish()
+                .with_context(|| format!("Failed to decompress {}", url))?;
         } else {
             self.download_internal(res, &pb, &mut file).await?;
         }
