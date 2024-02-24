@@ -6,13 +6,13 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::{collections::HashSet, fs::File};
 
-use anyhow::{anyhow, Result};
-use assorted_debian_utils::archive::{Codename, Suite};
-use assorted_debian_utils::rfc822_like;
-use assorted_debian_utils::version::PackageVersion;
+use anyhow::{anyhow, Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
+    archive::{Codename, Suite},
     buildinfo::{self, Buildinfo},
+    rfc822_like,
+    version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
@@ -20,15 +20,13 @@ use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
-use crate::config::{default_progress_style, default_progress_template};
-use crate::udd_bugs::{load_bugs_from_reader, UDDBugs};
-use crate::utils::execute_wb_commands;
 use crate::{
-    config::{Cache, CacheEntries},
+    config::{default_progress_style, default_progress_template, Cache, CacheEntries},
     source_packages::SourcePackages,
-    BaseOptions, BinNMUsOptions,
+    udd_bugs::{load_bugs_from_reader, UDDBugs},
+    utils::execute_wb_commands,
+    AsyncCommand, BaseOptions, BinNMUsOptions, Downloads,
 };
-use crate::{AsyncCommand, Downloads};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -67,7 +65,10 @@ impl<'a> BinNMUBuildinfo<'a> {
 
     fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<(String, PackageVersion)>> {
         // read Package file
-        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
+        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())
+            .with_context(|| {
+                format!("Failed to parse package file '{}'", path.as_ref().display())
+            })?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(default_progress_style().template(default_progress_template())?);
         pb.set_message(format!("Processing {}", path.as_ref().display()));
