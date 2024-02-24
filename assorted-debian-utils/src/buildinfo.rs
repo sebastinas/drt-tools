@@ -5,51 +5,17 @@
 //!
 //! This module provides `Buildinfo` to represent some fields of a `.buildinfo` file.
 
-use std::{fmt::Formatter, io::BufRead};
+use std::io::BufRead;
 
-use serde::{
-    de::{self, Visitor},
-    Deserialize, Deserializer,
-};
+use serde::{Deserialize, Deserializer};
 
-use crate::{architectures::Architecture, version::PackageVersion};
+use crate::{architectures::Architecture, utils::WhitespaceListVisitor, version::PackageVersion};
 
 fn deserialize_architecture<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    struct StringVisitor;
-
-    impl<'de> Visitor<'de> for StringVisitor {
-        type Value = Vec<Architecture>;
-
-        fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-            formatter.write_str("one or more architectures")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            let mut result = vec![];
-            for arch in v.split_whitespace() {
-                match arch.try_into() {
-                    Ok(arch) => {
-                        result.push(arch);
-                    }
-                    Err(_) => {
-                        return Err(E::custom(format!("invalid architecture: {}", arch)));
-                    }
-                }
-            }
-            match result.len() {
-                0 => Err(E::custom("no architecture found")),
-                _ => Ok(result),
-            }
-        }
-    }
-
-    deserializer.deserialize_str(StringVisitor)
+    deserializer.deserialize_str(WhitespaceListVisitor::<Architecture>::new())
 }
 
 /// A build info
