@@ -297,7 +297,9 @@ impl<'de> Deserialize<'de> for PackageVersion {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<PackageVersion>::new())
+        deserializer.deserialize_str(TryFromStrVisitor::<PackageVersion>::new(
+            "a package version",
+        ))
     }
 }
 

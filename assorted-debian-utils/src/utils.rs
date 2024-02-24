@@ -63,11 +63,17 @@ where
 }
 
 /// Helper to parse anything that implements `TryFrom<&str>``
-pub(crate) struct TryFromStrVisitor<T>(PhantomData<T>);
+pub(crate) struct TryFromStrVisitor<T> {
+    expecting_message: &'static str,
+    phantom: PhantomData<T>,
+}
 
 impl<T> TryFromStrVisitor<T> {
-    pub(crate) fn new() -> Self {
-        Self(PhantomData)
+    pub(crate) fn new(expecting_message: &'static str) -> Self {
+        Self {
+            expecting_message,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -79,13 +85,13 @@ where
     type Value = T;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        write!(formatter, "a {}", type_name::<T>())
+        write!(formatter, "{}", self.expecting_message)
     }
 
     fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        T::try_from(s).map_err(E::custom)
+        T::try_from(s).map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &self))
     }
 }
