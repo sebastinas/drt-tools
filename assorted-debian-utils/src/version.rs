@@ -28,7 +28,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::utils::TryFromStrVisitor;

@@ -32,7 +32,7 @@ impl<'de> de::Visitor<'de> for DateTimeVisitor {
     }
 }
 
-/// Helper to parse whitespace seperated list of T
+/// Helper to parse whitespace separated list of `T`s
 pub(crate) struct WhitespaceListVisitor<T>(PhantomData<T>);
 
 impl<T> WhitespaceListVisitor<T> {
