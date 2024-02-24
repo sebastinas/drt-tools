@@ -31,6 +31,7 @@ use std::{
 use serde::{de, Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::utils::TryFromStrVisitor;
 pub use crate::ParseError;
 
 /// Compare non-digits part of a version
@@ -296,27 +297,7 @@ impl<'de> Deserialize<'de> for PackageVersion {
     where
         D: serde::Deserializer<'de>,
     {
-        struct VersionVisitor;
-
-        impl<'de> de::Visitor<'de> for VersionVisitor {
-            type Value = PackageVersion;
-
-            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                write!(formatter, "a version string")
-            }
-
-            fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                match PackageVersion::try_from(s) {
-                    Ok(version) => Ok(version),
-                    Err(_) => Err(de::Error::invalid_value(de::Unexpected::Str(s), &self)),
-                }
-            }
-        }
-
-        deserializer.deserialize_str(VersionVisitor)
+        deserializer.deserialize_str(TryFromStrVisitor::<PackageVersion>::new())
     }
 }
 
