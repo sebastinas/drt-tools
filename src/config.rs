@@ -31,7 +31,7 @@ pub(crate) fn default_progress_template() -> &'static str {
     "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})"
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub(crate) enum CacheEntries {
     Excuses,
     Packages(Suite),
@@ -41,7 +41,7 @@ pub(crate) enum CacheEntries {
     Release(Suite),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub(crate) enum CacheState {
     NoUpdate,
     FreshFiles,
@@ -54,7 +54,24 @@ enum Compressor {
     None,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
+struct DownloadInfo {
+    url: Cow<'static, str>,
+    destination: Cow<'static, str>,
+    compressor: Compressor,
+}
+
+impl DownloadInfo {
+    fn new(url: Cow<'static, str>, destination: Cow<'static, str>) -> Self {
+        Self {
+            url,
+            destination,
+            compressor: Compressor::None,
+        }
+    }
+}
+
+#[derive(Clone)]
 struct Downloader {
     always_download: bool,
     client: Client,
@@ -189,44 +206,26 @@ impl Downloader {
     }
 }
 
-fn excuses_urls() -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
-    vec![(
-        "https://release.debian.org/britney/excuses.yaml.gz".into(),
-        Compressor::Gz,
-        "excuses.yaml".into(),
-    )]
+fn excuses_urls() -> Vec<DownloadInfo> {
+    vec![DownloadInfo {
+        url: "https://release.debian.org/britney/excuses.yaml.gz".into(),
+        compressor: Compressor::Gz,
+        destination: "excuses.yaml".into(),
+    }]
 }
 
-fn ftbfs_bugs_urls(codename: Codename) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
-    vec![(
+fn ftbfs_bugs_urls(codename: Codename) -> Vec<DownloadInfo> {
+    vec![DownloadInfo::new (
         format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename).into(),
-        Compressor::None,
         format!("udd-ftbfs-bugs-{}.yaml", codename).into()
     )]
 }
 
-fn auto_removals_urls() -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
-    vec![(
+fn auto_removals_urls() -> Vec<DownloadInfo> {
+    vec![DownloadInfo::new(
         "https://udd.debian.org/cgi-bin/autoremovals.yaml.cgi".into(),
-        Compressor::None,
         "autoremovals.yaml".into(),
     )]
-}
-
-#[derive(Debug)]
-pub(crate) struct Cache {
-    base_directory: BaseDirectories,
-    downloader: Downloader,
-    archive_mirror: String,
-    unstable: release::Release,
-    testing: release::Release,
-    stable: release::Release,
-    oldstable: release::Release,
-    experimental: release::Release,
-    stable_proposed_updates: release::Release,
-    oldstable_proposed_updates: release::Release,
-    stable_backports: release::Release,
-    // oldstable_backports: release::Release,
 }
 
 fn empty_release() -> release::Release {
@@ -244,6 +243,21 @@ fn empty_release() -> release::Release {
         description: Default::default(),
         files: Default::default(),
     }
+}
+
+pub(crate) struct Cache {
+    base_directory: BaseDirectories,
+    downloader: Downloader,
+    archive_mirror: String,
+    unstable: release::Release,
+    testing: release::Release,
+    stable: release::Release,
+    oldstable: release::Release,
+    experimental: release::Release,
+    stable_proposed_updates: release::Release,
+    oldstable_proposed_updates: release::Release,
+    stable_backports: release::Release,
+    // oldstable_backports: release::Release,
 }
 
 impl Cache {
@@ -338,46 +352,35 @@ impl Cache {
         )
     }
 
-    fn packages_urls(
-        &self,
-        suite: Suite,
-    ) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
+    fn packages_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
         self.architectures_for_suite(suite)
             .into_iter()
-            .map(|architecture| {
-                (
-                    self.lookup_url(suite, &format!("main/binary-{}/Packages.xz", architecture))
-                        .into(),
-                    Compressor::Xz,
-                    format!("Packages_{}_{}", suite, architecture).into(),
-                )
+            .map(|architecture| DownloadInfo {
+                url: self
+                    .lookup_url(suite, &format!("main/binary-{}/Packages.xz", architecture))
+                    .into(),
+                compressor: Compressor::Xz,
+                destination: format!("Packages_{}_{}", suite, architecture).into(),
             })
             .collect()
     }
 
-    fn source_urls(&self, suite: Suite) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
-        vec![(
-            self.lookup_url(suite, "main/source/Sources.xz").into(),
-            Compressor::Xz,
-            format!("Sources_{}", suite).into(),
-        )]
+    fn source_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
+        vec![DownloadInfo {
+            url: self.lookup_url(suite, "main/source/Sources.xz").into(),
+            compressor: Compressor::Xz,
+            destination: format!("Sources_{}", suite).into(),
+        }]
     }
 
-    fn release_urls(
-        &self,
-        suite: Suite,
-    ) -> Vec<(Cow<'static, str>, Compressor, Cow<'static, str>)> {
-        vec![(
+    fn release_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
+        vec![DownloadInfo::new(
             format!("{}/dists/{}/Release", self.archive_mirror, suite).into(),
-            Compressor::None,
             format!("Release_{}", suite).into(),
         )]
     }
 
-    fn cache_entries_to_urls_dests(
-        &self,
-        entries: &[CacheEntries],
-    ) -> Result<Vec<(Cow<'static, str>, Compressor, PathBuf)>> {
+    fn cache_entries_to_urls_dests(&self, entries: &[CacheEntries]) -> Vec<DownloadInfo> {
         entries
             .iter()
             .flat_map(|entry| {
@@ -391,14 +394,11 @@ impl Cache {
                 }
                 .into_iter()
             })
-            .map(|(url, compressor, dest)| {
-                Ok((url, compressor, self.get_cache_path(dest.as_ref())?))
-            })
             .collect()
     }
 
     pub async fn download(&self, entries: &[CacheEntries]) -> Result<CacheState> {
-        let urls_and_dests = self.cache_entries_to_urls_dests(entries)?;
+        let urls_and_dests = self.cache_entries_to_urls_dests(entries);
         trace!(
             "Scheduling {} URLs to download: {:?}",
             urls_and_dests.len(),
@@ -407,12 +407,15 @@ impl Cache {
 
         let mp = MultiProgress::new();
         let mut join_handles = JoinSet::new();
-        for (url, compressor, dest) in urls_and_dests {
+        for download_info in urls_and_dests {
+            let dest = self.get_cache_path(download_info.destination.as_ref())?;
             let downloader = self.downloader.clone();
             let mp = mp.clone();
             join_handles.spawn(async move {
-                debug!("Starting task to download {}", url);
-                downloader.download_file(&url, dest, compressor, mp).await
+                debug!("Starting task to download {}", download_info.url);
+                downloader
+                    .download_file(&download_info.url, dest, download_info.compressor, mp)
+                    .await
             });
         }
 
@@ -420,11 +423,7 @@ impl Cache {
         while let Some(res) = join_handles.join_next().await {
             match res {
                 Ok(download_result) => match download_result {
-                    Ok(CacheState::FreshFiles) => {
-                        if state.is_ok() {
-                            state = Ok(CacheState::FreshFiles);
-                        }
-                    }
+                    new_state @ Ok(CacheState::FreshFiles) => state = state.and(new_state),
                     Err(err) => state = Err(err),
                     _ => {}
                 },
