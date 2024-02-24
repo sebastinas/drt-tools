@@ -31,7 +31,6 @@ pub(crate) fn default_progress_template() -> &'static str {
     "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})"
 }
 
-#[derive(Clone, Copy)]
 pub(crate) enum CacheEntries {
     Excuses,
     Packages(Suite),

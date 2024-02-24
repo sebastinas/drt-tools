@@ -53,7 +53,7 @@ pub struct UDDBug {
     pub title: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct UDDBugs {
     bugs: Vec<UDDBug>,
     source_index: HashMap<String, Vec<usize>>,

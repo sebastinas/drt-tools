@@ -30,7 +30,7 @@ use crate::{
 };
 use crate::{AsyncCommand, Downloads};
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
     source: Option<String>,
