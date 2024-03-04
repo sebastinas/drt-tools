@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Sebastian Ramacher
+// Copyright 2021-2024 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use anyhow::{Context, Result};
@@ -98,7 +98,10 @@ enum DrtToolsCommands {
     /// Prepare binNMUs based on a list of buildinfo files
     #[clap(name = "nmu-buildinfo")]
     NMUBuildinfo(BinNMUBuildinfoOptions),
-    /// Grep excuses
+    /// Grep excuses for a list of packages and/or maintainers
+    ///
+    /// This command checks `britney`'s excuses and autoremovals for the given
+    /// packages and or maintainers.
     #[clap(name = "grep-excuses")]
     GrepExcuses(GrepExcusesOptions),
     /// Prepare binNMUs to rebuild for outdated Built-Using

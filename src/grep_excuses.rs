@@ -1,5 +1,7 @@
-// Copyright 2022-2023 Sebastian Ramacher
+// Copyright 2022-2024 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
+use std::fmt::Display;
 
 use anyhow::Result;
 use assorted_debian_utils::{
@@ -55,7 +57,14 @@ impl<'a> GrepExcuses<'a> {
         }
     }
 
-    fn print_autoremoal(&self, autoremoval: &AutoRemoval) {
+    fn print_autoremoval(&self, autoremoval: &AutoRemoval) {
+        fn print_indented<T>(items: &[T])
+        where
+            T: Display,
+        {
+            items.iter().for_each(|item| println!("    - {}", item))
+        }
+
         println!("{} (AUTOREMOVAL)", autoremoval.source);
         let time_diff = autoremoval.removal_date - Utc::now();
         println!(
@@ -63,7 +72,26 @@ impl<'a> GrepExcuses<'a> {
             time_diff.num_days(),
             autoremoval.removal_date.to_rfc2822()
         );
-        // TODO: print other fields
+        println!("    bugs:");
+        print_indented(&autoremoval.bugs);
+        println!("    dependencies only: {}", autoremoval.dependencies_only);
+        if let Some(ref rdeps) = autoremoval.rdeps {
+            println!("    reverse dependencies:");
+            print_indented(rdeps);
+        }
+        if let Some(ref dependencies) = autoremoval.buggy_dependencies {
+            println!("    buggy dependencies:");
+            print_indented(dependencies);
+        }
+        if let Some(ref bugs_dependencies) = autoremoval.bugs_dependencies {
+            println!("    bugs in dependencies:");
+            print_indented(bugs_dependencies);
+        }
+        println!("    version: {}", autoremoval.version);
+        println!(
+            "    last checked: {}",
+            autoremoval.last_checked.to_rfc2822()
+        );
     }
 }
 
@@ -78,7 +106,7 @@ impl Command for GrepExcuses<'_> {
         for maintainer_package in &self.options.maintainer_package {
             // first print the autoremoval
             if let Some(autoremoval) = autoremovals.get(maintainer_package) {
-                self.print_autoremoal(autoremoval);
+                self.print_autoremoval(autoremoval);
             }
 
             // then print the excuses
