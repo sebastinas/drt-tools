@@ -8,7 +8,7 @@ use tokio::io::AsyncWriteExt;
 
 use crate::BaseOptions;
 
-pub async fn execute_wb_commands<I>(commands: I, options: &BaseOptions) -> Result<()>
+pub(crate) async fn execute_wb_commands<I>(commands: I, options: &BaseOptions) -> Result<()>
 where
     I: IntoIterator<Item = WBCommand>,
 {
