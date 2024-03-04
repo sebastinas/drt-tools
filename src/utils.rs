@@ -6,19 +6,21 @@ use assorted_debian_utils::wb::{Error, WBCommand};
 use openssh::{KnownHosts, Session, Stdio};
 use tokio::io::AsyncWriteExt;
 
-pub async fn execute_wb_commands<I>(commands: I, dry_run: bool) -> Result<()>
+use crate::BaseOptions;
+
+pub async fn execute_wb_commands<I>(commands: I, options: &BaseOptions) -> Result<()>
 where
     I: IntoIterator<Item = WBCommand>,
 {
     let iter = commands.into_iter();
-    if dry_run {
+    if options.dry_run {
         for command in iter {
             println!("{}", command);
         }
         return Ok(());
     }
 
-    let session = Session::connect_mux("wuiet.debian.org", KnownHosts::Strict).await?;
+    let session = Session::connect_mux(&options.buildd, KnownHosts::Strict).await?;
 
     let mut proc = session
         .command("wb")

@@ -235,7 +235,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .collect();
 
         println!("# Rebuild on buildds for testing migration");
-        execute_wb_commands(to_binnmu, self.base_options.dry_run).await?;
+        execute_wb_commands(to_binnmu, self.base_options).await?;
 
         // store scheduled binNMUs in cache
         self.store_scheduled_binnmus(scheduled_binnmus)

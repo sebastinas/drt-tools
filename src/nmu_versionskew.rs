@@ -246,7 +246,7 @@ impl AsyncCommand for NMUVersionSkew<'_> {
             wb_commands.push(binnmu.build());
         }
 
-        execute_wb_commands(wb_commands, self.base_options.dry_run).await
+        execute_wb_commands(wb_commands, self.base_options).await
     }
 }
 

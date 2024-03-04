@@ -44,6 +44,9 @@ pub(crate) struct BaseOptions {
     /// Archive mirror
     #[clap(long, default_value = "https://deb.debian.org/debian")]
     mirror: String,
+    /// buildd server
+    #[clap(long, default_value = "wuiet.debian.org")]
+    buildd: String,
 }
 
 #[derive(Debug, Parser)]

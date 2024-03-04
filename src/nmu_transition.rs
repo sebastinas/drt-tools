@@ -131,7 +131,7 @@ impl AsyncCommand for NMUTransition<'_> {
             }
         }
 
-        execute_wb_commands(wb_commands, self.base_options.dry_run).await
+        execute_wb_commands(wb_commands, self.base_options).await
     }
 }
 
