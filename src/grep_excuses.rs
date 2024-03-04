@@ -20,7 +20,8 @@ pub(crate) struct GrepExcusesOptions {
     #[clap(long)]
     autopkgtests: bool,
     /// The maintainer or package to grep for
-    maintainer_package: String,
+    #[clap(num_args = 1, required = true)]
+    maintainer_package: Vec<String>,
 }
 
 pub(crate) struct GrepExcuses<'a> {
@@ -74,21 +75,23 @@ impl Command for GrepExcuses<'_> {
         let autoremovals =
             autoremovals::from_reader(self.cache.get_cache_bufreader("autoremovals.yaml")?)?;
 
-        // first print the autoremoval
-        if let Some(autoremoval) = autoremovals.get(&self.options.maintainer_package) {
-            self.print_autoremoal(autoremoval);
-        }
-
-        // then print the excuses
-        for excuse in excuses.sources {
-            if excuse.source == self.options.maintainer_package {
-                self.print_excuse(&excuse);
-                continue;
+        for maintainer_package in &self.options.maintainer_package {
+            // first print the autoremoval
+            if let Some(autoremoval) = autoremovals.get(maintainer_package) {
+                self.print_autoremoal(autoremoval);
             }
-            if let Some(maintainer) = &excuse.maintainer {
-                if maintainer == &self.options.maintainer_package {
-                    self.print_excuse(&excuse);
+
+            // then print the excuses
+            for excuse in &excuses.sources {
+                if excuse.source == *maintainer_package {
+                    self.print_excuse(excuse);
                     continue;
+                }
+                if let Some(maintainer) = &excuse.maintainer {
+                    if maintainer == maintainer_package {
+                        self.print_excuse(excuse);
+                        continue;
+                    }
                 }
             }
         }
