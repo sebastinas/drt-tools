@@ -11,6 +11,7 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
+use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
@@ -39,20 +40,36 @@ impl ScheduledBinNMUs {
     }
 }
 
+#[derive(Debug, Parser)]
+pub(crate) struct ProcessExcusesOptions {
+    /// Ignore age to identify packages to rebuild.
+    #[clap(long)]
+    ignore_age: bool,
+    /// Ignore results from autopkgtests.
+    #[clap(long)]
+    ignore_autopkgtests: bool,
+}
+
 pub(crate) struct ProcessExcuses<'a> {
     cache: &'a config::Cache,
     base_options: &'a BaseOptions,
+    options: ProcessExcusesOptions,
 }
 
 impl<'a> ProcessExcuses<'a> {
-    pub(crate) fn new(cache: &'a config::Cache, base_options: &'a BaseOptions) -> Self {
+    pub(crate) fn new(
+        cache: &'a config::Cache,
+        base_options: &'a BaseOptions,
+        options: ProcessExcusesOptions,
+    ) -> Self {
         Self {
             cache,
             base_options,
+            options,
         }
     }
 
-    fn is_binnmu_required(policy_info: &PolicyInfo) -> bool {
+    fn is_binnmu_required(&self, policy_info: &PolicyInfo) -> bool {
         if let Some(b) = &policy_info.builtonbuildd {
             if b.verdict == Verdict::Pass {
                 // nothing to do
@@ -66,13 +83,21 @@ impl<'a> ProcessExcuses<'a> {
             }
         }
         if let Some(a) = &policy_info.age {
-            if a.current_age < min(a.age_requirement / 2, a.age_requirement - 1) {
+            if !self.options.ignore_age
+                && a.current_age < min(a.age_requirement / 2, a.age_requirement - 1)
+            {
                 // too young
                 trace!(
                     "no binnmu possible: too young: {} days (required: {} days)",
                     a.current_age,
                     a.age_requirement
                 );
+                return false;
+            }
+        }
+        if let Some(autopkgtests) = &policy_info.autopkgtest {
+            if !self.options.ignore_autopkgtests && autopkgtests.verdict != Verdict::Pass {
+                trace!("no binnmu possible: autopkgtests are not passing/are pending");
                 return false;
             }
         }
@@ -88,14 +113,18 @@ impl<'a> ProcessExcuses<'a> {
         })
     }
 
-    fn build_binnmu(item: &ExcusesItem, source_packages: &SourcePackages) -> Option<WBCommand> {
+    fn build_binnmu(
+        &self,
+        item: &ExcusesItem,
+        source_packages: &SourcePackages,
+    ) -> Option<WBCommand> {
         if !Self::is_actionable(item) {
             debug!("{}: not actionable", item.source);
             return None;
         }
 
         let policy_info = item.policy_info.as_ref()?;
-        if !Self::is_binnmu_required(policy_info) {
+        if !self.is_binnmu_required(policy_info) {
             debug!("{}: binNMU not required", item.source);
             return None;
         }
@@ -142,35 +171,35 @@ impl<'a> ProcessExcuses<'a> {
     fn is_actionable(item: &ExcusesItem) -> bool {
         if item.is_removal() {
             // skip removals
-            trace!("{} not actionable: removal", item.source);
+            info!("{} not actionable: removal", item.source);
             return false;
         }
         if item.is_from_pu() {
             // skip PU requests
-            trace!("{} not actionable: pu request", item.source);
+            info!("{} not actionable: pu request", item.source);
             return false;
         }
         if item.is_from_tpu() {
             // skip TPU requests
-            trace!("{} not actionable: tpu request", item.source);
+            info!("{} not actionable: tpu request", item.source);
             return false;
         }
         match item.component {
             Some(Component::Main) | None => {}
-            _ => {
+            Some(component) => {
                 // skip non-free and contrib
-                trace!("{} not actionable: in {:?}", item.source, item.component);
+                info!("{} not actionable: in {}", item.source, component);
                 return false;
             }
         }
         if let Some(true) = item.invalidated_by_other_package {
             // skip otherwise blocked packages
-            trace!("{} not actionable: invalided by other package", item.source);
+            info!("{} not actionable: invalided by other package", item.source);
             return false;
         }
         if item.missing_builds.is_some() {
             // skip packages with missing builds
-            trace!("{} not actionable: missing builds", item.source);
+            info!("{} not actionable: missing builds", item.source);
             return false;
         }
 
@@ -213,7 +242,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .sources
             .iter()
             .progress_with(pb)
-            .filter_map(|item| Self::build_binnmu(item, &source_packages))
+            .filter_map(|item| self.build_binnmu(item, &source_packages))
             .filter(|command| {
                 if scheduled_binnmus.contains(command) {
                     info!("{}: skipping, already scheduled", command);

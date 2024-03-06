@@ -140,6 +140,8 @@ pub struct PolicyInfo {
     pub age: Option<AgeInfo>,
     /// The buildt-on-buildd policy
     pub builtonbuildd: Option<BuiltOnBuildd>,
+    /// The autopkgtest porlicy
+    pub autopkgtest: Option<UnspecfiedPolicyInfo>,
     /// All remaining policies
     #[serde(flatten)]
     pub extras: HashMap<String, UnspecfiedPolicyInfo>,
