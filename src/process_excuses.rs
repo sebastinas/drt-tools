@@ -1,7 +1,7 @@
 // Copyright 2021-2023 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::cmp::min;
+use std::{cmp::min, collections::HashSet};
 
 use anyhow::Result;
 use assorted_debian_utils::{
@@ -147,11 +147,6 @@ impl<'a> ProcessExcuses<'a> {
             trace!("{} not actionable: removal", item.source);
             return false;
         }
-        if item.is_binnmu() {
-            // skip binNMUs
-            trace!("{} not actionable: binNMU", item.source);
-            return false;
-        }
         if item.is_from_pu() {
             // skip PU requests
             trace!("{} not actionable: pu request", item.source);
@@ -216,7 +211,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
         let pb = ProgressBar::new(excuses.sources.len() as u64);
         pb.set_style(config::default_progress_style().template(default_progress_template())?);
         pb.set_message("Processing excuses");
-        let to_binnmu: Vec<WBCommand> = excuses
+        let to_binnmu: HashSet<WBCommand> = excuses
             .sources
             .iter()
             .progress_with(pb)
