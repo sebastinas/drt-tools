@@ -94,9 +94,7 @@ impl<'a> ProcessExcuses<'a> {
             return None;
         }
 
-        let Some(ref policy_info) = item.policy_info else {
-            return None;
-        };
+        let policy_info = item.policy_info.as_ref()?;
         if !Self::is_binnmu_required(policy_info) {
             debug!("{}: binNMU not required", item.source);
             return None;

@@ -157,9 +157,7 @@ pub struct Release {
 impl Release {
     /// Lookup path for a specific file honoring `Acquire-By-Hash``
     pub fn lookup_url(&self, file: &str) -> Option<String> {
-        let Some(info) = self.files.get(file) else {
-            return None;
-        };
+        let info = self.files.get(file)?;
 
         if self
             .acquire_by_hash

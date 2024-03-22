@@ -379,14 +379,11 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         Ok(result
             .into_iter()
             .filter_map(|((source, suite), outdated_dependencies)| {
-                let Some(max_version) = outdated_dependencies
+                let max_version = outdated_dependencies
                     .iter()
                     .map(|(version, _, _)| version)
                     .max()
-                    .cloned()
-                else {
-                    return None;
-                };
+                    .cloned()?;
                 Some(CombinedOutdatedPackage {
                     source,
                     version: max_version.clone(),
