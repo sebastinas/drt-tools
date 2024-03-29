@@ -464,6 +464,10 @@ impl Cache {
         )?))
     }
 
+    pub fn get_package_path(&self, suite: Suite, architecture: Architecture) -> Result<PathBuf> {
+        self.get_cache_path(format!("Packages_{}_{}", suite, architecture))
+    }
+
     pub fn get_package_paths(&self, suite: Suite, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
         for architecture in self.architectures_for_suite(suite) {
