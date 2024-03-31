@@ -188,17 +188,12 @@ impl Iterator for BinaryPackageParser<'_> {
 
 impl FusedIterator for BinaryPackageParser<'_> {}
 
-#[derive(Deserialize, PartialEq, Eq)]
+#[derive(Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 enum ExtraSourceOnly {
+    #[default]
     No,
     Yes,
-}
-
-impl Default for ExtraSourceOnly {
-    fn default() -> Self {
-        ExtraSourceOnly::No
-    }
 }
 
 #[derive(Deserialize)]
