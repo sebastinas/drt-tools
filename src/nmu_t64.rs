@@ -1,9 +1,14 @@
 // Copyright 2024 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{collections::HashSet, iter::FusedIterator, path::Path, vec::IntoIter};
+use std::{
+    collections::{HashMap, HashSet},
+    iter::FusedIterator,
+    path::Path,
+    vec::IntoIter,
+};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Suite},
@@ -42,7 +47,6 @@ struct LibraryBinaryPackage {
 
 struct LibraryPackageParser {
     iterator: ProgressBarIter<IntoIter<LibraryBinaryPackage>>,
-    next: Option<String>,
 }
 
 impl LibraryPackageParser {
@@ -60,7 +64,6 @@ impl LibraryPackageParser {
         ));
         Ok(Self {
             iterator: binary_packages.into_iter().progress_with(pb),
-            next: None,
         })
     }
 }
@@ -68,13 +71,9 @@ impl LibraryPackageParser {
 const T64_UNDONE: [&str; 4] = ["libcom-err2", "libss2", "libpam0g", "libuuid1"];
 
 impl Iterator for LibraryPackageParser {
-    type Item = String;
+    type Item = Vec<String>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next.is_some() {
-            return self.next.take();
-        }
-
         for binary_package in self.iterator.by_ref() {
             if binary_package.architecture == Architecture::All {
                 continue;
@@ -87,8 +86,11 @@ impl Iterator for LibraryPackageParser {
                 continue;
             };
             info!("Checking packages {0} and {0}v5", package_without_t64);
-            self.next = Some(format!("{}v5", package_without_t64));
-            return Some(package_without_t64.into());
+            return Some(vec![
+                package_without_t64.into(),
+                format!("{}v5", package_without_t64),
+                format!("{}b", package_without_t64),
+            ]);
         }
 
         None
@@ -110,10 +112,11 @@ struct BinaryPackage {
 struct BinaryPackageParser<'a> {
     iterator: ProgressBarIter<IntoIter<BinaryPackage>>,
     library_packages: &'a HashSet<String>,
+    skip_arch_all: bool,
 }
 
 impl<'a> BinaryPackageParser<'a> {
-    fn new<P>(library_packages: &'a HashSet<String>, path: P) -> Result<Self>
+    fn new<P>(library_packages: &'a HashSet<String>, path: P, skip_arch_all: bool) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -126,6 +129,7 @@ impl<'a> BinaryPackageParser<'a> {
         Ok(Self {
             library_packages,
             iterator: binary_packages.into_iter().progress_with(pb),
+            skip_arch_all,
         })
     }
 }
@@ -143,7 +147,7 @@ impl Iterator for BinaryPackageParser<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         for binary_package in self.iterator.by_ref() {
             // skip Arch: all packages
-            if binary_package.architecture == Architecture::All {
+            if self.skip_arch_all && binary_package.architecture == Architecture::All {
                 continue;
             }
             // skip Packages without Depends
@@ -184,6 +188,28 @@ impl Iterator for BinaryPackageParser<'_> {
 
 impl FusedIterator for BinaryPackageParser<'_> {}
 
+#[derive(Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum ExtraSourceOnly {
+    No,
+    Yes,
+}
+
+impl Default for ExtraSourceOnly {
+    fn default() -> Self {
+        ExtraSourceOnly::No
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct SourcePackage {
+    package: String,
+    version: PackageVersion,
+    #[serde(default)]
+    extra_source_only: ExtraSourceOnly,
+}
+
 pub(crate) struct NMUTime64<'a> {
     cache: &'a Cache,
     base_options: &'a BaseOptions,
@@ -210,16 +236,41 @@ impl<'a> NMUTime64<'a> {
         )
     }
 
+    fn load_sources(&self) -> Result<HashMap<String, PackageVersion>> {
+        let sources: Vec<SourcePackage> = rfc822_like::from_reader(
+            self.cache
+                .get_cache_bufreader(self.cache.get_source_path(Suite::Unstable)?)?,
+        )?;
+
+        let mut source_versions = HashMap::default();
+        for source in sources {
+            if source.extra_source_only == ExtraSourceOnly::Yes {
+                continue;
+            }
+
+            if let Some(old_version) = source_versions.get_mut(&source.package) {
+                if *old_version < source.version {
+                    *old_version = source.version;
+                }
+            } else {
+                source_versions.insert(source.package, source.version);
+            }
+        }
+
+        Ok(source_versions)
+    }
+
     fn generate_nmus(
         &self,
         architecture: Architecture,
         ftbfs_bugs: &UDDBugs,
+        source_packages: &HashMap<String, PackageVersion>,
     ) -> Result<Vec<WBCommand>> {
         let mut packages: HashSet<(String, PackageVersion)> = HashSet::new();
         let path = self.cache.get_package_path(Suite::Unstable, architecture)?;
-        let library_packages: HashSet<_> = LibraryPackageParser::new(&path)?.collect();
+        let library_packages: HashSet<_> = LibraryPackageParser::new(&path)?.flatten().collect();
 
-        for (source, version) in BinaryPackageParser::new(&library_packages, path)? {
+        for (source, version) in BinaryPackageParser::new(&library_packages, path, true)? {
             // skip some packages that make no sense to binNMU
             if source_skip_binnmu(&source) {
                 continue;
@@ -242,6 +293,16 @@ impl<'a> NMUTime64<'a> {
                 continue;
             }
 
+            if let Some(current_version) = source_packages.get(&source) {
+                if version < *current_version {
+                    debug!("Skipping {}: out-of-date", source);
+                    continue;
+                }
+            } else {
+                debug!("Skipping {}: removed", source);
+                continue;
+            }
+
             let mut source = SourceSpecifier::new(&source);
             source.with_version(&version);
             source.with_suite(Suite::Unstable.into());
@@ -255,6 +316,43 @@ impl<'a> NMUTime64<'a> {
 
         Ok(wb_commands)
     }
+
+    fn list_arch_all_packages(
+        &self,
+        source_packages: &HashMap<String, PackageVersion>,
+    ) -> Result<()> {
+        let mut library_package_parsers = vec![];
+        for architecture in self.cache.architectures_for_suite(Suite::Unstable) {
+            if architecture == Architecture::All {
+                continue;
+            }
+
+            let path = self.cache.get_package_path(Suite::Unstable, architecture)?;
+            library_package_parsers.push(LibraryPackageParser::new(&path)?.flatten());
+        }
+
+        let library_packages: HashSet<_> = library_package_parsers.into_iter().flatten().collect();
+        for (source, version) in BinaryPackageParser::new(
+            &library_packages,
+            self.cache
+                .get_package_path(Suite::Unstable, Architecture::All)?,
+            false,
+        )? {
+            if let Some(current_version) = source_packages.get(&source) {
+                if version < *current_version {
+                    debug!("Skipping {}: out-of-date", source);
+                    continue;
+                }
+            } else {
+                debug!("Skipping {}: removed", source);
+                continue;
+            }
+
+            println!("# reportbug --src {0} --package-version={1} --no-cc-menu --no-tags-menu --subject=\"{0}: arch:all package depends on pre-t64 library\"", source, version);
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -264,14 +362,17 @@ impl AsyncCommand for NMUTime64<'_> {
             .load_bugs(Codename::Sid)
             .with_context(|| format!("Failed to load bugs for {}", Suite::Unstable))?;
 
+        let source_packages = self.load_sources()?;
+
         let mut all_wb_commands = vec![];
         for architecture in self.cache.architectures_for_suite(Suite::Unstable) {
             if architecture == Architecture::All {
-                continue;
+                self.list_arch_all_packages(&source_packages)?;
+            } else {
+                let mut wb_commands =
+                    self.generate_nmus(architecture, &ftbfs_bugs, &source_packages)?;
+                all_wb_commands.append(&mut wb_commands);
             }
-
-            let mut wb_commands = self.generate_nmus(architecture, &ftbfs_bugs)?;
-            all_wb_commands.append(&mut wb_commands);
         }
 
         execute_wb_commands(all_wb_commands, self.base_options).await
@@ -284,6 +385,9 @@ impl Downloads for NMUTime64<'_> {
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::Packages(Suite::Unstable)]
+        vec![
+            CacheEntries::Packages(Suite::Unstable),
+            CacheEntries::Sources(Suite::Unstable),
+        ]
     }
 }
