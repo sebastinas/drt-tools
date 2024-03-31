@@ -42,6 +42,7 @@ struct LibraryBinaryPackage {
 
 struct LibraryPackageParser {
     iterator: ProgressBarIter<IntoIter<LibraryBinaryPackage>>,
+    next: Option<String>,
 }
 
 impl LibraryPackageParser {
@@ -59,6 +60,7 @@ impl LibraryPackageParser {
         ));
         Ok(Self {
             iterator: binary_packages.into_iter().progress_with(pb),
+            next: None,
         })
     }
 }
@@ -69,6 +71,10 @@ impl Iterator for LibraryPackageParser {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.next.is_some() {
+            return self.next.take();
+        }
+
         for binary_package in self.iterator.by_ref() {
             if binary_package.architecture == Architecture::All {
                 continue;
@@ -81,6 +87,7 @@ impl Iterator for LibraryPackageParser {
                 continue;
             };
             info!("Checking package {}", package_without_t64);
+            self.next = Some(format!("{}v5", package_without_t64));
             return Some(package_without_t64.into());
         }
 
@@ -110,15 +117,12 @@ impl<'a> BinaryPackageParser<'a> {
     where
         P: AsRef<Path>,
     {
-        // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())
             .with_context(|| {
                 format!("Failed to parse packages from {}", path.as_ref().display())
             })?;
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(default_progress_style().template(default_progress_template())?);
-        pb.set_message(format!("Processing {}", path.as_ref().display()));
-        // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
         Ok(Self {
             library_packages,
             iterator: binary_packages.into_iter().progress_with(pb),
@@ -127,7 +131,6 @@ impl<'a> BinaryPackageParser<'a> {
 }
 
 fn extract_package_from_dependency(dependency: &str) -> &str {
-    // this should never fail unless the archive is broken
     match dependency.split_once(' ') {
         Some((package, _)) => package,
         None => dependency,
@@ -143,7 +146,7 @@ impl Iterator for BinaryPackageParser<'_> {
             if binary_package.architecture == Architecture::All {
                 continue;
             }
-            // skip Packages without Dependens
+            // skip Packages without Depends
             let Some(dependencies) = binary_package.depends else {
                 continue;
             };
@@ -157,23 +160,22 @@ impl Iterator for BinaryPackageParser<'_> {
                     continue;
                 }
 
+                let source_package = if let Some(source_package) = &binary_package.source {
+                    match source_package.split_whitespace().next() {
+                        Some(package) => package.into(),
+                        None => continue,
+                    }
+                } else {
+                    // no Source set, so Source == Package
+                    binary_package.package
+                };
+
                 info!(
                     "Rebuilding {} for {} on {}",
-                    binary_package.package, dependency, binary_package.architecture
+                    source_package, dependency, binary_package.architecture
                 );
 
-                return Some((
-                    if let Some(source_package) = &binary_package.source {
-                        match source_package.split_whitespace().next() {
-                            Some(package) => package.into(),
-                            None => continue,
-                        }
-                    } else {
-                        // no Source set, so Source == Package
-                        binary_package.package
-                    },
-                    binary_package.version,
-                ));
+                return Some((source_package, binary_package.version));
             }
         }
 
