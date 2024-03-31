@@ -86,7 +86,7 @@ impl Iterator for LibraryPackageParser {
             if T64_UNDONE.contains(&package_without_t64) {
                 continue;
             };
-            info!("Checking package {}", package_without_t64);
+            info!("Checking packages {0} and {0}v5", package_without_t64);
             self.next = Some(format!("{}v5", package_without_t64));
             return Some(package_without_t64.into());
         }
@@ -109,11 +109,11 @@ struct BinaryPackage {
 
 struct BinaryPackageParser<'a> {
     iterator: ProgressBarIter<IntoIter<BinaryPackage>>,
-    library_packages: &'a [String],
+    library_packages: &'a HashSet<String>,
 }
 
 impl<'a> BinaryPackageParser<'a> {
-    fn new<P>(library_packages: &'a [String], path: P) -> Result<Self>
+    fn new<P>(library_packages: &'a HashSet<String>, path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -155,8 +155,7 @@ impl Iterator for BinaryPackageParser<'_> {
                 .split(", ")
                 .map(extract_package_from_dependency)
             {
-                // FIXME: to_string
-                if !self.library_packages.contains(&dependency.to_string()) {
+                if !self.library_packages.contains(dependency) {
                     continue;
                 }
 
@@ -218,7 +217,7 @@ impl<'a> NMUTime64<'a> {
     ) -> Result<Vec<WBCommand>> {
         let mut packages: HashSet<(String, PackageVersion)> = HashSet::new();
         let path = self.cache.get_package_path(Suite::Unstable, architecture)?;
-        let library_packages: Vec<_> = LibraryPackageParser::new(&path)?.collect();
+        let library_packages: HashSet<_> = LibraryPackageParser::new(&path)?.collect();
 
         for (source, version) in BinaryPackageParser::new(&library_packages, path)? {
             // skip some packages that make no sense to binNMU
