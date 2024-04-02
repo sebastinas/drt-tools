@@ -90,6 +90,7 @@ impl Iterator for LibraryPackageParser {
                 package_without_t64.into(),
                 format!("{}v5", package_without_t64),
                 format!("{}b", package_without_t64),
+                format!("{}c", package_without_t64),
             ]);
         }
 
