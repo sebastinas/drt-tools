@@ -8,7 +8,7 @@ use std::{
     vec::IntoIter,
 };
 
-use anyhow::{Context, Ok, Result};
+use anyhow::{anyhow, Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Suite},
@@ -109,14 +109,38 @@ struct BinaryPackage {
     depends: Option<String>,
 }
 
+impl BinaryPackage {
+    fn source_and_version(&self) -> Result<(&str, PackageVersion)> {
+        if let Some(ref source) = self.source {
+            match source.split_once(' ') {
+                Some((source, version)) => version
+                    .strip_prefix('(')
+                    .and_then(|v| v.strip_suffix(')'))
+                    .ok_or(anyhow!("invalid binary package"))
+                    .and_then(|v| PackageVersion::try_from(v).context("invalid binary package"))
+                    .map(|v| (source, v)),
+                None => Ok((source, self.version.clone())),
+            }
+        } else {
+            Ok((&self.package, self.version.clone()))
+        }
+    }
+}
+
 struct BinaryPackageParser<'a> {
     iterator: ProgressBarIter<IntoIter<BinaryPackage>>,
     library_packages: &'a HashSet<String>,
+    source_packages: &'a HashMap<String, PackageVersion>,
     skip_arch_all: bool,
 }
 
 impl<'a> BinaryPackageParser<'a> {
-    fn new<P>(library_packages: &'a HashSet<String>, path: P, skip_arch_all: bool) -> Result<Self>
+    fn new<P>(
+        path: P,
+        library_packages: &'a HashSet<String>,
+        source_packages: &'a HashMap<String, PackageVersion>,
+        skip_arch_all: bool,
+    ) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -128,6 +152,7 @@ impl<'a> BinaryPackageParser<'a> {
         pb.set_style(default_progress_style().template(default_progress_template())?);
         Ok(Self {
             library_packages,
+            source_packages,
             iterator: binary_packages.into_iter().progress_with(pb),
             skip_arch_all,
         })
@@ -151,9 +176,22 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             }
             // skip Packages without Depends
-            let Some(dependencies) = binary_package.depends else {
+            let Some(ref dependencies) = binary_package.depends else {
                 continue;
             };
+
+            let Ok((source, version)) = binary_package.source_and_version() else {
+                continue;
+            };
+            if let Some(current_version) = self.source_packages.get(source) {
+                if version < *current_version {
+                    debug!("Skipping src:{}/{}: out-of-date", source, version);
+                    continue;
+                }
+            } else {
+                debug!("Skipping src:{}/{}: removed", source, version);
+                continue;
+            }
 
             for dependency in dependencies
                 .split(", ")
@@ -163,22 +201,16 @@ impl Iterator for BinaryPackageParser<'_> {
                     continue;
                 }
 
-                let source_package = if let Some(source_package) = &binary_package.source {
-                    match source_package.split_whitespace().next() {
-                        Some(package) => package.into(),
-                        None => continue,
-                    }
-                } else {
-                    // no Source set, so Source == Package
-                    binary_package.package
-                };
-
                 info!(
-                    "Rebuilding {} for {} on {}",
-                    source_package, dependency, binary_package.architecture
+                    "Rebuilding src:{}/{} ({}) for {} on {}",
+                    source,
+                    version,
+                    binary_package.package,
+                    dependency,
+                    binary_package.architecture
                 );
 
-                return Some((source_package, binary_package.version));
+                return Some((source.to_string(), version));
             }
         }
 
@@ -265,7 +297,9 @@ impl<'a> NMUTime64<'a> {
         let path = self.cache.get_package_path(Suite::Unstable, architecture)?;
         let library_packages: HashSet<_> = LibraryPackageParser::new(&path)?.flatten().collect();
 
-        for (source, version) in BinaryPackageParser::new(&library_packages, path, true)? {
+        for (source, version) in
+            BinaryPackageParser::new(path, &library_packages, source_packages, true)?
+        {
             // skip some packages that make no sense to binNMU
             if source_skip_binnmu(&source) {
                 continue;
@@ -285,16 +319,6 @@ impl<'a> NMUTime64<'a> {
                         source, bug.id, bug.severity, bug.title
                     );
                 }
-                continue;
-            }
-
-            if let Some(current_version) = source_packages.get(&source) {
-                if version < *current_version {
-                    debug!("Skipping {}: out-of-date", source);
-                    continue;
-                }
-            } else {
-                debug!("Skipping {}: removed", source);
                 continue;
             }
 
@@ -328,21 +352,12 @@ impl<'a> NMUTime64<'a> {
 
         let library_packages: HashSet<_> = library_package_parsers.into_iter().flatten().collect();
         for (source, version) in BinaryPackageParser::new(
-            &library_packages,
             self.cache
                 .get_package_path(Suite::Unstable, Architecture::All)?,
+            &library_packages,
+            source_packages,
             false,
         )? {
-            if let Some(current_version) = source_packages.get(&source) {
-                if version < *current_version {
-                    debug!("Skipping {}: out-of-date", source);
-                    continue;
-                }
-            } else {
-                debug!("Skipping {}: removed", source);
-                continue;
-            }
-
             println!("# reportbug --src {0} --package-version={1} --no-cc-menu --no-tags-menu --subject=\"{0}: arch:all package depends on pre-t64 library\"", source, version);
         }
 
