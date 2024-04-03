@@ -85,13 +85,20 @@ impl Iterator for LibraryPackageParser {
             if T64_UNDONE.contains(&package_without_t64) {
                 continue;
             };
-            info!("Checking packages {0} and {0}v5", package_without_t64);
-            return Some(vec![
-                package_without_t64.into(),
-                format!("{}v5", package_without_t64),
-                format!("{}b", package_without_t64),
-                format!("{}c", package_without_t64),
-            ]);
+            // c102|c2|c2a|[abcdeg]|ldbl|v5|gf|debian
+            info!(
+                "Checking packages {0}, {0}v5, and more",
+                package_without_t64
+            );
+            return Some(
+                [
+                    "", "c202", "c2", "c2a", "a", "b", "c", "d", "e", "g", "ldbl", "v5", "gf",
+                    "debian",
+                ]
+                .iter()
+                .map(|suffix| format!("{}{}", package_without_t64, suffix))
+                .collect(),
+            );
         }
 
         None
