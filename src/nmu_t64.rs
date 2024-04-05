@@ -115,6 +115,8 @@ struct BinaryPackage {
     version: PackageVersion,
     architecture: Architecture,
     depends: Option<String>,
+    #[serde(rename = "Pre-Depends")]
+    pre_depends: Option<String>,
 }
 
 impl BinaryPackage {
@@ -183,10 +185,6 @@ impl Iterator for BinaryPackageParser<'_> {
             if self.skip_arch_all && binary_package.architecture == Architecture::All {
                 continue;
             }
-            // skip Packages without Depends
-            let Some(ref dependencies) = binary_package.depends else {
-                continue;
-            };
 
             let Ok((source, version)) = binary_package.source_and_version() else {
                 continue;
@@ -201,9 +199,20 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             }
 
-            for dependency in dependencies
+            for dependency in binary_package
+                .depends
+                .as_ref()
+                .unwrap_or(&String::default())
                 .split(", ")
                 .map(extract_package_from_dependency)
+                .chain(
+                    binary_package
+                        .pre_depends
+                        .as_ref()
+                        .unwrap_or(&String::default())
+                        .split(", ")
+                        .map(extract_package_from_dependency),
+                )
             {
                 if !self.library_packages.contains(dependency) {
                     continue;
