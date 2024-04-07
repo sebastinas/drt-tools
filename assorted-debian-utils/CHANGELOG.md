@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 (2024-04-07)
+
+* excuses: expose results from autopkgtests.
+* Small refactoring.
+
 ## 0.7.0 (2024-02-17)
 
 * Remove obsolete `version-compare` feature.
