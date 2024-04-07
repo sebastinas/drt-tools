@@ -169,17 +169,29 @@ impl<'a> NMUVersionSkew<'a> {
         let mut sources_architectures =
             Vec::<(String, PackageVersion, Vec<Architecture>)>::default();
         for (source, source_info) in packages.into_iter().sorted_by_key(|value| value.0.clone()) {
+            let mut max_version_per_architecture: HashMap<Architecture, &PackageVersion> =
+                Default::default();
+            for (architecture, version) in source_info.iter() {
+                if let Some(max_version) = max_version_per_architecture.get_mut(architecture) {
+                    if version > *max_version {
+                        *max_version = version;
+                    }
+                } else {
+                    max_version_per_architecture.insert(*architecture, version);
+                }
+            }
+
             let all_versions: HashSet<&PackageVersion> =
-                HashSet::from_iter(source_info.iter().map(|(_, version)| version));
+                HashSet::from_iter(max_version_per_architecture.values().copied());
             if all_versions.len() == 1 {
                 debug!("Skipping {}: package is in sync", source);
                 continue;
             }
 
             let all_versions_without_binnmu: HashSet<PackageVersion> = HashSet::from_iter(
-                source_info
-                    .iter()
-                    .map(|(_, version)| version.clone().without_binnmu_version()),
+                max_version_per_architecture
+                    .values()
+                    .map(|v| (*v).clone().without_binnmu_version()),
             );
             if all_versions_without_binnmu.len() != 1 {
                 debug!(
@@ -188,6 +200,7 @@ impl<'a> NMUVersionSkew<'a> {
                 );
                 continue;
             }
+
             // check if package FTBFS
             if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
                 println!("# Skipping {} due to FTBFS bugs ...", source);
@@ -241,7 +254,11 @@ impl AsyncCommand for NMUVersionSkew<'_> {
 
             let mut binnmu = BinNMU::new(&source, "Rebuild to sync binNMU versions")?;
             binnmu.with_build_priority(self.options.build_priority);
-            binnmu.with_nmu_version(version.binnmu_version().unwrap());
+            let Some(binnmu_version) = version.binnmu_version() else {
+                error!("Skipping {}: package version has no binNMU.", source);
+                continue;
+            };
+            binnmu.with_nmu_version(binnmu_version);
 
             wb_commands.push(binnmu.build());
         }
