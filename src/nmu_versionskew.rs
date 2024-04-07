@@ -169,20 +169,20 @@ impl<'a> NMUVersionSkew<'a> {
         let mut sources_architectures =
             Vec::<(String, PackageVersion, Vec<Architecture>)>::default();
         for (source, source_info) in packages.into_iter().sorted_by_key(|value| value.0.clone()) {
-            let mut max_version_per_architecture: HashMap<Architecture, &PackageVersion> =
+            let mut max_version_per_architecture: HashMap<Architecture, PackageVersion> =
                 Default::default();
             for (architecture, version) in source_info.iter() {
                 if let Some(max_version) = max_version_per_architecture.get_mut(architecture) {
-                    if version > *max_version {
-                        *max_version = version;
+                    if version > max_version {
+                        *max_version = version.clone();
                     }
                 } else {
-                    max_version_per_architecture.insert(*architecture, version);
+                    max_version_per_architecture.insert(*architecture, version.clone());
                 }
             }
 
-            let all_versions: HashSet<&PackageVersion> =
-                HashSet::from_iter(max_version_per_architecture.values().copied());
+            let all_versions: HashSet<PackageVersion> =
+                HashSet::from_iter(max_version_per_architecture.values().cloned());
             if all_versions.len() == 1 {
                 debug!("Skipping {}: package is in sync", source);
                 continue;
@@ -213,15 +213,20 @@ impl<'a> NMUVersionSkew<'a> {
                 continue;
             }
 
-            let Some(max_version) = all_versions.iter().max().map(|v| (*v).clone()) else {
+            let Some(max_version) = max_version_per_architecture
+                .values()
+                .max()
+                .map(|v| (*v).clone())
+            else {
                 error!(
                     "Skipping {}: package has no binaries in the archive",
                     source
                 );
                 continue;
             };
+            debug!("Max {} version: {}", source, max_version);
 
-            let architectures = source_info
+            let architectures = max_version_per_architecture
                 .iter()
                 .filter_map(|(architecture, version)| {
                     if version != &max_version {
