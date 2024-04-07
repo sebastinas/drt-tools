@@ -79,26 +79,33 @@ impl Iterator for LibraryPackageParser {
                 continue;
             }
 
-            let Some(package_without_t64) = binary_package.package.strip_suffix("t64") else {
-                continue;
-            };
-            if T64_UNDONE.contains(&package_without_t64) {
-                continue;
-            };
-            // c102|c2|c2a|[abcdeg]|ldbl|v5|gf|debian
-            info!(
-                "Checking packages {0}, {0}v5, and more",
-                package_without_t64
-            );
-            return Some(
-                [
-                    "", "c202", "c2", "c2a", "a", "b", "c", "d", "e", "g", "ldbl", "v5", "gf",
-                    "debian",
-                ]
-                .iter()
-                .map(|suffix| format!("{}{}", package_without_t64, suffix))
-                .collect(),
-            );
+            for t64_suffix in [
+                "", "-gnutls", "-heimdal", "-mesa", "search", "-qt", "-gcrypt", "-nss", "-openssl",
+            ] {
+                let Some(package_without_t64) = binary_package
+                    .package
+                    .strip_suffix(&format!("t64{}", t64_suffix))
+                else {
+                    continue;
+                };
+                if T64_UNDONE.contains(&package_without_t64) {
+                    continue;
+                };
+                // c102|c2|c2a|[abcdeg]|ldbl|v5|gf|debian
+                info!(
+                    "Checking packages {}{} and more",
+                    package_without_t64, t64_suffix
+                );
+                return Some(
+                    [
+                        "", "c202", "c2", "c2a", "a", "b", "c", "d", "e", "g", "ldbl", "v5", "gf",
+                        "debian",
+                    ]
+                    .iter()
+                    .map(|suffix| format!("{}{}{}", package_without_t64, suffix, t64_suffix))
+                    .collect(),
+                );
+            }
         }
 
         None
