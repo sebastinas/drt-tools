@@ -70,7 +70,7 @@ impl LibraryPackageParser {
 
 const T64_UNDONE: [&str; 4] = ["libcom-err2", "libss2", "libpam0g", "libuuid1"];
 const T64_SUFFIXES: [&str; 9] = [
-    "", "-gnutls", "-heimdal", "-mesa", "search", "-qt", "-gcrypt", "-nss", "-openssl",
+    "", "-gnutls", "-heimdal", "-mesa", "-search", "-qt", "-gcrypt", "-nss", "-openssl",
 ];
 const LIB_SUFFIXES: [&str; 14] = [
     "", "c202", "c2", "c2a", "a", "b", "c", "d", "e", "g", "ldbl", "v5", "gf", "debian",
