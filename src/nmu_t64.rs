@@ -120,9 +120,10 @@ struct BinaryPackage {
     package: String,
     version: PackageVersion,
     architecture: Architecture,
-    depends: Option<String>,
-    #[serde(rename = "Pre-Depends")]
-    pre_depends: Option<String>,
+    #[serde(default)]
+    depends: String,
+    #[serde(rename = "Pre-Depends", default)]
+    pre_depends: String,
 }
 
 impl BinaryPackage {
@@ -207,15 +208,11 @@ impl Iterator for BinaryPackageParser<'_> {
 
             for dependency in binary_package
                 .depends
-                .as_ref()
-                .unwrap_or(&String::default())
                 .split(", ")
                 .map(extract_package_from_dependency)
                 .chain(
                     binary_package
                         .pre_depends
-                        .as_ref()
-                        .unwrap_or(&String::default())
                         .split(", ")
                         .map(extract_package_from_dependency),
                 )
