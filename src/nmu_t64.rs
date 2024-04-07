@@ -69,6 +69,12 @@ impl LibraryPackageParser {
 }
 
 const T64_UNDONE: [&str; 4] = ["libcom-err2", "libss2", "libpam0g", "libuuid1"];
+const T64_SUFFIXES: [&str; 9] = [
+    "", "-gnutls", "-heimdal", "-mesa", "search", "-qt", "-gcrypt", "-nss", "-openssl",
+];
+const LIB_SUFFIXES: [&str; 14] = [
+    "", "c202", "c2", "c2a", "a", "b", "c", "d", "e", "g", "ldbl", "v5", "gf", "debian",
+];
 
 impl Iterator for LibraryPackageParser {
     type Item = Vec<String>;
@@ -79,9 +85,7 @@ impl Iterator for LibraryPackageParser {
                 continue;
             }
 
-            for t64_suffix in [
-                "", "-gnutls", "-heimdal", "-mesa", "search", "-qt", "-gcrypt", "-nss", "-openssl",
-            ] {
+            for t64_suffix in T64_SUFFIXES {
                 let Some(package_without_t64) = binary_package
                     .package
                     .strip_suffix(&format!("t64{}", t64_suffix))
@@ -91,19 +95,14 @@ impl Iterator for LibraryPackageParser {
                 if T64_UNDONE.contains(&package_without_t64) {
                     continue;
                 };
-                // c102|c2|c2a|[abcdeg]|ldbl|v5|gf|debian
-                info!(
-                    "Checking packages {}{} and more",
-                    package_without_t64, t64_suffix
-                );
                 return Some(
-                    [
-                        "", "c202", "c2", "c2a", "a", "b", "c", "d", "e", "g", "ldbl", "v5", "gf",
-                        "debian",
-                    ]
-                    .iter()
-                    .map(|suffix| format!("{}{}{}", package_without_t64, suffix, t64_suffix))
-                    .collect(),
+                    LIB_SUFFIXES
+                        .iter()
+                        .map(|suffix| {
+                            info!("Checking {}{}{}", package_without_t64, suffix, t64_suffix);
+                            format!("{}{}{}", package_without_t64, suffix, t64_suffix)
+                        })
+                        .collect(),
                 );
             }
         }
