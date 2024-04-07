@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.21 (2024-04-07)
+
+* `nmu-eso`:
+  - Add support for `X-Cargo-Built-Using`.
+  - Make command more robust.
+* Schedule builds by directly connecting to wuiet.debian.org.
+* `usrmerged`: Removed, no longer needed.
+* `nmu-t64`: New command to schedule binNMUs for the time_t 64-bit transition.
+
 ## 0.2.20 (2024-02-17)
 
 * Handle more releases.
