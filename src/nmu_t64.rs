@@ -68,14 +68,15 @@ impl LibraryPackageParser {
     }
 }
 
-const T64_UNDONE: [&str; 7] = [
-    "libcom-err2",
-    "libss2",
-    "libpam0g",
-    "libuuid1",
-    "libshishi0",
-    "libshisa0",
-    "libjellyfish-2.0-2",
+const T64_UNDONE: [&str; 8] = [
+    "libcom-err2t64",
+    "libss2t64",
+    "libpam0t64",
+    "libuuid0t64",
+    "libshish0t64",
+    "libshisa0t64",
+    "libjellyfish-2.0-2t64",
+    "libosmonetif8t64",
 ];
 const T64_SUFFIXES: [&str; 9] = [
     "", "-gnutls", "-heimdal", "-mesa", "-search", "-qt", "-gcrypt", "-nss", "-openssl",
@@ -92,15 +93,18 @@ impl Iterator for LibraryPackageParser {
             if binary_package.architecture == Architecture::All {
                 continue;
             }
+            // t64 changes were reverted, so check if packages depend on the t64 library package instead
+            if T64_UNDONE.contains(&binary_package.package.as_ref()) {
+                info!("Checking {}", binary_package.package);
+                return Some(vec![binary_package.package.clone()]);
+            }
+            }
 
             for t64_suffix in T64_SUFFIXES {
                 let Some(package_without_t64) = binary_package
                     .package
                     .strip_suffix(&format!("t64{}", t64_suffix))
                 else {
-                    continue;
-                };
-                if T64_UNDONE.contains(&package_without_t64) {
                     continue;
                 };
                 return Some(
