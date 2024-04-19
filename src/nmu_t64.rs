@@ -68,7 +68,15 @@ impl LibraryPackageParser {
     }
 }
 
-const T64_UNDONE: [&str; 4] = ["libcom-err2", "libss2", "libpam0g", "libuuid1"];
+const T64_UNDONE: [&str; 7] = [
+    "libcom-err2",
+    "libss2",
+    "libpam0g",
+    "libuuid1",
+    "libshishi0",
+    "libshisa0",
+    "libjellyfish-2.0-2",
+];
 const T64_SUFFIXES: [&str; 9] = [
     "", "-gnutls", "-heimdal", "-mesa", "-search", "-qt", "-gcrypt", "-nss", "-openssl",
 ];
