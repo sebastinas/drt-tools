@@ -98,6 +98,11 @@ impl Iterator for LibraryPackageParser {
                 info!("Checking {}", binary_package.package);
                 return Some(vec![binary_package.package.clone()]);
             }
+
+            // special packages
+            if binary_package.package == "libc-ares2" {
+                info!("Checking {}", binary_package.package);
+                return Some(vec![binary_package.package.clone()]);
             }
 
             for t64_suffix in T64_SUFFIXES {
