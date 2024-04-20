@@ -68,7 +68,7 @@ impl LibraryPackageParser {
     }
 }
 
-const T64_UNDONE: [&str; 8] = [
+const T64_UNDONE: [&str; 18] = [
     "libcom-err2t64",
     "libss2t64",
     "libpam0t64",
@@ -77,6 +77,16 @@ const T64_UNDONE: [&str; 8] = [
     "libshisa0t64",
     "libjellyfish-2.0-2t64",
     "libosmonetif8t64",
+    "libosmo-hnbap0t64",
+    "libosmo-ranap5t64",
+    "libosmo-rua0t64",
+    "libosmo-sabp1t64",
+    "libosmo-gsup-client0t64",
+    "libosmo-mslookup0t64",
+    "libosmo-sigtran7t64",
+    "libosmomtp0t64",
+    "libosmosccp0t64",
+    "libosmoxua0t64",
 ];
 const T64_SUFFIXES: [&str; 9] = [
     "", "-gnutls", "-heimdal", "-mesa", "-search", "-qt", "-gcrypt", "-nss", "-openssl",
