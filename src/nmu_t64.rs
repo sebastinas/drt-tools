@@ -36,6 +36,9 @@ pub(crate) struct NMUTime64Options {
     /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
     #[clap(long = "bp", default_value_t = 0)]
     build_priority: i32,
+    /// Skip packages not in testing
+    #[clap(long = "skip-not-in-testing")]
+    skip_not_in_testing: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -313,10 +316,10 @@ impl<'a> NMUTime64<'a> {
         )
     }
 
-    fn load_sources(&self) -> Result<HashMap<String, PackageVersion>> {
+    fn load_sources(&self, suite: Suite) -> Result<HashMap<String, PackageVersion>> {
         let sources: Vec<SourcePackage> = rfc822_like::from_reader(
             self.cache
-                .get_cache_bufreader(self.cache.get_source_path(Suite::Unstable)?)?,
+                .get_cache_bufreader(self.cache.get_source_path(suite)?)?,
         )?;
 
         let mut source_versions = HashMap::default();
@@ -342,6 +345,7 @@ impl<'a> NMUTime64<'a> {
         architecture: Architecture,
         ftbfs_bugs: &UDDBugs,
         source_packages: &HashMap<String, PackageVersion>,
+        testing_source_packages: &HashMap<String, PackageVersion>,
     ) -> Result<Vec<WBCommand>> {
         let mut packages: HashSet<(String, PackageVersion)> = HashSet::new();
         let path = self.cache.get_package_path(Suite::Unstable, architecture)?;
@@ -352,6 +356,13 @@ impl<'a> NMUTime64<'a> {
         {
             // skip some packages that make no sense to binNMU
             if source_skip_binnmu(&source) {
+                info!("Skipping {}: not binNMU-able", source);
+                continue;
+            }
+
+            // skip packages not in testing
+            if self.options.skip_not_in_testing && !testing_source_packages.contains_key(&source) {
+                info!("Skipping {}: not in testing", source);
                 continue;
             }
 
@@ -389,6 +400,7 @@ impl<'a> NMUTime64<'a> {
     fn list_arch_all_packages(
         &self,
         source_packages: &HashMap<String, PackageVersion>,
+        testing_source_packages: &HashMap<String, PackageVersion>,
     ) -> Result<()> {
         let mut library_package_parsers = vec![];
         for architecture in self.cache.architectures_for_suite(Suite::Unstable) {
@@ -408,6 +420,12 @@ impl<'a> NMUTime64<'a> {
             source_packages,
             false,
         )? {
+            // skip packages not in testing
+            if self.options.skip_not_in_testing && !testing_source_packages.contains_key(&source) {
+                info!("Skipping {}: not in testing", source);
+                continue;
+            }
+
             println!("# reportbug --src {0} --package-version={1} --no-cc-menu --no-tags-menu --subject=\"{0}: arch:all package depends on pre-t64 library\"", source, version);
         }
 
@@ -422,15 +440,20 @@ impl AsyncCommand for NMUTime64<'_> {
             .load_bugs(Codename::Sid)
             .with_context(|| format!("Failed to load bugs for {}", Suite::Unstable))?;
 
-        let source_packages = self.load_sources()?;
+        let source_packages = self.load_sources(Suite::Unstable)?;
+        let testing_source_packages = self.load_sources(Suite::Testing(None))?;
 
         let mut all_wb_commands = vec![];
         for architecture in self.cache.architectures_for_suite(Suite::Unstable) {
             if architecture == Architecture::All {
-                self.list_arch_all_packages(&source_packages)?;
+                self.list_arch_all_packages(&source_packages, &testing_source_packages)?;
             } else {
-                let mut wb_commands =
-                    self.generate_nmus(architecture, &ftbfs_bugs, &source_packages)?;
+                let mut wb_commands = self.generate_nmus(
+                    architecture,
+                    &ftbfs_bugs,
+                    &source_packages,
+                    &testing_source_packages,
+                )?;
                 all_wb_commands.append(&mut wb_commands);
             }
         }
@@ -448,6 +471,7 @@ impl Downloads for NMUTime64<'_> {
         vec![
             CacheEntries::Packages(Suite::Unstable),
             CacheEntries::Sources(Suite::Unstable),
+            CacheEntries::Sources(Suite::Testing(None)),
         ]
     }
 }
