@@ -70,23 +70,23 @@ impl LibraryPackageParser {
 
 const T64_UNDONE: [&str; 18] = [
     "libcom-err2t64",
-    "libss2t64",
-    "libpam0t64",
-    "libuuid0t64",
-    "libshish0t64",
-    "libshisa0t64",
     "libjellyfish-2.0-2t64",
-    "libosmonetif8t64",
+    "libosmo-gsup-client0t64",
     "libosmo-hnbap0t64",
+    "libosmo-mslookup0t64",
     "libosmo-ranap5t64",
     "libosmo-rua0t64",
     "libosmo-sabp1t64",
-    "libosmo-gsup-client0t64",
-    "libosmo-mslookup0t64",
     "libosmo-sigtran7t64",
     "libosmomtp0t64",
+    "libosmonetif8t64",
     "libosmosccp0t64",
     "libosmoxua0t64",
+    "libpam0t64",
+    "libshisa0t64",
+    "libshish0t64",
+    "libss2t64",
+    "libuuid0t64",
 ];
 const T64_SUFFIXES: [&str; 9] = [
     "", "-gnutls", "-heimdal", "-mesa", "-search", "-qt", "-gcrypt", "-nss", "-openssl",
@@ -104,7 +104,10 @@ impl Iterator for LibraryPackageParser {
                 continue;
             }
             // t64 changes were reverted, so check if packages depend on the t64 library package instead
-            if T64_UNDONE.contains(&binary_package.package.as_ref()) {
+            if T64_UNDONE
+                .binary_search(&binary_package.package.as_ref())
+                .is_ok()
+            {
                 info!("Checking {}", binary_package.package);
                 return Some(vec![binary_package.package.clone()]);
             }
