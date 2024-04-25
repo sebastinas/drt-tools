@@ -71,7 +71,9 @@ impl LibraryPackageParser {
     }
 }
 
-const T64_UNDONE: [&str; 18] = [
+const T64_UNDONE: [&str; 20] = [
+    "libcanberra-gtk3-0t64",
+    "libcanberra0t64",
     "libcom-err2t64",
     "libjellyfish-2.0-2t64",
     "libosmo-gsup-client0t64",
