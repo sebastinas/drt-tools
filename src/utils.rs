@@ -31,6 +31,7 @@ where
 
     if let Some(mut stdin) = proc.stdin().take() {
         for command in iter {
+            println!("{}", command);
             stdin
                 .write_all(format!("{}\n", command).as_bytes())
                 .await
