@@ -24,7 +24,7 @@ flate2 = { version = "1", default-features = false, features = ["zlib"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 httpdate = "1"
 indicatif = "0.17"
-itertools = "0.12"
+itertools = "0.13"
 log = "0.4"
 openssh = { version = "0.10", features = ["native-mux"] }
 reqwest = { version = "0.12", features = ["stream"] }
