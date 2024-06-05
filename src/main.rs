@@ -12,7 +12,6 @@ mod binnmu_buildinfo;
 pub(crate) mod config;
 mod grep_excuses;
 mod nmu_eso;
-mod nmu_t64;
 mod nmu_transition;
 mod nmu_versionskew;
 mod process_excuses;
@@ -24,13 +23,10 @@ pub(crate) mod utils;
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
-use nmu_t64::NMUTime64Options;
 use nmu_transition::{NMUTransition, NMUTransitionOptions};
 use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
 use process_unblocks::ProcessUnblocks;
-
-use crate::nmu_t64::NMUTime64;
 
 #[derive(Debug, Parser)]
 pub(crate) struct BaseOptions {
@@ -126,8 +122,6 @@ enum DrtToolsCommands {
     /// Prepare rebuilds for version skew in Multi-Arch: same packages
     #[clap(name = "nmu-version-skew")]
     NMUVersionSkew(NMUVersionSkewOptions),
-    #[clap(name = "nmu-t64")]
-    NMUTime64(NMUTime64Options),
 }
 
 pub(crate) trait Downloads {
@@ -212,9 +206,6 @@ async fn main() -> Result<()> {
             DrtToolsCommands::ProcessUnblocks => Box::new(ProcessUnblocks::new(&cache)),
             DrtToolsCommands::NMUVersionSkew(vs_opts) => {
                 Box::new(NMUVersionSkew::new(&cache, &opts.base_options, vs_opts))
-            }
-            DrtToolsCommands::NMUTime64(t64_opts) => {
-                Box::new(NMUTime64::new(&cache, &opts.base_options, t64_opts))
             }
         };
     execute_command(&cache, command.as_ref(), opts.base_options.force_processing).await
