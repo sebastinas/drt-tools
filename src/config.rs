@@ -475,7 +475,7 @@ impl Cache {
                 continue;
             }
 
-            all_paths.push(self.get_cache_path(format!("Packages_{}_{}", suite, architecture))?);
+            all_paths.push(self.get_package_path(suite, architecture)?);
         }
         Ok(all_paths)
     }
