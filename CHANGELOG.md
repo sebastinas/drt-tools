@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.23 (2024-06-09)
+
+* `nmu-t64`: Removed, no longer needed.
+
 ## 0.2.22 (2024-04-27)
 
 * `nmu-t64`: Handle more packages where t64 changes have been reverted.
