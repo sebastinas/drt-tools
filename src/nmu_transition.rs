@@ -114,7 +114,7 @@ impl AsyncCommand for NMUTransition<'_> {
                     .with_version(&version)
                     .with_suite(self.options.binnmu_options.suite);
                 if let Some(architectures) = &self.options.binnmu_options.architecture {
-                    source.with_archive_architectures(architectures);
+                    source.with_architectures(architectures);
                 }
 
                 let mut binnmu = BinNMU::new(&source, &self.options.binnmu_options.message)?;

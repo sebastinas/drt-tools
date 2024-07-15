@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use anyhow::{Context, Result};
-use assorted_debian_utils::{architectures::Architecture, archive::SuiteOrCodename};
+use assorted_debian_utils::{
+    architectures::Architecture, archive::SuiteOrCodename, wb::WBArchitecture,
+};
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use config::{CacheEntries, CacheState};
@@ -68,7 +70,7 @@ pub(crate) struct BinNMUsOptions {
     suite: SuiteOrCodename,
     /// Set architectures for binNMUs. If no archictures are specified, the binNMUs are scheduled with ANY.
     #[clap(short, long)]
-    architecture: Option<Vec<Architecture>>,
+    architecture: Option<Vec<WBArchitecture>>,
 }
 
 #[derive(Debug, Parser)]
