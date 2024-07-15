@@ -8,11 +8,12 @@
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::architectures::Architecture;
+use crate::architectures::{Architecture, ParseError};
 use crate::archive::{Suite, SuiteOrCodename};
 use crate::version::PackageVersion;
 
@@ -95,7 +96,7 @@ impl Display for WBArchitecture {
 }
 
 impl TryFrom<&str> for WBArchitecture {
-    type Error = crate::architectures::ParseError;
+    type Error = ParseError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
@@ -109,6 +110,14 @@ impl TryFrom<&str> for WBArchitecture {
                 }
             }
         }
+    }
+}
+
+impl FromStr for WBArchitecture {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
     }
 }
 
