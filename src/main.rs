@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use anyhow::{Context, Result};
-use assorted_debian_utils::{
-    architectures::Architecture, archive::SuiteOrCodename, wb::WBArchitecture,
-};
+use assorted_debian_utils::{archive::SuiteOrCodename, wb::WBArchitecture};
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use config::{CacheEntries, CacheState};
