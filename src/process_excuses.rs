@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Sebastian Ramacher
+// Copyright 2021-2024 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{cmp::min, collections::HashSet};
