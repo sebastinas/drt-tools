@@ -15,7 +15,6 @@ mod nmu_eso;
 mod nmu_transition;
 mod nmu_versionskew;
 mod process_excuses;
-mod process_unblocks;
 pub(crate) mod source_packages;
 pub(crate) mod udd_bugs;
 pub(crate) mod utils;
@@ -26,7 +25,6 @@ use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
 use nmu_transition::{NMUTransition, NMUTransitionOptions};
 use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
-use process_unblocks::ProcessUnblocks;
 
 #[derive(Debug, Parser)]
 pub(crate) struct BaseOptions {
@@ -81,7 +79,12 @@ struct DrtToolsOptions {
 
 #[derive(Debug, Subcommand)]
 enum DrtToolsCommands {
-    /// Process current excuses.yaml and prepare a list of binNMUs required for testing migration.
+    /// Process current excuses.yaml and prepare a list of binNMUs required for
+    /// testing migration and list of unblocks
+    ///
+    /// For unblocks, this command parses the current excuses and prepares a
+    /// list of packages in testing-proposed-updates and packages that have been
+    /// rebuilt in unstable but are blocked by the freeze.
     ProcessExcuses(ProcessExcusesOptions),
     /// Prepare and schedule binNMUs for a transition.
     ///
@@ -113,12 +116,6 @@ enum DrtToolsCommands {
     /// schedules binNMUs for packages with outdated `Built-Using` fields.
     #[clap(name = "nmu-eso")]
     NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
-    /// Prepare a list of unblocks
-    ///
-    /// This command parses the current excuses and prepares a list of packages
-    /// in testing-proposed-updates and packages that have been rebuilt in
-    /// unstable but are blocked by the freeze.
-    ProcessUnblocks,
     /// Prepare rebuilds for version skew in Multi-Arch: same packages
     #[clap(name = "nmu-version-skew")]
     NMUVersionSkew(NMUVersionSkewOptions),
@@ -203,7 +200,6 @@ async fn main() -> Result<()> {
             DrtToolsCommands::NMUOutdatedBuiltUsing(eso_opts) => Box::new(
                 NMUOutdatedBuiltUsing::new(&cache, &opts.base_options, eso_opts),
             ),
-            DrtToolsCommands::ProcessUnblocks => Box::new(ProcessUnblocks::new(&cache)),
             DrtToolsCommands::NMUVersionSkew(vs_opts) => {
                 Box::new(NMUVersionSkew::new(&cache, &opts.base_options, vs_opts))
             }

@@ -40,6 +40,12 @@ impl ScheduledBinNMUs {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+enum Action {
+    BinNMU(WBCommand),
+    Unblock(String),
+}
+
 #[derive(Debug, Parser)]
 pub(crate) struct ProcessExcusesOptions {
     /// Ignore age to identify packages to rebuild.
@@ -118,11 +124,6 @@ impl<'a> ProcessExcuses<'a> {
         item: &ExcusesItem,
         source_packages: &SourcePackages,
     ) -> Option<WBCommand> {
-        if !Self::is_actionable(item) {
-            debug!("{}: not actionable", item.source);
-            return None;
-        }
-
         let policy_info = item.policy_info.as_ref()?;
         if !self.is_binnmu_required(policy_info) {
             debug!("{}: binNMU not required", item.source);
@@ -168,6 +169,55 @@ impl<'a> ProcessExcuses<'a> {
         }
     }
 
+    fn build_action(&self, item: &ExcusesItem, source_packages: &SourcePackages) -> Option<Action> {
+        if !Self::is_actionable(item) {
+            debug!("{}: not actionable", item.source);
+            return None;
+        }
+
+        if Self::is_unblock_actionable(item) {
+            Self::build_unblock(item).map(Action::Unblock)
+        } else if Self::is_binnmu_actionable(item) {
+            self.build_binnmu(item, source_packages).map(Action::BinNMU)
+        } else {
+            None
+        }
+    }
+
+    fn build_unblock(item: &ExcusesItem) -> Option<String> {
+        let mut unblock = String::from("unblock ");
+        unblock.push_str(&item.source);
+        // append _tpu if item is from _tpu
+        if item.is_from_tpu() {
+            unblock.push_str("_tpu");
+        }
+        // append version
+        unblock.push('/');
+        match item.new_version {
+            Some(ref version) => unblock.push_str(&version.to_string()),
+            _ => {
+                // this will never happen
+                error!("{}: new-version not set", item.source);
+                return None;
+            }
+        };
+
+        // append architecture for binNMUs
+        if item.is_binnmu() {
+            unblock.push('/');
+            match item.binnmu_arch() {
+                Some(arch) => unblock.push_str(arch.as_ref()),
+                None => {
+                    // this will never happen
+                    error!("{}: binNMU but unable to extract architecture", item.source);
+                    return None;
+                }
+            };
+        }
+
+        Some(unblock)
+    }
+
     fn is_actionable(item: &ExcusesItem) -> bool {
         if item.is_removal() {
             // skip removals
@@ -179,6 +229,16 @@ impl<'a> ProcessExcuses<'a> {
             info!("{} not actionable: pu request", item.source);
             return false;
         }
+        if let Some(true) = item.invalidated_by_other_package {
+            // skip otherwise blocked packages
+            info!("{} not actionable: invalided by other package", item.source);
+            return false;
+        }
+
+        true
+    }
+
+    fn is_binnmu_actionable(item: &ExcusesItem) -> bool {
         if item.is_from_tpu() {
             // skip TPU requests
             info!("{} not actionable: tpu request", item.source);
@@ -192,14 +252,24 @@ impl<'a> ProcessExcuses<'a> {
                 return false;
             }
         }
-        if let Some(true) = item.invalidated_by_other_package {
-            // skip otherwise blocked packages
-            info!("{} not actionable: invalided by other package", item.source);
-            return false;
-        }
         if item.missing_builds.is_some() {
             // skip packages with missing builds
             info!("{} not actionable: missing builds", item.source);
+            return false;
+        }
+
+        true
+    }
+
+    fn is_unblock_actionable(item: &ExcusesItem) -> bool {
+        if !item.is_from_tpu() && !item.is_binnmu() {
+            // skip non-tpu requests
+            trace!("{} not actionable: not in tpu or not binnmu", item.source);
+            return false;
+        }
+        if item.migration_policy_verdict != Verdict::RejectedNeedsApproval {
+            // skip packages not requiring approval
+            trace!("{}: not actionable: does not need approval", item.source);
             return false;
         }
 
@@ -238,26 +308,41 @@ impl AsyncCommand for ProcessExcuses<'_> {
         let pb = ProgressBar::new(excuses.sources.len() as u64);
         pb.set_style(config::default_progress_style().template(default_progress_template())?);
         pb.set_message("Processing excuses");
-        let to_binnmu: HashSet<WBCommand> = excuses
+        let actions: HashSet<Action> = excuses
             .sources
             .iter()
             .progress_with(pb)
-            .filter_map(|item| self.build_binnmu(item, &source_packages))
-            .filter(|command| {
-                if scheduled_binnmus.contains(command) {
-                    info!("{}: skipping, already scheduled", command);
-                    false
-                } else {
-                    if !self.base_options.dry_run {
-                        scheduled_binnmus.store(command);
+            .filter_map(|item| self.build_action(item, &source_packages))
+            .filter(|action| match action {
+                Action::BinNMU(ref command) => {
+                    if scheduled_binnmus.contains(command) {
+                        info!("{}: skipping, already scheduled", command);
+                        false
+                    } else {
+                        if !self.base_options.dry_run {
+                            scheduled_binnmus.store(command);
+                        }
+                        true
                     }
-                    true
+                }
+                Action::Unblock(_) => true,
+            })
+            .collect();
+
+        println!("# Unblocks");
+        let binnmus: Vec<_> = actions
+            .into_iter()
+            .filter_map(|action| match action {
+                Action::BinNMU(command) => Some(command),
+                Action::Unblock(unblock) => {
+                    println!("{}", unblock);
+                    None
                 }
             })
             .collect();
 
         println!("# Rebuild on buildds for testing migration");
-        execute_wb_commands(to_binnmu, self.base_options).await?;
+        execute_wb_commands(binnmus, self.base_options).await?;
 
         // store scheduled binNMUs in cache
         self.store_scheduled_binnmus(scheduled_binnmus)
