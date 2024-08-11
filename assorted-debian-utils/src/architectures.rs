@@ -37,6 +37,9 @@ pub enum Architecture {
     /// The `hppa` architecture
     Hppa,
     /// The `hurd-i386` architecture
+    #[serde(rename = "hurd-amd64")]
+    HurdAmd64,
+    /// The `hurd-i386` architecture
     #[serde(rename = "hurd-i386")]
     HurdI386,
     /// The `i386` architecture
@@ -86,6 +89,7 @@ impl AsRef<str> for Architecture {
             Architecture::Armel => "armel",
             Architecture::Armhf => "armhf",
             Architecture::Hppa => "hppa",
+            Architecture::HurdAmd64 => "hurd-amd64",
             Architecture::HurdI386 => "hurd-i386",
             Architecture::I386 => "i386",
             Architecture::Ia64 => "ia64",
@@ -118,6 +122,7 @@ impl TryFrom<&str> for Architecture {
             "armel" => Ok(Architecture::Armel),
             "armhf" => Ok(Architecture::Armhf),
             "hppa" => Ok(Architecture::Hppa),
+            "hurd-amd64" => Ok(Architecture::HurdAmd64),
             "hurd-i386" => Ok(Architecture::HurdI386),
             "i386" => Ok(Architecture::I386),
             "ia64" => Ok(Architecture::Ia64),
