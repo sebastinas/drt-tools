@@ -48,10 +48,10 @@ impl<'a> NMUTransition<'a> {
         }
     }
 
-    fn load_bugs(&self, codename: &Codename) -> Result<UDDBugs> {
+    fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
         load_bugs_from_reader(
             self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
+                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
         )
     }
 }
@@ -60,10 +60,10 @@ impl<'a> NMUTransition<'a> {
 impl AsyncCommand for NMUTransition<'_> {
     async fn run(&self) -> Result<()> {
         let codename: Codename = self.options.binnmu_options.suite.into();
-        let ftbfs_bugs = if !self.base_options.force_processing {
-            self.load_bugs(&codename)?
-        } else {
+        let ftbfs_bugs = if self.base_options.force_processing {
             UDDBugs::new(vec![])
+        } else {
+            self.load_bugs(codename)?
         };
 
         let mut wb_commands = Vec::new();
@@ -87,7 +87,7 @@ impl AsyncCommand for NMUTransition<'_> {
                 let version_index = if line.contains("(sid only)") { 5 } else { 3 };
                 let split_line: Vec<_> = line.split_whitespace().collect();
                 if split_line.len() <= version_index {
-                    println!("Skipping unsupported format: {}", line);
+                    println!("Skipping unsupported format: {line}");
                     continue;
                 }
 
@@ -101,7 +101,7 @@ impl AsyncCommand for NMUTransition<'_> {
 
                 if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
-                    println!("# Skipping {} due to FTBFS bugs", source);
+                    println!("# Skipping {source} due to FTBFS bugs");
                     continue;
                 }
 
@@ -127,7 +127,7 @@ impl AsyncCommand for NMUTransition<'_> {
                 if let Some(extra_depends) = &self.options.binnmu_options.extra_depends {
                     binnmu.with_extra_depends(extra_depends);
                 }
-                wb_commands.push(binnmu.build())
+                wb_commands.push(binnmu.build());
             }
         }
 

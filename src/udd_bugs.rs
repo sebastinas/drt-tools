@@ -89,7 +89,7 @@ impl UDDBugs {
 
 pub fn load_bugs_from_reader(reader: impl Read) -> Result<UDDBugs> {
     serde_yaml::from_reader(reader)
-        .map_err(|e| e.into())
+        .map_err(Into::into)
         .map(UDDBugs::new)
 }
 
@@ -97,7 +97,7 @@ pub fn load_bugs_from_reader(reader: impl Read) -> Result<UDDBugs> {
 mod test {
     use super::{load_bugs_from_reader, Severity};
 
-    const TEST_DATA: &str = r#"
+    const TEST_DATA: &str = r"
 ---
 - id: 743062
   package: src:mutextrace
@@ -138,7 +138,7 @@ mod test {
   affects_experimental: false
   last_modified_full: '2021-11-16 23:03:16 +0000'
   autormdate: ''
-"#;
+";
 
     #[test]
     fn read_bugs() {

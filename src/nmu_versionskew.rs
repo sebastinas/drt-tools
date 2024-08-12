@@ -134,7 +134,7 @@ impl<'a> NMUVersionSkew<'a> {
     fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
         load_bugs_from_reader(
             self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
+                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
         )
     }
 
@@ -145,7 +145,7 @@ impl<'a> NMUVersionSkew<'a> {
         let codename = suite.into();
         let ftbfs_bugs = self
             .load_bugs(codename)
-            .with_context(|| format!("Failed to load bugs for {}", codename))?;
+            .with_context(|| format!("Failed to load bugs for {codename}"))?;
         let mut packages: HashMap<String, HashSet<(Architecture, PackageVersion)>> = HashMap::new();
         for path in self.cache.get_package_paths(suite, false)? {
             for (source, architecture, version) in BinaryPackageParser::new(path)? {
@@ -170,8 +170,8 @@ impl<'a> NMUVersionSkew<'a> {
             Vec::<(String, PackageVersion, Vec<Architecture>)>::default();
         for (source, source_info) in packages.into_iter().sorted_by_key(|value| value.0.clone()) {
             let mut max_version_per_architecture: HashMap<Architecture, PackageVersion> =
-                Default::default();
-            for (architecture, version) in source_info.iter() {
+                HashMap::default();
+            for (architecture, version) in &source_info {
                 if let Some(max_version) = max_version_per_architecture.get_mut(architecture) {
                     if version > max_version {
                         *max_version = version.clone();
@@ -181,18 +181,16 @@ impl<'a> NMUVersionSkew<'a> {
                 }
             }
 
-            let all_versions: HashSet<PackageVersion> =
-                HashSet::from_iter(max_version_per_architecture.values().cloned());
+            let all_versions: HashSet<_> = max_version_per_architecture.values().cloned().collect();
             if all_versions.len() == 1 {
                 debug!("Skipping {}: package is in sync", source);
                 continue;
             }
 
-            let all_versions_without_binnmu: HashSet<PackageVersion> = HashSet::from_iter(
-                max_version_per_architecture
-                    .values()
-                    .map(|v| (*v).clone().without_binnmu_version()),
-            );
+            let all_versions_without_binnmu: HashSet<_> = max_version_per_architecture
+                .values()
+                .map(|v| (*v).clone().without_binnmu_version())
+                .collect();
             if all_versions_without_binnmu.len() != 1 {
                 debug!(
                     "Skipping {}: package is out-of-date on some architecture",
@@ -203,7 +201,7 @@ impl<'a> NMUVersionSkew<'a> {
 
             // check if package FTBFS
             if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
-                println!("# Skipping {} due to FTBFS bugs ...", source);
+                println!("# Skipping {source} due to FTBFS bugs ...");
                 for bug in bugs {
                     debug!(
                         "Skipping {}: #{} - {}: {}",
@@ -229,10 +227,10 @@ impl<'a> NMUVersionSkew<'a> {
             let architectures = max_version_per_architecture
                 .iter()
                 .filter_map(|(architecture, version)| {
-                    if version != &max_version {
-                        Some(*architecture)
-                    } else {
+                    if version == &max_version {
                         None
+                    } else {
+                        Some(*architecture)
                     }
                 })
                 .collect();

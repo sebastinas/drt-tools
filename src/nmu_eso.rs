@@ -282,7 +282,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
     fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
         load_bugs_from_reader(
             self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{}.yaml", codename))?,
+                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
         )
     }
 
@@ -298,7 +298,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                 .entry(source.package)
                 .and_modify(|version| {
                     if source.version > *version {
-                        *version = source.version.clone()
+                        *version = source.version.clone();
                     }
                 })
                 .or_insert(source.version);
@@ -309,7 +309,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 
     /// Load source packages from multiple suites with the highest version
     fn load_sources_for_suites(&self, suites: &[Suite]) -> Result<HashMap<String, PackageVersion>> {
-        let mut ret: HashMap<String, PackageVersion> = Default::default();
+        let mut ret: HashMap<String, PackageVersion> = HashMap::default();
         for suite in suites {
             Self::load_sources(self.cache.get_source_path(*suite)?, &mut ret)?;
         }
@@ -334,7 +334,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                             outdated_dependency,
                             outdated_version,
                         },
-                    ))
+                    ));
                 }
             }
         }
@@ -458,13 +458,13 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
                 outdated_package
                     .outdated_dependencies
                     .into_iter()
-                    .map(|(source, version)| format!("{}/{}", source, version))
+                    .map(|(source, version)| format!("{source}/{version}"))
                     .join(", ")
             );
             let mut binnmu = BinNMU::new(&source, &message)?;
             binnmu.with_build_priority(self.options.build_priority);
 
-            wb_commands.push(binnmu.build())
+            wb_commands.push(binnmu.build());
         }
 
         execute_wb_commands(wb_commands, self.base_options).await

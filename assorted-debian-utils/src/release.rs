@@ -1,7 +1,7 @@
 // Copyright 2024 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-//! # Helper to handle `Release` files`
+//! # Helper to handle `Release` files
 
 use std::collections::HashMap;
 use std::fmt::Formatter;
@@ -60,7 +60,7 @@ impl<'de> de::Visitor<'de> for SHA256Visitor {
         E: de::Error,
     {
         let cursor = Cursor::new(s);
-        let mut ret: HashMap<String, FileInfo> = Default::default();
+        let mut ret: HashMap<String, FileInfo> = HashMap::default();
         for line in cursor.lines() {
             let Ok(line) = line else {
                 break;
@@ -155,7 +155,7 @@ pub struct Release {
 }
 
 impl Release {
-    /// Lookup path for a specific file honoring `Acquire-By-Hash``
+    /// Lookup path for a specific file honoring `Acquire-By-Hash`
     pub fn lookup_url(&self, file: &str) -> Option<String> {
         let info = self.files.get(file)?;
 
@@ -188,7 +188,7 @@ mod test {
 
     #[test]
     fn archive() {
-        let data = r#"Origin: Debian-ramacher.at
+        let data = r"Origin: Debian-ramacher.at
 Label: Debian-ramacher.at
 Suite: unstable
 Codename: sid
@@ -238,7 +238,7 @@ SHA256:
  59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2 20 main/debian-installer/binary-amd64/Packages.gz
  b0a524d1ba90e253c937859e3ce30bc49a291e33dbb8124706424cf5c06100a8 15130 main/source/Sources
  2bc04b364bfc30657836faf8d1de7f6044652bcca6af6503ef404a086897267a 4582 main/source/Sources.gz
- 3637559f78ac17d0e55bce465d510ef912d539e4b810a66b32431dd76f5929d8 193 main/source/Release"#;
+ 3637559f78ac17d0e55bce465d510ef912d539e4b810a66b32431dd76f5929d8 193 main/source/Release";
         let release = from_str(data).unwrap();
 
         assert_eq!(

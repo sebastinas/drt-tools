@@ -15,7 +15,7 @@ where
     let iter = commands.into_iter();
     if options.dry_run {
         for command in iter {
-            println!("{}", command);
+            println!("{command}");
         }
         return Ok(());
     }
@@ -31,11 +31,11 @@ where
 
     if let Some(mut stdin) = proc.stdin().take() {
         for command in iter {
-            println!("{}", command);
+            println!("{command}");
             stdin
-                .write_all(format!("{}\n", command).as_bytes())
+                .write_all(format!("{command}\n").as_bytes())
                 .await
-                .with_context(|| format!("Failed to write wb command to stdin: {}", command))?;
+                .with_context(|| format!("Failed to write wb command to stdin: {command}"))?;
         }
     } else {
         return Err(Error::ExecutionError).context("Unable to write to stdin.");

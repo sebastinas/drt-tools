@@ -89,8 +89,8 @@ impl Display for WBArchitecture {
         match self {
             WBArchitecture::Any => write!(f, "ANY"),
             WBArchitecture::All => write!(f, "ALL"),
-            WBArchitecture::Architecture(arch) => write!(f, "{}", arch),
-            WBArchitecture::ExcludeArchitecture(arch) => write!(f, "-{}", arch),
+            WBArchitecture::Architecture(arch) => write!(f, "{arch}"),
+            WBArchitecture::ExcludeArchitecture(arch) => write!(f, "-{arch}"),
         }
     }
 }
@@ -175,14 +175,14 @@ impl<'a> Display for SourceSpecifier<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.source)?;
         if let Some(version) = self.version {
-            write!(f, "_{}", version)?;
+            write!(f, "_{version}")?;
         }
         write!(f, " . ")?;
         if self.architectures.is_empty() {
             write!(f, "{} ", WBArchitecture::Any)?;
         } else {
             for arch in &self.architectures {
-                write!(f, "{} ", arch)?;
+                write!(f, "{arch} ")?;
             }
         }
         write!(f, ". {}", self.suite.unwrap_or(Suite::Unstable.into()))
@@ -206,10 +206,8 @@ impl<'a> BinNMU<'a> {
         for arch in &source.architectures {
             match arch {
                 // unable to nmu with source, -source, ALL, all
-                WBArchitecture::Architecture(Architecture::Source)
-                | WBArchitecture::ExcludeArchitecture(Architecture::Source)
-                | WBArchitecture::Architecture(Architecture::All)
-                | WBArchitecture::ExcludeArchitecture(Architecture::All)
+                WBArchitecture::Architecture(Architecture::Source | Architecture::All)
+                | WBArchitecture::ExcludeArchitecture(Architecture::Source | Architecture::All)
                 | WBArchitecture::All => {
                     return Err(Error::InvalidArchitecture(*arch, "nmu"));
                 }
@@ -259,11 +257,11 @@ impl<'a> Display for BinNMU<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "nmu ")?;
         if let Some(nmu_version) = self.nmu_version {
-            write!(f, "{} ", nmu_version)?;
+            write!(f, "{nmu_version} ")?;
         }
         write!(f, "{} . -m \"{}\"", self.source, self.message)?;
         if let Some(extra_depends) = self.extra_depends {
-            write!(f, " --extra-depends \"{}\"", extra_depends)?;
+            write!(f, " --extra-depends \"{extra_depends}\"")?;
         }
         if let Some(dep_wait) = self.dep_wait {
             write!(

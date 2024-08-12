@@ -62,7 +62,7 @@ where
     }
 }
 
-/// Helper to parse anything that implements `TryFrom<&str>``
+/// Helper to parse anything that implements `TryFrom<&str>`
 pub(crate) struct TryFromStrVisitor<T> {
     expecting_message: &'static str,
     phantom: PhantomData<T>,

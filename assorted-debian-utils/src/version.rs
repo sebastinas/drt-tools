@@ -41,12 +41,10 @@ fn compare_non_digits(mut lhs: &str, mut rhs: &str) -> Ordering {
     while !lhs.is_empty() || !rhs.is_empty() {
         let (lhs_tilde, lhs_found) = lhs
             .find(|c| c == '~')
-            .map(|i| (i, true))
-            .unwrap_or((lhs.len(), false));
+            .map_or((lhs.len(), false), |i| (i, true));
         let (rhs_tilde, rhs_found) = rhs
             .find(|c| c == '~')
-            .map(|i| (i, true))
-            .unwrap_or((rhs.len(), false));
+            .map_or((rhs.len(), false), |i| (i, true));
         let c = lhs[..lhs_tilde].cmp(&rhs[..rhs_tilde]);
         if c != Ordering::Equal {
             return c;
@@ -273,11 +271,11 @@ impl TryFrom<&str> for PackageVersion {
 impl Display for PackageVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if let Some(epoch) = self.epoch {
-            write!(f, "{}:", epoch)?;
+            write!(f, "{epoch}:")?;
         }
         write!(f, "{}", self.upstream_version)?;
         if let Some(debian_revision) = &self.debian_revision {
-            write!(f, "-{}", debian_revision)?;
+            write!(f, "-{debian_revision}")?;
         }
         Ok(())
     }

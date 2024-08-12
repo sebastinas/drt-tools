@@ -194,7 +194,7 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
         // store latest version of all source packages
         let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
         for path in self.cache.get_package_paths(Suite::Unstable, true)? {
-            for (source, version) in Self::parse_packages(path)?.into_iter() {
+            for (source, version) in Self::parse_packages(path)? {
                 match source_versions.get_mut(&source) {
                     Some(old_ver) => {
                         if version > *old_ver {
@@ -210,10 +210,10 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
         let source_packages =
             SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;
 
-        let ftbfs_bugs = if !self.base_options.force_processing {
-            self.load_bugs()?
-        } else {
+        let ftbfs_bugs = if self.base_options.force_processing {
             UDDBugs::new(vec![])
+        } else {
+            self.load_bugs()?
         };
 
         let mut wb_commands = HashSet::new();

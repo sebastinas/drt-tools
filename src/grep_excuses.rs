@@ -7,6 +7,7 @@ use anyhow::Result;
 use assorted_debian_utils::{
     autoremovals::{self, AutoRemoval},
     excuses::{self, ExcusesItem},
+    version::PackageVersion,
 };
 use chrono::Utc;
 use clap::Parser;
@@ -35,64 +36,66 @@ impl<'a> GrepExcuses<'a> {
     pub(crate) fn new(cache: &'a config::Cache, options: GrepExcusesOptions) -> Self {
         Self { cache, options }
     }
+}
 
-    fn print_excuse(&self, excuse: &ExcusesItem) {
-        println!(
-            "{} ({} to {})",
-            excuse.source,
-            excuse
-                .old_version
-                .as_ref()
-                .map_or_else(|| "-".into(), |version| version.to_string()),
-            excuse
-                .new_version
-                .as_ref()
-                .map_or_else(|| "-".into(), |version| version.to_string())
-        );
-        if let Some(maintainer) = &excuse.maintainer {
-            println!("  Maintainer: {}", maintainer);
-        }
-        for line in &excuse.excuses {
-            println!("  {}", voca_rs::strip::strip_tags(line));
+fn print_excuse(excuse: &ExcusesItem) {
+    println!(
+        "{} ({} to {})",
+        excuse.source,
+        excuse
+            .old_version
+            .as_ref()
+            .map_or_else(|| "-".into(), PackageVersion::to_string),
+        excuse
+            .new_version
+            .as_ref()
+            .map_or_else(|| "-".into(), PackageVersion::to_string)
+    );
+    if let Some(maintainer) = &excuse.maintainer {
+        println!("  Maintainer: {maintainer}");
+    }
+    for line in &excuse.excuses {
+        println!("  {}", voca_rs::strip::strip_tags(line));
+    }
+}
+
+fn print_autoremoval(autoremoval: &AutoRemoval) {
+    fn print_indented<T>(items: &[T])
+    where
+        T: Display,
+    {
+        for item in items {
+            println!("    - {item}");
         }
     }
 
-    fn print_autoremoval(&self, autoremoval: &AutoRemoval) {
-        fn print_indented<T>(items: &[T])
-        where
-            T: Display,
-        {
-            items.iter().for_each(|item| println!("    - {}", item))
-        }
-
-        println!("{} (AUTOREMOVAL)", autoremoval.source);
-        let time_diff = autoremoval.removal_date - Utc::now();
-        println!(
-            "  flagged for removal in {} days ({})",
-            time_diff.num_days(),
-            autoremoval.removal_date.to_rfc2822()
-        );
-        println!("    bugs:");
-        print_indented(&autoremoval.bugs);
-        println!("    dependencies only: {}", autoremoval.dependencies_only);
-        if let Some(ref rdeps) = autoremoval.rdeps {
-            println!("    reverse dependencies:");
-            print_indented(rdeps);
-        }
-        if let Some(ref dependencies) = autoremoval.buggy_dependencies {
-            println!("    buggy dependencies:");
-            print_indented(dependencies);
-        }
-        if let Some(ref bugs_dependencies) = autoremoval.bugs_dependencies {
-            println!("    bugs in dependencies:");
-            print_indented(bugs_dependencies);
-        }
-        println!("    version: {}", autoremoval.version);
-        println!(
-            "    last checked: {}",
-            autoremoval.last_checked.to_rfc2822()
-        );
+    println!("{} (AUTOREMOVAL)", autoremoval.source);
+    let time_diff = autoremoval.removal_date - Utc::now();
+    println!(
+        "  flagged for removal in {} days ({})",
+        time_diff.num_days(),
+        autoremoval.removal_date.to_rfc2822()
+    );
+    println!("    bugs:");
+    print_indented(&autoremoval.bugs);
+    println!("    dependencies only: {}", autoremoval.dependencies_only);
+    if let Some(ref rdeps) = autoremoval.rdeps {
+        println!("    reverse dependencies:");
+        print_indented(rdeps);
     }
+    if let Some(ref dependencies) = autoremoval.buggy_dependencies {
+        println!("    buggy dependencies:");
+        print_indented(dependencies);
+    }
+    if let Some(ref bugs_dependencies) = autoremoval.bugs_dependencies {
+        println!("    bugs in dependencies:");
+        print_indented(bugs_dependencies);
+    }
+    println!("    version: {}", autoremoval.version);
+    println!(
+        "    last checked: {}",
+        autoremoval.last_checked.to_rfc2822()
+    );
 }
 
 impl Command for GrepExcuses<'_> {
@@ -106,18 +109,18 @@ impl Command for GrepExcuses<'_> {
         for maintainer_package in &self.options.maintainer_package {
             // first print the autoremoval
             if let Some(autoremoval) = autoremovals.get(maintainer_package) {
-                self.print_autoremoval(autoremoval);
+                print_autoremoval(autoremoval);
             }
 
             // then print the excuses
             for excuse in &excuses.sources {
                 if excuse.source == *maintainer_package {
-                    self.print_excuse(excuse);
+                    print_excuse(excuse);
                     continue;
                 }
                 if let Some(maintainer) = &excuse.maintainer {
                     if maintainer == maintainer_package {
-                        self.print_excuse(excuse);
+                        print_excuse(excuse);
                         continue;
                     }
                 }

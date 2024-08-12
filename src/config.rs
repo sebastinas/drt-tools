@@ -3,6 +3,7 @@
 
 use std::{
     borrow::Cow,
+    collections::HashMap,
     fs::{self, File},
     io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
@@ -14,6 +15,7 @@ use assorted_debian_utils::{
     archive::{Codename, Extension, Suite},
     release,
 };
+use chrono::DateTime;
 use flate2::write::GzDecoder;
 use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -92,22 +94,20 @@ impl Downloader {
     ) -> Result<Option<(Response, ProgressBar)>> {
         debug!("Starting download of {} to {:?}", url, path);
         let res = self.client.get(url);
-        let res = if !self.always_download {
-            if let Ok(dst_metadata) = fs::metadata(path) {
-                // if always_download was not set and we have local copy, tell the server the date
-                res.header(
-                    header::IF_MODIFIED_SINCE,
-                    httpdate::fmt_http_date(dst_metadata.modified()?),
-                )
-            } else {
-                res
-            }
+        let res = if self.always_download {
+            res
+        } else if let Ok(dst_metadata) = fs::metadata(path) {
+            // if always_download was not set and we have local copy, tell the server the date
+            res.header(
+                header::IF_MODIFIED_SINCE,
+                httpdate::fmt_http_date(dst_metadata.modified()?),
+            )
         } else {
             res
         }
         .send()
         .await
-        .and_then(|response| response.error_for_status())
+        .and_then(Response::error_for_status)
         .with_context(|| format!("Failed to GET from '{}'", &url))?;
 
         if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
@@ -123,11 +123,11 @@ impl Downloader {
         if let Some(total_size) = res.content_length() {
             let pb = mp.add(ProgressBar::new(total_size));
             pb.set_style(default_progress_style().template( "{msg}: {spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?);
-            pb.set_message(format!("Downloading {}", url));
+            pb.set_message(format!("Downloading {url}"));
             Ok(Some((res, pb)))
         } else {
             let pb = mp.add(ProgressBar::new_spinner());
-            pb.set_message(format!("Downloading {}", url));
+            pb.set_message(format!("Downloading {url}"));
             Ok(Some((res, pb)))
         }
     }
@@ -180,7 +180,7 @@ impl Downloader {
             tmp
         });
         let mut file = File::create(&tmp_file)
-            .with_context(|| format!("Failed to create temporary file '{:?}'", tmp_file))?;
+            .with_context(|| format!("Failed to create temporary file '{tmp_file:?}'"))?;
         if compressor == Compressor::Xz {
             self.download_internal(res, &pb, &mut XzDecoder::new(file))
                 .await?;
@@ -189,16 +189,13 @@ impl Downloader {
             self.download_internal(res, &pb, &mut writer).await?;
             writer
                 .try_finish()
-                .with_context(|| format!("Failed to decompress {}", url))?;
+                .with_context(|| format!("Failed to decompress {url}"))?;
         } else {
             self.download_internal(res, &pb, &mut file).await?;
         }
-        pb.finish_with_message(format!("Downloaded {}", url));
+        pb.finish_with_message(format!("Downloaded {url}"));
         fs::rename(&tmp_file, path).with_context(|| {
-            format!(
-                "Failed to move temporary file '{:?}' to '{:?}'",
-                tmp_file, path
-            )
+            format!("Failed to move temporary file '{tmp_file:?}' to '{path:?}'")
         })?;
         debug!("Download of {} to {:?} done", url, path);
         Ok(CacheState::FreshFiles)
@@ -215,8 +212,8 @@ fn excuses_urls() -> Vec<DownloadInfo> {
 
 fn ftbfs_bugs_urls(codename: Codename) -> Vec<DownloadInfo> {
     vec![DownloadInfo::new (
-        format!("https://udd.debian.org/bugs/?release={}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml", codename).into(),
-        format!("udd-ftbfs-bugs-{}.yaml", codename).into()
+        format!("https://udd.debian.org/bugs/?release={codename}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml").into(),
+        format!("udd-ftbfs-bugs-{codename}.yaml").into()
     )]
 }
 
@@ -229,18 +226,18 @@ fn auto_removals_urls() -> Vec<DownloadInfo> {
 
 fn empty_release() -> release::Release {
     release::Release {
-        origin: Default::default(),
-        label: Default::default(),
+        origin: String::default(),
+        label: String::default(),
         suite: Suite::Unstable,
         codename: Codename::Sid,
-        version: Default::default(),
-        date: Default::default(),
-        valid_until: Default::default(),
-        acquire_by_hash: Default::default(),
-        architectures: Default::default(),
-        components: Default::default(),
-        description: Default::default(),
-        files: Default::default(),
+        version: Option::default(),
+        date: DateTime::default(),
+        valid_until: Option::default(),
+        acquire_by_hash: Option::default(),
+        architectures: Vec::default(),
+        components: Vec::default(),
+        description: String::default(),
+        files: HashMap::default(),
     }
 }
 
@@ -356,10 +353,10 @@ impl Cache {
             .into_iter()
             .map(|architecture| DownloadInfo {
                 url: self
-                    .lookup_url(suite, &format!("main/binary-{}/Packages.xz", architecture))
+                    .lookup_url(suite, &format!("main/binary-{architecture}/Packages.xz"))
                     .into(),
                 compressor: Compressor::Xz,
-                destination: format!("Packages_{}_{}", suite, architecture).into(),
+                destination: format!("Packages_{suite}_{architecture}").into(),
             })
             .collect()
     }
@@ -368,14 +365,14 @@ impl Cache {
         vec![DownloadInfo {
             url: self.lookup_url(suite, "main/source/Sources.xz").into(),
             compressor: Compressor::Xz,
-            destination: format!("Sources_{}", suite).into(),
+            destination: format!("Sources_{suite}").into(),
         }]
     }
 
     fn release_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
         vec![DownloadInfo::new(
             format!("{}/dists/{}/Release", self.archive_mirror, suite).into(),
-            format!("Release_{}", suite).into(),
+            format!("Release_{suite}").into(),
         )]
     }
 
@@ -465,7 +462,7 @@ impl Cache {
     }
 
     pub fn get_package_path(&self, suite: Suite, architecture: Architecture) -> Result<PathBuf> {
-        self.get_cache_path(format!("Packages_{}_{}", suite, architecture))
+        self.get_cache_path(format!("Packages_{suite}_{architecture}"))
     }
 
     pub fn get_package_paths(&self, suite: Suite, with_all: bool) -> Result<Vec<PathBuf>> {
@@ -481,7 +478,7 @@ impl Cache {
     }
 
     pub fn get_source_path(&self, suite: Suite) -> Result<PathBuf> {
-        self.get_cache_path(format!("Sources_{}", suite))
+        self.get_cache_path(format!("Sources_{suite}"))
     }
 
     // Architectures for a suite (including Arch: all)

@@ -68,7 +68,7 @@ mod test {
 
     #[test]
     fn base() {
-        let data = r#"---
+        let data = r"---
 mplayer:
   bugs:
   - '1005899'
@@ -98,7 +98,7 @@ mplayer-blue:
   removal_date: 2022-05-01 19:42:01
   source: mplayer-blue
   version: 1.13-2
-"#;
+";
         let autoremovals = from_str(data).unwrap();
 
         assert!(autoremovals.contains_key("mplayer"));

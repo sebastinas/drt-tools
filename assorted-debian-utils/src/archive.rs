@@ -88,7 +88,7 @@ pub enum Suite {
 impl Suite {
     /// Extend suite with an extension archive.
     ///
-    /// An existing extension will overriden and the method has no effect for`unstable` and `experimental`.`
+    /// An existing extension will overriden and the method has no effect for`unstable` and `experimental`.
     pub fn with_extension(&self, extension: Extension) -> Self {
         match self {
             Suite::Unstable | Suite::Experimental => *self,
@@ -100,7 +100,7 @@ impl Suite {
 
     /// Remove an extension archive from the suite.
     ///
-    /// The method has no effect for`unstable` and `experimental`.`
+    /// The method has no effect for`unstable` and `experimental`.
     pub fn without_extension(&self) -> Self {
         match self {
             Suite::Unstable | Suite::Experimental => *self,
@@ -119,9 +119,9 @@ impl Display for Suite {
             Suite::Stable(None) => write!(f, "stable"),
             Suite::OldStable(None) => write!(f, "oldstable"),
             Suite::Experimental => write!(f, "experimental"),
-            Suite::Testing(Some(ext)) => write!(f, "testing-{}", ext),
-            Suite::Stable(Some(ext)) => write!(f, "stable-{}", ext),
-            Suite::OldStable(Some(ext)) => write!(f, "oldstable-{}", ext),
+            Suite::Testing(Some(ext)) => write!(f, "testing-{ext}"),
+            Suite::Stable(Some(ext)) => write!(f, "stable-{ext}"),
+            Suite::OldStable(Some(ext)) => write!(f, "oldstable-{ext}"),
         }
     }
 }
@@ -203,9 +203,9 @@ impl Display for Codename {
             Codename::Bookworm(None) => write!(f, "bookworm"),
             Codename::Bullseye(None) => write!(f, "bullseye"),
             Codename::RCBuggy => write!(f, "rc-buggy"),
-            Codename::Trixie(Some(ext)) => write!(f, "trixie-{}", ext),
-            Codename::Bookworm(Some(ext)) => write!(f, "bookworm-{}", ext),
-            Codename::Bullseye(Some(ext)) => write!(f, "bullseye-{}", ext),
+            Codename::Trixie(Some(ext)) => write!(f, "trixie-{ext}"),
+            Codename::Bookworm(Some(ext)) => write!(f, "bookworm-{ext}"),
+            Codename::Bullseye(Some(ext)) => write!(f, "bullseye-{ext}"),
         }
     }
 }

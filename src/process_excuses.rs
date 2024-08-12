@@ -36,7 +36,7 @@ impl ScheduledBinNMUs {
     }
 
     fn store(&mut self, command: &WBCommand) {
-        self.binnmus.push(command.clone())
+        self.binnmus.push(command.clone());
     }
 }
 
@@ -110,11 +110,11 @@ impl<'a> ProcessExcuses<'a> {
 
         // if the others do not pass, would not migrate even if binNMUed
         policy_info.extras.values().all(|info| {
-            if info.verdict != Verdict::Pass {
+            if info.verdict == Verdict::Pass {
+                true
+            } else {
                 trace!("no binnmu possible: verdict not passing: {:?}", info);
                 false
-            } else {
-                true
             }
         })
     }
@@ -132,7 +132,7 @@ impl<'a> ProcessExcuses<'a> {
 
         // find architectures with maintainer built binaries
         let mut archs = vec![];
-        for (arch, signer) in policy_info.builtonbuildd.as_ref().unwrap().signed_by.iter() {
+        for (arch, signer) in &policy_info.builtonbuildd.as_ref().unwrap().signed_by {
             if let Some(signer) = signer {
                 if !signer.ends_with("@buildd.debian.org") {
                     if arch == &Architecture::All {
@@ -159,13 +159,11 @@ impl<'a> ProcessExcuses<'a> {
         if !source_packages.is_ma_same(&item.source) {
             source_specifier.with_architectures(&archs);
         }
-        match BinNMU::new(&source_specifier, "Rebuild on buildd") {
-            Ok(command) => Some(command.build()),
-            // not binNMU-able
-            Err(_) => {
-                error!("{}: failed to construct nmu command", item.source);
-                None
-            }
+        if let Ok(command) = BinNMU::new(&source_specifier, "Rebuild on buildd") {
+            Some(command.build())
+        } else {
+            error!("{}: failed to construct nmu command", item.source);
+            None
         }
     }
 
@@ -193,25 +191,23 @@ impl<'a> ProcessExcuses<'a> {
         }
         // append version
         unblock.push('/');
-        match item.new_version {
-            Some(ref version) => unblock.push_str(&version.to_string()),
-            _ => {
-                // this will never happen
-                error!("{}: new-version not set", item.source);
-                return None;
-            }
+        if let Some(ref version) = item.new_version {
+            unblock.push_str(&version.to_string());
+        } else {
+            // this will never happen
+            error!("{}: new-version not set", item.source);
+            return None;
         };
 
         // append architecture for binNMUs
         if item.is_binnmu() {
             unblock.push('/');
-            match item.binnmu_arch() {
-                Some(arch) => unblock.push_str(arch.as_ref()),
-                None => {
-                    // this will never happen
-                    error!("{}: binNMU but unable to extract architecture", item.source);
-                    return None;
-                }
+            if let Some(arch) = item.binnmu_arch() {
+                unblock.push_str(arch.as_ref());
+            } else {
+                // this will never happen
+                error!("{}: binNMU but unable to extract architecture", item.source);
+                return None;
             };
         }
 
@@ -280,16 +276,16 @@ impl<'a> ProcessExcuses<'a> {
         if let Ok(reader) = self.cache.get_data_bufreader(SCHEDULED_BINNMUS) {
             serde_yaml::from_reader(reader).unwrap_or_default()
         } else {
-            Default::default()
+            ScheduledBinNMUs::default()
         }
     }
 
-    fn store_scheduled_binnmus(&self, scheduled_binnmus: ScheduledBinNMUs) -> Result<()> {
+    fn store_scheduled_binnmus(&self, scheduled_binnmus: &ScheduledBinNMUs) -> Result<()> {
         serde_yaml::to_writer(
             self.cache.get_data_bufwriter(SCHEDULED_BINNMUS)?,
-            &scheduled_binnmus,
+            scheduled_binnmus,
         )
-        .map_err(|err| err.into())
+        .map_err(Into::into)
     }
 }
 
@@ -335,7 +331,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .filter_map(|action| match action {
                 Action::BinNMU(command) => Some(command),
                 Action::Unblock(unblock) => {
-                    println!("{}", unblock);
+                    println!("{unblock}");
                     None
                 }
             })
@@ -345,7 +341,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
         execute_wb_commands(binnmus, self.base_options).await?;
 
         // store scheduled binNMUs in cache
-        self.store_scheduled_binnmus(scheduled_binnmus)
+        self.store_scheduled_binnmus(&scheduled_binnmus)
     }
 }
 
