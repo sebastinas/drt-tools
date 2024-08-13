@@ -134,13 +134,13 @@ pub(crate) trait Downloads {
 }
 
 pub(crate) trait Command: Downloads {
-    /// Execture the command
+    /// Execute the command
     fn run(&self) -> Result<()>;
 }
 
 #[async_trait]
 pub(crate) trait AsyncCommand: Downloads {
-    /// Execture the command
+    /// Execute the command
     async fn run(&self) -> Result<()>;
 }
 
