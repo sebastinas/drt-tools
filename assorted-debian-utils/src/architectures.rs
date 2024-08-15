@@ -155,34 +155,6 @@ impl FromStr for Architecture {
     }
 }
 
-/// Release architectures for trixie
-#[deprecated]
-pub const RELEASE_ARCHITECTURES: [Architecture; 9] = [
-    Architecture::Amd64,
-    Architecture::Arm64,
-    Architecture::Armel,
-    Architecture::Armhf,
-    Architecture::I386,
-    Architecture::Ppc64el,
-    Architecture::Mips64el,
-    Architecture::Riscv64,
-    Architecture::S390x,
-];
-
-/// Architectures in the Debian archive (unstable)
-#[deprecated]
-pub const ARCHIVE_ARCHITECTURES: [Architecture; 9] = [
-    Architecture::Amd64,
-    Architecture::Arm64,
-    Architecture::Armel,
-    Architecture::Armhf,
-    Architecture::I386,
-    Architecture::Ppc64el,
-    Architecture::Mips64el,
-    Architecture::Riscv64,
-    Architecture::S390x,
-];
-
 #[cfg(test)]
 mod test {
     use super::Architecture;
