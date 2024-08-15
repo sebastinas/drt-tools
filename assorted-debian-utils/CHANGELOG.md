@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2 (2024-08-15)
+
+* Bump MSRV to 1.70.
+* architectures: Add `hurd-amd64` and `loong64`.
+* Small refactoring.
+
 ## 0.7.1 (2024-04-07)
 
 * excuses: expose results from autopkgtests.
