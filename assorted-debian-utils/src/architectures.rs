@@ -147,7 +147,7 @@ impl FromStr for Architecture {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Architecture::try_from(s)
+        Self::try_from(s)
     }
 }
 
