@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.24 (2024-08-15)
+
+* `process-excuses`: Merge `process-unblocks`.
+* `nmu-transitions`: Allow `--arch` to take `wb` architecture.
+
 ## 0.2.23 (2024-06-09)
 
 * `nmu-t64`: Removed, no longer needed.
