@@ -1,10 +1,11 @@
-// Copyright 2021 Sebastian Ramacher
+// Copyright 2021-2024 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Helpers to handle Debian architectures
 //!
-//! This module provides helpers for Debian architectures. This currently involves a list of release
-//! architectures and an enum for release and ports architectures.
+//! This module provides helpers for working with Debian architectures as they
+//! appear in various files related to Debian binary and source packages,
+//! archive indices, etc.
 
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
