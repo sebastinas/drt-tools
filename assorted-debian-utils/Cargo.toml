@@ -1,7 +1,7 @@
 [package]
 name = "assorted-debian-utils"
 description = "Collection of various utilities for Debian work"
-version = "0.7.2"
+version = "0.7.3"
 authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 repository = "https://github.com/sebastinas/drt-tools"
 edition = "2021"

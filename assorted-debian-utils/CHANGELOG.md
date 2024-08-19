@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3 (2024-08-19)
+
+* architectures: Fix spelling of `loong64`.
+* architectures: Remove long deprecated architecture lists.
+
 ## 0.7.2 (2024-08-15)
 
 * Bump MSRV to 1.70.
@@ -8,7 +13,7 @@
 
 ## 0.7.1 (2024-04-07)
 
-* excuses: expose results from autopkgtests.
+* excuses: Expose results from autopkgtests.
 * Small refactoring.
 
 ## 0.7.0 (2024-02-17)
