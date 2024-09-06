@@ -39,12 +39,8 @@ pub use crate::ParseError;
 /// Non-letters sort before letters, and ~ always sorts first.
 fn compare_non_digits(mut lhs: &str, mut rhs: &str) -> Ordering {
     while !lhs.is_empty() || !rhs.is_empty() {
-        let (lhs_tilde, lhs_found) = lhs
-            .find(|c| c == '~')
-            .map_or((lhs.len(), false), |i| (i, true));
-        let (rhs_tilde, rhs_found) = rhs
-            .find(|c| c == '~')
-            .map_or((rhs.len(), false), |i| (i, true));
+        let (lhs_tilde, lhs_found) = lhs.find('~').map_or((lhs.len(), false), |i| (i, true));
+        let (rhs_tilde, rhs_found) = rhs.find('~').map_or((rhs.len(), false), |i| (i, true));
         let c = lhs[..lhs_tilde].cmp(&rhs[..rhs_tilde]);
         if c != Ordering::Equal {
             return c;
