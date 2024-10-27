@@ -12,6 +12,7 @@ mod binnmu_buildinfo;
 pub(crate) mod config;
 mod grep_excuses;
 mod nmu_eso;
+mod nmu_list;
 mod nmu_transition;
 mod nmu_versionskew;
 mod process_excuses;
@@ -22,6 +23,7 @@ pub(crate) mod utils;
 use binnmu_buildinfo::{BinNMUBuildinfo, BinNMUBuildinfoOptions};
 use grep_excuses::{GrepExcuses, GrepExcusesOptions};
 use nmu_eso::{NMUOutdatedBuiltUsing, NMUOutdatedBuiltUsingOptions};
+use nmu_list::{NMUList, NMUListOptions};
 use nmu_transition::{NMUTransition, NMUTransitionOptions};
 use nmu_versionskew::{NMUVersionSkew, NMUVersionSkewOptions};
 use process_excuses::{ProcessExcuses, ProcessExcusesOptions};
@@ -119,6 +121,9 @@ enum DrtToolsCommands {
     /// Prepare rebuilds for version skew in Multi-Arch: same packages
     #[clap(name = "nmu-version-skew")]
     NMUVersionSkew(NMUVersionSkewOptions),
+    /// BinNMU a list of packages
+    #[clap(name = "nmu-list")]
+    NMUList(NMUListOptions),
 }
 
 pub(crate) trait Downloads {
@@ -202,6 +207,9 @@ async fn main() -> Result<()> {
             ),
             DrtToolsCommands::NMUVersionSkew(vs_opts) => {
                 Box::new(NMUVersionSkew::new(&cache, &opts.base_options, vs_opts))
+            }
+            DrtToolsCommands::NMUList(nl_ots) => {
+                Box::new(NMUList::new(&cache, &opts.base_options, nl_ots))
             }
         };
     execute_command(&cache, command.as_ref(), opts.base_options.force_processing).await
