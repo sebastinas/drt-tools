@@ -171,7 +171,7 @@ impl<'a> SourceSpecifier<'a> {
     }
 }
 
-impl<'a> Display for SourceSpecifier<'a> {
+impl Display for SourceSpecifier<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.source)?;
         if let Some(version) = self.version {
@@ -253,7 +253,7 @@ impl<'a> BinNMU<'a> {
     }
 }
 
-impl<'a> Display for BinNMU<'a> {
+impl Display for BinNMU<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "nmu ")?;
         if let Some(nmu_version) = self.nmu_version {
@@ -287,7 +287,7 @@ impl<'a> Display for BinNMU<'a> {
     }
 }
 
-impl<'a> WBCommandBuilder for BinNMU<'a> {
+impl WBCommandBuilder for BinNMU<'_> {
     fn build(&self) -> WBCommand {
         WBCommand(self.to_string())
     }
@@ -318,13 +318,13 @@ impl<'a> DepWait<'a> {
     }
 }
 
-impl<'a> Display for DepWait<'a> {
+impl Display for DepWait<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "dw {} . -m \"{}\"", self.source, self.message)
     }
 }
 
-impl<'a> WBCommandBuilder for DepWait<'a> {
+impl WBCommandBuilder for DepWait<'_> {
     fn build(&self) -> WBCommand {
         WBCommand(self.to_string())
     }
@@ -355,13 +355,13 @@ impl<'a> BuildPriority<'a> {
     }
 }
 
-impl<'a> Display for BuildPriority<'a> {
+impl Display for BuildPriority<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "bp {} {}", self.priority, self.source)
     }
 }
 
-impl<'a> WBCommandBuilder for BuildPriority<'a> {
+impl WBCommandBuilder for BuildPriority<'_> {
     fn build(&self) -> WBCommand {
         WBCommand(self.to_string())
     }
@@ -392,13 +392,13 @@ impl<'a> Fail<'a> {
     }
 }
 
-impl<'a> Display for Fail<'a> {
+impl Display for Fail<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "fail {} . -m \"{}\"", self.source, self.message)
     }
 }
 
-impl<'a> WBCommandBuilder for Fail<'a> {
+impl WBCommandBuilder for Fail<'_> {
     fn build(&self) -> WBCommand {
         WBCommand(self.to_string())
     }

@@ -35,7 +35,7 @@ where
     #[derive(Debug)]
     struct Visitor;
 
-    impl<'de> de::Visitor<'de> for Visitor {
+    impl de::Visitor<'_> for Visitor {
         type Value = Option<PackageVersion>;
 
         fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {

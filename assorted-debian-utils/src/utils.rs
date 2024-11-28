@@ -15,7 +15,7 @@ use serde::de;
 /// Helper to parse date-time strings as UTC based on a given format
 pub(crate) struct DateTimeVisitor(pub &'static str);
 
-impl<'de> de::Visitor<'de> for DateTimeVisitor {
+impl de::Visitor<'_> for DateTimeVisitor {
     type Value = DateTime<Utc>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -41,7 +41,7 @@ impl<T> WhitespaceListVisitor<T> {
     }
 }
 
-impl<'de, T> serde::de::Visitor<'de> for WhitespaceListVisitor<T>
+impl<T> serde::de::Visitor<'_> for WhitespaceListVisitor<T>
 where
     for<'a> T: TryFrom<&'a str>,
     for<'a> <T as TryFrom<&'a str>>::Error: Display,
@@ -77,7 +77,7 @@ impl<T> TryFromStrVisitor<T> {
     }
 }
 
-impl<'de, T> serde::de::Visitor<'de> for TryFromStrVisitor<T>
+impl<T> serde::de::Visitor<'_> for TryFromStrVisitor<T>
 where
     for<'a> T: TryFrom<&'a str>,
     for<'a> <T as TryFrom<&'a str>>::Error: Display,

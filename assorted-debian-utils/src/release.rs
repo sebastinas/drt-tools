@@ -48,7 +48,7 @@ where
 
 struct SHA256Visitor;
 
-impl<'de> de::Visitor<'de> for SHA256Visitor {
+impl de::Visitor<'_> for SHA256Visitor {
     type Value = HashMap<String, FileInfo>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
