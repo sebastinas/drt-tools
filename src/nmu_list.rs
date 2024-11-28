@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use assorted_debian_utils::{
     archive::Codename,
+    version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use async_trait::async_trait;
@@ -84,16 +85,35 @@ impl AsyncCommand for NMUList<'_> {
                     break;
                 };
 
-                if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
+                let source = source
+                    .split_once(|c: char| c.is_ascii_whitespace())
+                    .map(|(source, _)| source)
+                    .unwrap_or(&source);
+                if source.is_empty() {
+                    continue;
+                }
+
+                let (source, version) = source
+                    .split_once('_')
+                    .map(|(source, version)| (source, PackageVersion::try_from(version).ok()))
+                    .unwrap_or_else(|| (source, source_packages.version(source).cloned()));
+                if source.is_empty() {
+                    continue;
+                }
+
+                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
                     println!("# Skipping {source} due to FTBFS bugs");
                     continue;
                 }
 
-                let mut source_specifier = SourceSpecifier::new(&source);
+                let mut source_specifier = SourceSpecifier::new(source);
+                if let Some(ref version) = version {
+                    source_specifier.with_version(version);
+                }
                 source_specifier.with_suite(self.options.binnmu_options.suite);
                 if let Some(architectures) = &self.options.binnmu_options.architecture {
-                    if !source_packages.is_ma_same(&source) {
+                    if !source_packages.is_ma_same(source) {
                         source_specifier.with_architectures(architectures);
                     }
                 }

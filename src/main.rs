@@ -66,7 +66,7 @@ pub(crate) struct BinNMUsOptions {
     /// Suite for binNMUs.
     #[clap(short, long, default_value = "unstable")]
     suite: SuiteOrCodename,
-    /// Set architectures for binNMUs. If no archictures are specified, the binNMUs are scheduled with ANY.
+    /// Set architectures for binNMUs. If no architectures are specified, the binNMUs are scheduled with ANY.
     #[clap(short, long)]
     architecture: Option<Vec<WBArchitecture>>,
 }
@@ -122,6 +122,10 @@ enum DrtToolsCommands {
     #[clap(name = "nmu-version-skew")]
     NMUVersionSkew(NMUVersionSkewOptions),
     /// BinNMU a list of packages
+    ///
+    /// If an architecture is specified, but the package to be rebuilt produces
+    /// a `Multi-Arch: same` binary, a binNMU for `ANY` will be scheduled
+    /// instead.
     #[clap(name = "nmu-list")]
     NMUList(NMUListOptions),
 }
