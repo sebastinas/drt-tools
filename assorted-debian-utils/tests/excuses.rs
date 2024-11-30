@@ -12,6 +12,11 @@ fn parse_excuses_2022_07_02() {
     parse_excuses("excuses-2022-07-02.yaml");
 }
 
+#[test]
+fn parse_excuses_2024_11_30() {
+    parse_excuses("excuses-2024-11-30.yaml");
+}
+
 fn parse_excuses(data_file: &str) {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let excuses_path = manifest_dir.join("tests").join("data").join(data_file);
