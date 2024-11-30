@@ -200,6 +200,11 @@ impl PackageVersion {
         }
         self
     }
+
+    /// Obtain version without the binNMU version.
+    pub fn clone_without_binnmu_version(&self) -> Self {
+        self.clone().without_binnmu_version()
+    }
 }
 
 impl PartialOrd for PackageVersion {
