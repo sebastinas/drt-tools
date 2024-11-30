@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.25 (2024-11-30)
+
+* `nmu-list`: New command
+
 ## 0.2.24 (2024-08-15)
 
 * `process-excuses`: Merge `process-unblocks`.
