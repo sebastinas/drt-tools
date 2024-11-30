@@ -29,6 +29,7 @@ use crate::{
     config::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
+    source_packages,
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
     AsyncCommand, BaseOptions, Downloads,
@@ -37,9 +38,8 @@ use crate::{
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
-    source: Option<String>,
-    package: String,
-    version: PackageVersion,
+    #[serde(flatten)]
+    package: source_packages::BinaryPackage,
     architecture: Architecture,
     #[serde(rename = "Built-Using")]
     built_using: Option<String>,
@@ -194,15 +194,7 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             };
 
-            let source_package = if let Some(source_package) = &binary_package.source {
-                match source_package.split_whitespace().next() {
-                    Some(package) => package,
-                    None => continue,
-                }
-            } else {
-                // no Source set, so Source == Package
-                &binary_package.package
-            };
+            let (source_package, version) = binary_package.package.name_and_version();
 
             // remove trailing spaces found in X-Cargo-Built-Using
             let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
@@ -216,7 +208,7 @@ impl Iterator for BinaryPackageParser<'_> {
                     if split.is_none() {
                         warn!(
                             "Package '{}' contains invalid dependency in {}: {}",
-                            binary_package.package, self.field, dependency
+                            binary_package.package.package, self.field, dependency
                         );
                     }
                     split
@@ -230,7 +222,7 @@ impl Iterator for BinaryPackageParser<'_> {
                         // rebuild those packages in any case.
                         trace!(
                             "Package '{}' refers to non-existing source package '{}'.",
-                            binary_package.package,
+                            binary_package.package.package,
                             source
                         );
                         true
@@ -249,7 +241,7 @@ impl Iterator for BinaryPackageParser<'_> {
 
             return Some((
                 source_package.into(),
-                binary_package.version.without_binnmu_version(),
+                version.without_binnmu_version(),
                 built_using,
             ));
         }

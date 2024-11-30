@@ -27,6 +27,7 @@ use crate::{
     config::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
+    source_packages,
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
     AsyncCommand, BaseOptions, Downloads,
@@ -35,12 +36,9 @@ use crate::{
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
-    source: Option<String>,
-    package: String,
-    version: PackageVersion,
+    #[serde(flatten)]
+    package: source_packages::BinaryPackage,
     architecture: Architecture,
-    #[serde(rename = "Multi-Arch")]
-    multi_arch: Option<MultiArch>,
 }
 
 #[derive(Debug, Parser)]
@@ -83,7 +81,7 @@ impl Iterator for BinaryPackageParser {
     fn next(&mut self) -> Option<Self::Item> {
         for binary_package in self.iterator.by_ref() {
             // skip packages that are not MA: same
-            if binary_package.multi_arch != Some(MultiArch::Same) {
+            if binary_package.package.multi_arch != Some(MultiArch::Same) {
                 continue;
             }
             // skip Arch: all packages
@@ -91,18 +89,11 @@ impl Iterator for BinaryPackageParser {
                 continue;
             }
 
+            let (source_package, _) = binary_package.package.name_and_version();
             return Some((
-                if let Some(source_package) = &binary_package.source {
-                    match source_package.split_whitespace().next() {
-                        Some(package) => package.into(),
-                        None => continue,
-                    }
-                } else {
-                    // no Source set, so Source == Package
-                    binary_package.package
-                },
+                source_package.into(),
                 binary_package.architecture,
-                binary_package.version,
+                binary_package.package.version,
             ));
         }
 

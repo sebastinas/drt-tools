@@ -13,12 +13,31 @@ use crate::config;
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
-struct BinaryPackage {
-    source: Option<String>,
-    package: String,
-    version: PackageVersion,
+pub struct BinaryPackage {
+    pub source: Option<String>,
+    pub package: String,
+    pub version: PackageVersion,
     #[serde(rename = "Multi-Arch")]
-    multi_arch: Option<MultiArch>,
+    pub multi_arch: Option<MultiArch>,
+}
+
+impl BinaryPackage {
+    pub fn name_and_version(&self) -> (&str, PackageVersion) {
+        if let Some(source_package) = &self.source {
+            source_package
+                .split_once(|c: char| c.is_ascii_whitespace())
+                .map(|(source, version)| {
+                    (
+                        source,
+                        PackageVersion::try_from(&version[1..version.len() - 1]).unwrap(),
+                    )
+                })
+                .unwrap_or_else(|| (source_package, self.version.clone_without_binnmu_version()))
+        } else {
+            // no Source set, so Source == Package
+            (&self.package, self.version.clone_without_binnmu_version())
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -37,30 +56,9 @@ impl SourcePackages {
         let mut all_sources = HashMap::<String, SourcePackage>::new();
         for path in paths {
             for binary_package in Self::parse_packages(path)? {
-                let (source, version) = if let Some(source_package) = &binary_package.source {
-                    source_package
-                        .split_once(|c: char| c.is_ascii_whitespace())
-                        .map(|(source, version)| {
-                            (
-                                source.into(),
-                                PackageVersion::try_from(&version[1..version.len() - 1]).unwrap(),
-                            )
-                        })
-                        .unwrap_or_else(|| {
-                            (
-                                source_package.into(),
-                                binary_package.version.without_binnmu_version(),
-                            )
-                        })
-                } else {
-                    // no Source set, so Source == Package
-                    (
-                        binary_package.package,
-                        binary_package.version.without_binnmu_version(),
-                    )
-                };
+                let (source, version) = binary_package.name_and_version();
 
-                if let Some(data) = all_sources.get_mut(&source) {
+                if let Some(data) = all_sources.get_mut(source) {
                     if version > data.version {
                         data.version = version;
                     }
@@ -69,7 +67,7 @@ impl SourcePackages {
                     }
                 } else {
                     all_sources.insert(
-                        source,
+                        source.to_string(),
                         SourcePackage {
                             version,
                             ma_same: binary_package.multi_arch == Some(MultiArch::Same),
