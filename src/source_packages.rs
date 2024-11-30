@@ -115,10 +115,11 @@ impl SourcePackages {
     {
         let mut all_sources = HashMap::<String, SourcePackage>::new();
         for path in paths {
-            for binary_package in Self::parse_packages(path)? {
+            for binary_package in parse_packages(path.as_ref())? {
                 let (source, version) = binary_package.name_and_version();
 
                 if let Some(data) = all_sources.get_mut(source) {
+                    // store only highest version
                     if version > data.version {
                         data.version = version;
                     }
@@ -140,21 +141,6 @@ impl SourcePackages {
         Ok(Self(all_sources))
     }
 
-    fn parse_packages<P>(path: P) -> Result<impl Iterator<Item = BinaryPackage>>
-    where
-        P: AsRef<Path>,
-    {
-        // read Package file
-        let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())?;
-        let pb = ProgressBar::new(binary_packages.len() as u64);
-        pb.set_style(config::default_progress_style().template(
-            "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
-        )?);
-        pb.set_message(format!("Processing {}", path.as_ref().display()));
-        // collect all sources
-        Ok(binary_packages.into_iter().progress_with(pb))
-    }
-
     /// Check if a source package builds an MA: same binary package
     ///
     /// Returns false if the source package does not exist.
@@ -171,4 +157,16 @@ impl SourcePackages {
             .get(source)
             .map(|source_package| &source_package.version)
     }
+}
+
+fn parse_packages(path: &Path) -> Result<impl Iterator<Item = BinaryPackage>> {
+    // read Package file
+    let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path)?;
+    let pb = ProgressBar::new(binary_packages.len() as u64);
+    pb.set_style(config::default_progress_style().template(
+        "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
+    )?);
+    pb.set_message(format!("Processing {}", path.display()));
+    // collect all sources
+    Ok(binary_packages.into_iter().progress_with(pb))
 }

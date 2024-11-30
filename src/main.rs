@@ -123,9 +123,10 @@ enum DrtToolsCommands {
     NMUVersionSkew(NMUVersionSkewOptions),
     /// BinNMU a list of packages
     ///
-    /// If an architecture is specified, but the package to be rebuilt produces
-    /// a `Multi-Arch: same` binary, a binNMU for `ANY` will be scheduled
-    /// instead.
+    /// The command expects one source package or one source package with a
+    /// version per row (as `source_version`). If an architecture is specified,
+    /// but the package to be rebuilt produces a `Multi-Arch: same` binary, a
+    /// binNMU for `ANY` will be scheduled instead.
     #[clap(name = "nmu-list")]
     NMUList(NMUListOptions),
 }
