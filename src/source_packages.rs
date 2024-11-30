@@ -1,20 +1,82 @@
 // Copyright 2021-2024 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    fmt::{self, Display},
+    path::Path,
+};
 
 use anyhow::Result;
 use assorted_debian_utils::{archive::MultiArch, rfc822_like, version::PackageVersion};
 use indicatif::{ProgressBar, ProgressIterator};
-use serde::Deserialize;
+use serde::{de, Deserialize};
 
 use crate::config;
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+/// Source package name with optional version in parenthesis
+#[derive(Debug, PartialEq, Eq)]
+pub struct SourceWithVersion {
+    pub source: String,
+    pub version: Option<PackageVersion>,
+}
+
+impl Display for SourceWithVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(ref version) = self.version {
+            write!(f, "{} ({})", self.source, version)
+        } else {
+            write!(f, "{}", self.source)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SourceWithVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl de::Visitor<'_> for Visitor {
+            type Value = SourceWithVersion;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a source package name or a source package name with version formatted as $source ($version)")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                if let Some((source, version)) = v.split_once(' ') {
+                    if !version.starts_with('(') || !version.ends_with(')') {
+                        return Err(E::invalid_value(de::Unexpected::Str(v), &self));
+                    }
+
+                    let version = PackageVersion::try_from(&version[1..version.len() - 1])
+                        .map_err(|_| E::invalid_value(de::Unexpected::Str(v), &self))?;
+                    Ok(SourceWithVersion {
+                        source: source.into(),
+                        version: Some(version),
+                    })
+                } else {
+                    Ok(SourceWithVersion {
+                        source: v.into(),
+                        version: None,
+                    })
+                }
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 pub struct BinaryPackage {
-    pub source: Option<String>,
+    pub source: Option<SourceWithVersion>,
     pub package: String,
     pub version: PackageVersion,
     #[serde(rename = "Multi-Arch")]
@@ -24,15 +86,13 @@ pub struct BinaryPackage {
 impl BinaryPackage {
     pub fn name_and_version(&self) -> (&str, PackageVersion) {
         if let Some(source_package) = &self.source {
-            source_package
-                .split_once(|c: char| c.is_ascii_whitespace())
-                .map(|(source, version)| {
-                    (
-                        source,
-                        PackageVersion::try_from(&version[1..version.len() - 1]).unwrap(),
-                    )
-                })
-                .unwrap_or_else(|| (source_package, self.version.clone_without_binnmu_version()))
+            (
+                &source_package.source,
+                source_package
+                    .version
+                    .clone()
+                    .unwrap_or_else(|| self.version.clone_without_binnmu_version()),
+            )
         } else {
             // no Source set, so Source == Package
             (&self.package, self.version.clone_without_binnmu_version())
