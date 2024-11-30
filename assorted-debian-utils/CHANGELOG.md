@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.4 (2024-11-30)
+
+* version: Add new convenience function
+* Fix clippy issues
+
 ## 0.7.3 (2024-08-19)
 
 * architectures: Fix spelling of `loong64`.
