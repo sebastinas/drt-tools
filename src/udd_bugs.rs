@@ -24,12 +24,12 @@ pub enum Severity {
 impl AsRef<str> for Severity {
     fn as_ref(&self) -> &str {
         match self {
-            Severity::Wishlist => "wishlist",
-            Severity::Normal => "normal",
-            Severity::Important => "important",
-            Severity::Serious => "serious",
-            Severity::Grave => "grave",
-            Severity::Critical => "critical",
+            Self::Wishlist => "wishlist",
+            Self::Normal => "normal",
+            Self::Important => "important",
+            Self::Serious => "serious",
+            Self::Grave => "grave",
+            Self::Critical => "critical",
         }
     }
 }

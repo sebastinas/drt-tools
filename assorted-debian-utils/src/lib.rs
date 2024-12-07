@@ -13,6 +13,7 @@
 
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
+#![warn(clippy::use_self)]
 
 use thiserror::Error;
 

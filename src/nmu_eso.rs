@@ -67,9 +67,9 @@ pub enum Field {
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Field::BuiltUsing => write!(f, "Built-Using"),
-            Field::StaticBuiltUsing => write!(f, "Static-Built-Using"),
-            Field::XCargoBuiltUsing => write!(f, "X-Cargo-Built-Using"),
+            Self::BuiltUsing => write!(f, "Built-Using"),
+            Self::StaticBuiltUsing => write!(f, "Static-Built-Using"),
+            Self::XCargoBuiltUsing => write!(f, "X-Cargo-Built-Using"),
         }
     }
 }
@@ -88,9 +88,9 @@ impl FromStr for Field {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "Built-Using" => Ok(Field::BuiltUsing),
-            "Static-Built-Using" => Ok(Field::StaticBuiltUsing),
-            "X-Cargo-Built-Using" => Ok(Field::XCargoBuiltUsing),
+            "Built-Using" => Ok(Self::BuiltUsing),
+            "Static-Built-Using" => Ok(Self::StaticBuiltUsing),
+            "X-Cargo-Built-Using" => Ok(Self::XCargoBuiltUsing),
             _ => Err(ParseError),
         }
     }

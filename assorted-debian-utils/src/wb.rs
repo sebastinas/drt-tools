@@ -87,10 +87,10 @@ pub enum WBArchitecture {
 impl Display for WBArchitecture {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            WBArchitecture::Any => write!(f, "ANY"),
-            WBArchitecture::All => write!(f, "ALL"),
-            WBArchitecture::Architecture(arch) => write!(f, "{arch}"),
-            WBArchitecture::ExcludeArchitecture(arch) => write!(f, "-{arch}"),
+            Self::Any => write!(f, "ANY"),
+            Self::All => write!(f, "ALL"),
+            Self::Architecture(arch) => write!(f, "{arch}"),
+            Self::ExcludeArchitecture(arch) => write!(f, "-{arch}"),
         }
     }
 }
@@ -100,13 +100,13 @@ impl TryFrom<&str> for WBArchitecture {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "ANY" => Ok(WBArchitecture::Any),
-            "ALL" => Ok(WBArchitecture::All),
+            "ANY" => Ok(Self::Any),
+            "ALL" => Ok(Self::All),
             _ => {
                 if let Some(stripped) = value.strip_prefix('-') {
-                    Ok(WBArchitecture::ExcludeArchitecture(stripped.try_into()?))
+                    Ok(Self::ExcludeArchitecture(stripped.try_into()?))
                 } else {
-                    Ok(WBArchitecture::Architecture(value.try_into()?))
+                    Ok(Self::Architecture(value.try_into()?))
                 }
             }
         }

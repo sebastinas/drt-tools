@@ -32,10 +32,10 @@ pub enum Extension {
 impl AsRef<str> for Extension {
     fn as_ref(&self) -> &str {
         match self {
-            Extension::Backports => "backports",
-            Extension::Security => "security",
-            Extension::Updates => "updates",
-            Extension::ProposedUpdates => "proposed-updates",
+            Self::Backports => "backports",
+            Self::Security => "security",
+            Self::Updates => "updates",
+            Self::ProposedUpdates => "proposed-updates",
         }
     }
 }
@@ -51,10 +51,10 @@ impl TryFrom<&str> for Extension {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "backports" => Ok(Extension::Backports),
-            "security" => Ok(Extension::Security),
-            "updates" => Ok(Extension::Updates),
-            "proposed-updates" => Ok(Extension::ProposedUpdates),
+            "backports" => Ok(Self::Backports),
+            "security" => Ok(Self::Security),
+            "updates" => Ok(Self::Updates),
+            "proposed-updates" => Ok(Self::ProposedUpdates),
             _ => Err(ParseError::InvalidExtension),
         }
     }
@@ -64,7 +64,7 @@ impl FromStr for Extension {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Extension::try_from(s)
+        Self::try_from(s)
     }
 }
 
@@ -91,10 +91,10 @@ impl Suite {
     /// An existing extension will overriden and the method has no effect for`unstable` and `experimental`.
     pub fn with_extension(&self, extension: Extension) -> Self {
         match self {
-            Suite::Unstable | Suite::Experimental => *self,
-            Suite::Testing(_) => Suite::Testing(Some(extension)),
-            Suite::Stable(_) => Suite::Stable(Some(extension)),
-            Suite::OldStable(_) => Suite::OldStable(Some(extension)),
+            Self::Unstable | Self::Experimental => *self,
+            Self::Testing(_) => Self::Testing(Some(extension)),
+            Self::Stable(_) => Self::Stable(Some(extension)),
+            Self::OldStable(_) => Self::OldStable(Some(extension)),
         }
     }
 
@@ -103,10 +103,10 @@ impl Suite {
     /// The method has no effect for`unstable` and `experimental`.
     pub fn without_extension(&self) -> Self {
         match self {
-            Suite::Unstable | Suite::Experimental => *self,
-            Suite::Testing(_) => Suite::Testing(None),
-            Suite::Stable(_) => Suite::Stable(None),
-            Suite::OldStable(_) => Suite::OldStable(None),
+            Self::Unstable | Self::Experimental => *self,
+            Self::Testing(_) => Self::Testing(None),
+            Self::Stable(_) => Self::Stable(None),
+            Self::OldStable(_) => Self::OldStable(None),
         }
     }
 }
@@ -114,14 +114,14 @@ impl Suite {
 impl Display for Suite {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            Suite::Unstable => write!(f, "unstable"),
-            Suite::Testing(None) => write!(f, "testing"),
-            Suite::Stable(None) => write!(f, "stable"),
-            Suite::OldStable(None) => write!(f, "oldstable"),
-            Suite::Experimental => write!(f, "experimental"),
-            Suite::Testing(Some(ext)) => write!(f, "testing-{ext}"),
-            Suite::Stable(Some(ext)) => write!(f, "stable-{ext}"),
-            Suite::OldStable(Some(ext)) => write!(f, "oldstable-{ext}"),
+            Self::Unstable => write!(f, "unstable"),
+            Self::Testing(None) => write!(f, "testing"),
+            Self::Stable(None) => write!(f, "stable"),
+            Self::OldStable(None) => write!(f, "oldstable"),
+            Self::Experimental => write!(f, "experimental"),
+            Self::Testing(Some(ext)) => write!(f, "testing-{ext}"),
+            Self::Stable(Some(ext)) => write!(f, "stable-{ext}"),
+            Self::OldStable(Some(ext)) => write!(f, "oldstable-{ext}"),
         }
     }
 }
@@ -131,20 +131,20 @@ impl TryFrom<&str> for Suite {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "unstable" => Ok(Suite::Unstable),
-            "testing" => Ok(Suite::Testing(None)),
-            "stable" => Ok(Suite::Stable(None)),
-            "oldstable" => Ok(Suite::OldStable(None)),
+            "unstable" => Ok(Self::Unstable),
+            "testing" => Ok(Self::Testing(None)),
+            "stable" => Ok(Self::Stable(None)),
+            "oldstable" => Ok(Self::OldStable(None)),
             // The Release file from stable-proposed-updates calls the suite proposed-updaptes.
-            "proposed-updates" => Ok(Suite::Stable(Some(Extension::ProposedUpdates))),
-            "experimental" => Ok(Suite::Experimental),
+            "proposed-updates" => Ok(Self::Stable(Some(Extension::ProposedUpdates))),
+            "experimental" => Ok(Self::Experimental),
             _ => {
                 let s = value.split_once('-').ok_or(ParseError::InvalidSuite)?;
                 let ext = Extension::try_from(s.1)?;
                 match s.0 {
-                    "testing" => Ok(Suite::Testing(Some(ext))),
-                    "stable" => Ok(Suite::Stable(Some(ext))),
-                    "oldstable" => Ok(Suite::OldStable(Some(ext))),
+                    "testing" => Ok(Self::Testing(Some(ext))),
+                    "stable" => Ok(Self::Stable(Some(ext))),
+                    "oldstable" => Ok(Self::OldStable(Some(ext))),
                     _ => Err(ParseError::InvalidSuite),
                 }
             }
@@ -156,7 +156,7 @@ impl FromStr for Suite {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Suite::try_from(s)
+        Self::try_from(s)
     }
 }
 
@@ -174,7 +174,7 @@ impl<'de> Deserialize<'de> for Suite {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Suite>::new("a suite name"))
+        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a suite name"))
     }
 }
 
@@ -198,14 +198,14 @@ pub enum Codename {
 impl Display for Codename {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            Codename::Sid => write!(f, "sid"),
-            Codename::Trixie(None) => write!(f, "trixie"),
-            Codename::Bookworm(None) => write!(f, "bookworm"),
-            Codename::Bullseye(None) => write!(f, "bullseye"),
-            Codename::RCBuggy => write!(f, "rc-buggy"),
-            Codename::Trixie(Some(ext)) => write!(f, "trixie-{ext}"),
-            Codename::Bookworm(Some(ext)) => write!(f, "bookworm-{ext}"),
-            Codename::Bullseye(Some(ext)) => write!(f, "bullseye-{ext}"),
+            Self::Sid => write!(f, "sid"),
+            Self::Trixie(None) => write!(f, "trixie"),
+            Self::Bookworm(None) => write!(f, "bookworm"),
+            Self::Bullseye(None) => write!(f, "bullseye"),
+            Self::RCBuggy => write!(f, "rc-buggy"),
+            Self::Trixie(Some(ext)) => write!(f, "trixie-{ext}"),
+            Self::Bookworm(Some(ext)) => write!(f, "bookworm-{ext}"),
+            Self::Bullseye(Some(ext)) => write!(f, "bullseye-{ext}"),
         }
     }
 }
@@ -215,18 +215,18 @@ impl TryFrom<&str> for Codename {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "sid" => Ok(Codename::Sid),
-            "trixie" => Ok(Codename::Trixie(None)),
-            "bookworm" => Ok(Codename::Bookworm(None)),
-            "bullseye" => Ok(Codename::Bullseye(None)),
-            "rc-buggy" => Ok(Codename::RCBuggy),
+            "sid" => Ok(Self::Sid),
+            "trixie" => Ok(Self::Trixie(None)),
+            "bookworm" => Ok(Self::Bookworm(None)),
+            "bullseye" => Ok(Self::Bullseye(None)),
+            "rc-buggy" => Ok(Self::RCBuggy),
             _ => {
                 let s = value.split_once('-').ok_or(ParseError::InvalidCodename)?;
                 let ext = Extension::try_from(s.1)?;
                 match s.0 {
-                    "trixie" => Ok(Codename::Trixie(Some(ext))),
-                    "bookworm" => Ok(Codename::Bookworm(Some(ext))),
-                    "bullseye" => Ok(Codename::Bullseye(Some(ext))),
+                    "trixie" => Ok(Self::Trixie(Some(ext))),
+                    "bookworm" => Ok(Self::Bookworm(Some(ext))),
+                    "bullseye" => Ok(Self::Bullseye(Some(ext))),
                     _ => Err(ParseError::InvalidCodename),
                 }
             }
@@ -238,18 +238,18 @@ impl FromStr for Codename {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Codename::try_from(s)
+        Self::try_from(s)
     }
 }
 
 impl From<Suite> for Codename {
     fn from(suite: Suite) -> Self {
         match suite {
-            Suite::Unstable => Codename::Sid,
-            Suite::Testing(ext) => Codename::Trixie(ext),
-            Suite::Stable(ext) => Codename::Bookworm(ext),
-            Suite::OldStable(ext) => Codename::Bullseye(ext),
-            Suite::Experimental => Codename::RCBuggy,
+            Suite::Unstable => Self::Sid,
+            Suite::Testing(ext) => Self::Trixie(ext),
+            Suite::Stable(ext) => Self::Bookworm(ext),
+            Suite::OldStable(ext) => Self::Bullseye(ext),
+            Suite::Experimental => Self::RCBuggy,
         }
     }
 }
@@ -257,11 +257,11 @@ impl From<Suite> for Codename {
 impl From<Codename> for Suite {
     fn from(codename: Codename) -> Self {
         match codename {
-            Codename::Sid => Suite::Unstable,
-            Codename::Trixie(ext) => Suite::Testing(ext),
-            Codename::Bookworm(ext) => Suite::Stable(ext),
-            Codename::Bullseye(ext) => Suite::OldStable(ext),
-            Codename::RCBuggy => Suite::Experimental,
+            Codename::Sid => Self::Unstable,
+            Codename::Trixie(ext) => Self::Testing(ext),
+            Codename::Bookworm(ext) => Self::Stable(ext),
+            Codename::Bullseye(ext) => Self::OldStable(ext),
+            Codename::RCBuggy => Self::Experimental,
         }
     }
 }
@@ -280,7 +280,7 @@ impl<'de> Deserialize<'de> for Codename {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Codename>::new("a codename"))
+        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a codename"))
     }
 }
 
@@ -297,13 +297,13 @@ pub enum SuiteOrCodename {
 
 impl From<Codename> for SuiteOrCodename {
     fn from(codename: Codename) -> Self {
-        SuiteOrCodename::Codename(codename)
+        Self::Codename(codename)
     }
 }
 
 impl From<Suite> for SuiteOrCodename {
     fn from(suite: Suite) -> Self {
-        SuiteOrCodename::Suite(suite)
+        Self::Suite(suite)
     }
 }
 
@@ -312,9 +312,9 @@ impl TryFrom<&str> for SuiteOrCodename {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match Suite::try_from(value) {
-            Ok(suite) => Ok(SuiteOrCodename::Suite(suite)),
+            Ok(suite) => Ok(Self::Suite(suite)),
             Err(_) => match Codename::try_from(value) {
-                Ok(codename) => Ok(SuiteOrCodename::Codename(codename)),
+                Ok(codename) => Ok(Self::Codename(codename)),
                 Err(_) => Err(ParseError::InvalidSuiteOrCodename),
             },
         }
@@ -325,15 +325,15 @@ impl FromStr for SuiteOrCodename {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        SuiteOrCodename::try_from(s)
+        Self::try_from(s)
     }
 }
 
 impl Display for SuiteOrCodename {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SuiteOrCodename::Suite(suite) => suite.fmt(f),
-            SuiteOrCodename::Codename(codename) => codename.fmt(f),
+            Self::Suite(suite) => suite.fmt(f),
+            Self::Codename(codename) => codename.fmt(f),
         }
     }
 }
@@ -342,7 +342,7 @@ impl From<SuiteOrCodename> for Suite {
     fn from(value: SuiteOrCodename) -> Self {
         match value {
             SuiteOrCodename::Suite(suite) => suite,
-            SuiteOrCodename::Codename(codename) => Suite::from(codename),
+            SuiteOrCodename::Codename(codename) => Self::from(codename),
         }
     }
 }
@@ -350,7 +350,7 @@ impl From<SuiteOrCodename> for Suite {
 impl From<SuiteOrCodename> for Codename {
     fn from(value: SuiteOrCodename) -> Self {
         match value {
-            SuiteOrCodename::Suite(suite) => Codename::from(suite),
+            SuiteOrCodename::Suite(suite) => Self::from(suite),
             SuiteOrCodename::Codename(codename) => codename,
         }
     }
@@ -370,7 +370,7 @@ impl<'de> Deserialize<'de> for SuiteOrCodename {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<SuiteOrCodename>::new(
+        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new(
             "a suite or a codename",
         ))
     }
@@ -393,10 +393,10 @@ pub enum MultiArch {
 impl AsRef<str> for MultiArch {
     fn as_ref(&self) -> &str {
         match self {
-            MultiArch::Allowed => "allowed",
-            MultiArch::Foreign => "foreign",
-            MultiArch::No => "no",
-            MultiArch::Same => "same",
+            Self::Allowed => "allowed",
+            Self::Foreign => "foreign",
+            Self::No => "no",
+            Self::Same => "same",
         }
     }
 }
@@ -412,10 +412,10 @@ impl TryFrom<&str> for MultiArch {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "allowed" => Ok(MultiArch::Allowed),
-            "foreign" => Ok(MultiArch::Foreign),
-            "no" => Ok(MultiArch::No),
-            "same" => Ok(MultiArch::Same),
+            "allowed" => Ok(Self::Allowed),
+            "foreign" => Ok(Self::Foreign),
+            "no" => Ok(Self::No),
+            "same" => Ok(Self::Same),
             _ => Err(ParseError::InvalidMultiArch),
         }
     }
@@ -425,7 +425,7 @@ impl FromStr for MultiArch {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        MultiArch::try_from(s)
+        Self::try_from(s)
     }
 }
 
@@ -448,10 +448,10 @@ pub enum Component {
 impl AsRef<str> for Component {
     fn as_ref(&self) -> &str {
         match self {
-            Component::Main => "main",
-            Component::Contrib => "contrib",
-            Component::NonFree => "non-free",
-            Component::NonFreeFirmware => "non-free-firmware",
+            Self::Main => "main",
+            Self::Contrib => "contrib",
+            Self::NonFree => "non-free",
+            Self::NonFreeFirmware => "non-free-firmware",
         }
     }
 }
@@ -467,10 +467,10 @@ impl TryFrom<&str> for Component {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "main" => Ok(Component::Main),
-            "contrib" => Ok(Component::Contrib),
-            "non-free" => Ok(Component::NonFree),
-            "non-free-firmware" => Ok(Component::NonFreeFirmware),
+            "main" => Ok(Self::Main),
+            "contrib" => Ok(Self::Contrib),
+            "non-free" => Ok(Self::NonFree),
+            "non-free-firmware" => Ok(Self::NonFreeFirmware),
             _ => Err(ParseError::InvalidComponent),
         }
     }
@@ -480,7 +480,7 @@ impl FromStr for Component {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Component::try_from(s)
+        Self::try_from(s)
     }
 }
 

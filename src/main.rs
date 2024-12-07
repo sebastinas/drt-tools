@@ -1,6 +1,8 @@
 // Copyright 2021-2024 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#![warn(clippy::use_self)]
+
 use anyhow::{Context, Result};
 use assorted_debian_utils::{archive::SuiteOrCodename, wb::WBArchitecture};
 use async_trait::async_trait;
