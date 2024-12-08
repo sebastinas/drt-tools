@@ -327,9 +327,8 @@ impl Cache {
 
     fn lookup_url(&self, suite: Suite, path: &str) -> String {
         format!(
-            "{}/dists/{}/{}",
+            "{}/dists/{suite}/{}",
             self.archive_mirror,
-            suite,
             match suite {
                 Suite::Unstable => &self.unstable,
                 Suite::Testing(_) => &self.testing,

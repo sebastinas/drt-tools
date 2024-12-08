@@ -370,9 +370,7 @@ impl<'de> Deserialize<'de> for SuiteOrCodename {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new(
-            "a suite or a codename",
-        ))
+        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a suite or a codename"))
     }
 }
 
