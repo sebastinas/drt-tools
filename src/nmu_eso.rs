@@ -16,7 +16,7 @@ use assorted_debian_utils::{
     archive::{Codename, Extension, Suite, SuiteOrCodename},
     rfc822_like,
     version::PackageVersion,
-    wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
+    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
 };
 use async_trait::async_trait;
 use clap::Parser;
@@ -29,7 +29,7 @@ use crate::{
     config::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
-    source_packages,
+    source_packages::{self, SourcePackages},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
     AsyncCommand, BaseOptions, Downloads,
@@ -104,9 +104,6 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
     /// Suite for binNMUs.
     #[clap(short, long, default_value_t = SuiteOrCodename::Suite(Suite::Unstable))]
     suite: SuiteOrCodename,
-    /// Set architectures for binNMUs. If no archictures are specified, the binNMUs are scheduled with ANY.
-    #[clap(short, long)]
-    architecture: Option<Vec<Architecture>>,
     #[clap(long, default_value_t = Field::BuiltUsing)]
     field: Field,
 }
@@ -118,6 +115,7 @@ struct OutdatedPackage {
     suite: Suite,
     outdated_dependency: String,
     outdated_version: PackageVersion,
+    architecture: WBArchitecture,
 }
 
 #[derive(PartialEq, Eq)]
@@ -125,6 +123,7 @@ struct CombinedOutdatedPackage {
     source: String,
     version: PackageVersion,
     suite: Suite,
+    architecture: WBArchitecture,
     outdated_dependencies: Vec<(String, PackageVersion)>,
 }
 
@@ -154,11 +153,11 @@ fn split_dependency(dependency: &str) -> Option<(String, PackageVersion)> {
 struct BinaryPackageParser<'a> {
     field: Field,
     iterator: ProgressBarIter<IntoIter<BinaryPackage>>,
-    sources: &'a HashMap<String, PackageVersion>,
+    sources: &'a SourcePackages,
 }
 
 impl<'a> BinaryPackageParser<'a> {
-    fn new<P>(field: Field, sources: &'a HashMap<String, PackageVersion>, path: P) -> Result<Self>
+    fn new<P>(field: Field, sources: &'a SourcePackages, path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -176,8 +175,16 @@ impl<'a> BinaryPackageParser<'a> {
     }
 }
 
+#[derive(Debug)]
+struct OutdatedSourcePackage {
+    source: String,
+    version: PackageVersion,
+    built_using: HashSet<(String, PackageVersion)>,
+    architecture: WBArchitecture,
+}
+
 impl Iterator for BinaryPackageParser<'_> {
-    type Item = (String, PackageVersion, HashSet<(String, PackageVersion)>);
+    type Item = OutdatedSourcePackage;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(binary_package) = self.iterator.next() {
@@ -214,7 +221,7 @@ impl Iterator for BinaryPackageParser<'_> {
                     split
                 })
                 .filter(|(source, version)| {
-                    if let Some(max_version) = self.sources.get(source) {
+                    if let Some(max_version) = self.sources.version(source) {
                         version < max_version
                     } else {
                         // This can happen when considering packages with
@@ -239,11 +246,18 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             }
 
-            return Some((
-                source_package.into(),
-                version.without_binnmu_version(),
+            // if the package builds any MA: same packages, schedule binNMUs with ANY
+            let architecture = if self.sources.is_ma_same(source_package) {
+                WBArchitecture::Any
+            } else {
+                WBArchitecture::Architecture(binary_package.architecture)
+            };
+            return Some(OutdatedSourcePackage {
+                source: source_package.into(),
+                version: version.without_binnmu_version(),
                 built_using,
-            ));
+                architecture,
+            });
         }
 
         None
@@ -278,34 +292,14 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         )
     }
 
-    /// Load source packages with the highest version
-    fn load_sources<P>(path: P, destination: &mut HashMap<String, PackageVersion>) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let sources: Vec<SourcePackage> = rfc822_like::from_file(path.as_ref())?;
-
-        for source in sources {
-            destination
-                .entry(source.package)
-                .and_modify(|version| {
-                    if source.version > *version {
-                        *version = source.version.clone();
-                    }
-                })
-                .or_insert(source.version);
-        }
-
-        Ok(())
-    }
-
     /// Load source packages from multiple suites with the highest version
-    fn load_sources_for_suites(&self, suites: &[Suite]) -> Result<HashMap<String, PackageVersion>> {
-        let mut ret: HashMap<String, PackageVersion> = HashMap::default();
-        for suite in suites {
-            Self::load_sources(self.cache.get_source_path(*suite)?, &mut ret)?;
-        }
-        Ok(ret)
+    fn load_sources_for_suites(&self, suites: &[Suite]) -> Result<SourcePackages> {
+        let paths = suites
+            .iter()
+            .flat_map(|suite| self.cache.get_package_paths(*suite, false).into_iter())
+            .flatten()
+            .collect::<Vec<_>>();
+        SourcePackages::new(&paths)
     }
 
     fn load_eso(&self, field: Field, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
@@ -315,8 +309,12 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         let mut packages = HashSet::new();
         for suite in self.expand_suite_for_binaries() {
             for path in self.cache.get_package_paths(suite, false)? {
-                for (source, version, dependencies) in
-                    BinaryPackageParser::new(field, &source_packages, path)?
+                for OutdatedSourcePackage {
+                    source,
+                    version,
+                    built_using: dependencies,
+                    architecture,
+                } in BinaryPackageParser::new(field, &source_packages, path)?
                 {
                     packages.extend(dependencies.into_iter().map(
                         |(outdated_dependency, outdated_version)| OutdatedPackage {
@@ -325,14 +323,17 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                             suite,
                             outdated_dependency,
                             outdated_version,
+                            architecture,
                         },
                     ));
                 }
             }
         }
 
-        let mut result =
-            HashMap::<(String, Suite), HashSet<(PackageVersion, String, PackageVersion)>>::new();
+        let mut result = HashMap::<
+            (String, Suite, WBArchitecture),
+            HashSet<(PackageVersion, String, PackageVersion)>,
+        >::new();
         for outdated_package in packages {
             // skip some packages that make no sense to binNMU
             if source_skip_binnmu(&outdated_package.source) {
@@ -359,7 +360,11 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             }
 
             result
-                .entry((outdated_package.source, outdated_package.suite))
+                .entry((
+                    outdated_package.source,
+                    outdated_package.suite,
+                    outdated_package.architecture,
+                ))
                 .or_default()
                 .insert((
                     outdated_package.version,
@@ -370,7 +375,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 
         Ok(result
             .into_iter()
-            .filter_map(|((source, suite), outdated_dependencies)| {
+            .filter_map(|((source, suite, architecture), outdated_dependencies)| {
                 let max_version = outdated_dependencies
                     .iter()
                     .map(|(version, _, _)| version)
@@ -380,6 +385,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                     source,
                     version: max_version.clone(),
                     suite,
+                    architecture,
                     outdated_dependencies: outdated_dependencies
                         .into_iter()
                         .filter_map(|(version, outdated_dependency, outdated_version)| {
@@ -440,9 +446,7 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
             let mut source = SourceSpecifier::new(&outdated_package.source);
             source.with_version(&outdated_package.version);
             source.with_suite(outdated_package.suite.into());
-            if let Some(architectures) = &self.options.architecture {
-                source.with_archive_architectures(architectures);
-            }
+            source.with_architectures(&[outdated_package.architecture]);
 
             let message = format!(
                 "Rebuild for outdated {} ({})",

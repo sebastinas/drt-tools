@@ -72,7 +72,7 @@ pub trait WBCommandBuilder {
 /// named `ANY` (all binary-dependent architectures) and `ALL` (all architectures). Also, it
 /// supports negation of architectures, e.g., `ANY -i386` refers to all binary-dependent
 /// architectures without `i386`.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum WBArchitecture {
     /// The special `ANY` architecture, i.e., all architectures understood by wb except `all`
     Any,
