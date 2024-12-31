@@ -476,9 +476,11 @@ impl Cache {
         Ok(all_paths)
     }
 
+    /*
     pub fn get_source_path(&self, suite: Suite) -> Result<PathBuf> {
         self.get_cache_path(format!("Sources_{suite}"))
     }
+    */
 
     // Architectures for a suite (including Arch: all)
     pub fn architectures_for_suite(&self, suite: Suite) -> Vec<Architecture> {
