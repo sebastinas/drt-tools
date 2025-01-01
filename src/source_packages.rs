@@ -1,4 +1,4 @@
-// Copyright 2021-2024 Sebastian Ramacher
+// Copyright 2021-2025 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
@@ -109,6 +109,10 @@ struct SourcePackage {
 pub struct SourcePackages(HashMap<String, SourcePackage>);
 
 impl SourcePackages {
+    /// Extract source package information from binary package files
+    ///
+    /// This step needs to be performed from binary packages to check whether a
+    /// source package builds MA: same binary packages.
     pub fn new<P>(paths: &[P]) -> Result<Self>
     where
         P: AsRef<Path>,
