@@ -1,9 +1,13 @@
 # Changelog
 
+## 0.7.5 (2025-01-01)
+
+* Provide implementations of `Hash` for more structs and enums.
+
 ## 0.7.4 (2024-11-30)
 
-* version: Add new convenience function
-* Fix clippy issues
+* version: Add new convenience function.
+* Fix clippy issues.
 
 ## 0.7.3 (2024-08-19)
 
