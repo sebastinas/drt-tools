@@ -19,7 +19,7 @@ where
 }
 
 /// A build info
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Hash)]
 #[serde(rename_all = "PascalCase")]
 pub struct Buildinfo {
     /// Source package

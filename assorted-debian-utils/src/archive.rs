@@ -375,7 +375,7 @@ impl<'de> Deserialize<'de> for SuiteOrCodename {
 }
 
 /// Allowed values of the multi-arch field
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum MultiArch {
     /// MA: allowed
@@ -428,7 +428,7 @@ impl FromStr for MultiArch {
 }
 
 /// Debian archive components
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Component {
     /// The `main` archive component
