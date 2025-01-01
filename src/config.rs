@@ -1,4 +1,4 @@
-// Copyright 2021-2024 Sebastian Ramacher
+// Copyright 2021-2025 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
@@ -33,6 +33,7 @@ pub(crate) fn default_progress_template() -> &'static str {
     "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})"
 }
 
+#[allow(dead_code)]
 pub(crate) enum CacheEntries {
     Excuses,
     Packages(Suite),

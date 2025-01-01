@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Sebastian Ramacher
+// Copyright 2021-2025 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
@@ -49,13 +49,6 @@ struct BinaryPackage {
     x_cargo_built_using: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-struct SourcePackage {
-    package: String,
-    version: PackageVersion,
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum Field {
@@ -104,6 +97,7 @@ pub(crate) struct NMUOutdatedBuiltUsingOptions {
     /// Suite for binNMUs.
     #[clap(short, long, default_value_t = SuiteOrCodename::Suite(Suite::Unstable))]
     suite: SuiteOrCodename,
+    /// Select the binary package field to check for outdated information. By default, the `Built-Using` field is checked.
     #[clap(long, default_value_t = Field::BuiltUsing)]
     field: Field,
 }
@@ -166,7 +160,7 @@ impl<'a> BinaryPackageParser<'a> {
         let pb = ProgressBar::new(binary_packages.len() as u64);
         pb.set_style(default_progress_style().template(default_progress_template())?);
         pb.set_message(format!("Processing {}", path.as_ref().display()));
-        // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields
+        // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields refer to ESO sources
         Ok(Self {
             field,
             iterator: binary_packages.into_iter().progress_with(pb),
@@ -175,7 +169,6 @@ impl<'a> BinaryPackageParser<'a> {
     }
 }
 
-#[derive(Debug)]
 struct OutdatedSourcePackage {
     source: String,
     version: PackageVersion,
@@ -476,11 +469,6 @@ impl Downloads for NMUOutdatedBuiltUsing<'_> {
         self.expand_suite_for_binaries()
             .into_iter()
             .map(CacheEntries::Packages)
-            .chain(
-                self.expand_suite_for_sources()
-                    .into_iter()
-                    .map(CacheEntries::Sources),
-            )
             .collect()
     }
 }
