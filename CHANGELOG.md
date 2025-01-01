@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.26 (2025-01-01)
+
+* `nmu-eso`: Produce architecture binNMU commands if possible.
+
 ## 0.2.25 (2024-11-30)
 
 * `nmu-list`: New command
