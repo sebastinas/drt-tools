@@ -287,12 +287,16 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 
     /// Load source packages from multiple suites with the highest version
     fn load_sources_for_suites(&self, suites: &[Suite]) -> Result<SourcePackages> {
-        let paths = suites
+        let paths: Result<Vec<_>> = suites
             .iter()
-            .flat_map(|suite| self.cache.get_package_paths(*suite, false).into_iter())
-            .flatten()
-            .collect::<Vec<_>>();
-        SourcePackages::new(&paths)
+            .map(|suite| self.cache.get_package_paths(*suite, false))
+            .flatten_ok()
+            .collect();
+        let sources: Result<Vec<_>> = suites
+            .iter()
+            .map(|suite| self.cache.get_source_path(*suite))
+            .collect();
+        SourcePackages::new_with_source(&sources?, &paths?)
     }
 
     fn load_eso(&self, field: Field, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
@@ -469,6 +473,11 @@ impl Downloads for NMUOutdatedBuiltUsing<'_> {
         self.expand_suite_for_binaries()
             .into_iter()
             .map(CacheEntries::Packages)
+            .chain(
+                self.expand_suite_for_sources()
+                    .into_iter()
+                    .map(CacheEntries::Sources),
+            )
             .collect()
     }
 }

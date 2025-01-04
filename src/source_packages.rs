@@ -10,7 +10,10 @@ use std::{
 use anyhow::Result;
 use assorted_debian_utils::{archive::MultiArch, rfc822_like, version::PackageVersion};
 use indicatif::{ProgressBar, ProgressIterator};
-use serde::{de, Deserialize};
+use serde::{
+    de::{self, DeserializeOwned},
+    Deserialize,
+};
 
 use crate::config;
 
@@ -100,13 +103,20 @@ impl BinaryPackage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
 struct SourcePackage {
+    package: String,
+    version: PackageVersion,
+}
+
+#[derive(Debug)]
+struct SourcePackageInfo {
     ma_same: bool,
     version: PackageVersion,
 }
 
-pub struct SourcePackages(HashMap<String, SourcePackage>);
+pub struct SourcePackages(HashMap<String, SourcePackageInfo>);
 
 impl SourcePackages {
     /// Extract source package information from binary package files
@@ -117,9 +127,9 @@ impl SourcePackages {
     where
         P: AsRef<Path>,
     {
-        let mut all_sources = HashMap::<String, SourcePackage>::new();
+        let mut all_sources = HashMap::<String, SourcePackageInfo>::new();
         for path in paths {
-            for binary_package in parse_packages(path.as_ref())? {
+            for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
                 let (source, version) = binary_package.name_and_version();
 
                 if let Some(data) = all_sources.get_mut(source) {
@@ -133,7 +143,63 @@ impl SourcePackages {
                 } else {
                     all_sources.insert(
                         source.to_string(),
-                        SourcePackage {
+                        SourcePackageInfo {
+                            version,
+                            ma_same: binary_package.multi_arch == Some(MultiArch::Same),
+                        },
+                    );
+                }
+            }
+        }
+
+        Ok(Self(all_sources))
+    }
+
+    /// Extract source package information from binary package files
+    ///
+    /// This step needs to be performed from binary packages to check whether a
+    /// source package builds MA: same binary packages.
+    pub fn new_with_source<P, Q>(sources: &[P], paths: &[Q]) -> Result<Self>
+    where
+        P: AsRef<Path>,
+        Q: AsRef<Path>,
+    {
+        let mut all_sources = HashMap::<String, SourcePackageInfo>::new();
+        for path in sources {
+            for source_package in parse_packages::<SourcePackage>(path.as_ref())? {
+                if let Some(data) = all_sources.get_mut(&source_package.package) {
+                    // store only highest version
+                    if source_package.version > data.version {
+                        data.version = source_package.version;
+                    }
+                } else {
+                    all_sources.insert(
+                        source_package.package,
+                        SourcePackageInfo {
+                            version: source_package.version,
+                            ma_same: false,
+                        },
+                    );
+                }
+            }
+        }
+
+        for path in paths {
+            for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
+                let (source, version) = binary_package.name_and_version();
+
+                if let Some(data) = all_sources.get_mut(source) {
+                    // store only highest version
+                    if version > data.version {
+                        data.version = version;
+                    }
+                    if !data.ma_same && binary_package.multi_arch == Some(MultiArch::Same) {
+                        data.ma_same = true
+                    }
+                } else {
+                    all_sources.insert(
+                        source.to_string(),
+                        SourcePackageInfo {
                             version,
                             ma_same: binary_package.multi_arch == Some(MultiArch::Same),
                         },
@@ -163,9 +229,12 @@ impl SourcePackages {
     }
 }
 
-fn parse_packages(path: &Path) -> Result<impl Iterator<Item = BinaryPackage>> {
+fn parse_packages<P>(path: &Path) -> Result<impl Iterator<Item = P>>
+where
+    P: DeserializeOwned,
+{
     // read Package file
-    let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path)?;
+    let binary_packages: Vec<P> = rfc822_like::from_file(path)?;
     let pb = ProgressBar::new(binary_packages.len() as u64);
     pb.set_style(config::default_progress_style().template(
         "{msg}: {spinner:.green} [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})",
