@@ -295,6 +295,25 @@ pub enum SuiteOrCodename {
     Codename(Codename),
 }
 
+impl SuiteOrCodename {
+    /// Unstable
+    pub const UNSTABLE: Self = Self::Suite(Suite::Unstable);
+    /// Testing
+    pub const TESTING: Self = Self::Suite(Suite::Testing(None));
+    /// Stable
+    pub const STABLE: Self = Self::Suite(Suite::Stable(None));
+    /// Oldstable
+    pub const OLDSTABLE: Self = Self::Suite(Suite::OldStable(None));
+    /// Experimental
+    pub const EXPERIMENTAL: Self = Self::Suite(Suite::Experimental);
+    /// Stable proposed-updates
+    pub const STABLE_PU: Self = Self::Suite(Suite::Stable(Some(Extension::ProposedUpdates)));
+    /// Oldstable propoused-updates
+    pub const OLDSTABLE_PU: Self = Self::Suite(Suite::OldStable(Some(Extension::ProposedUpdates)));
+    /// Stable backports
+    pub const STABLE_BACKPORTS: Self = Self::Suite(Suite::Stable(Some(Extension::Backports)));
+}
+
 impl From<Codename> for SuiteOrCodename {
     fn from(codename: Codename) -> Self {
         Self::Codename(codename)
