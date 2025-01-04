@@ -466,17 +466,17 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
 
 impl Downloads for NMUOutdatedBuiltUsing<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::FTBFSBugs(self.options.suite.into())]
+        vec![CacheEntries::FTBFSBugs(self.options.suite)]
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
         self.expand_suite_for_binaries()
             .into_iter()
-            .map(CacheEntries::Packages)
+            .map(|suite| CacheEntries::Packages(suite.into()))
             .chain(
                 self.expand_suite_for_sources()
                     .into_iter()
-                    .map(CacheEntries::Sources),
+                    .map(|suite| CacheEntries::Sources(suite.into())),
             )
             .collect()
     }

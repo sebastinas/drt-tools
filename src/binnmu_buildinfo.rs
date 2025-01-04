@@ -231,11 +231,10 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
 
 impl Downloads for BinNMUBuildinfo<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
-        [
-            CacheEntries::Packages(self.options.binnmu_options.suite.into()),
-            CacheEntries::FTBFSBugs(self.options.binnmu_options.suite.into()),
+        vec![
+            CacheEntries::Packages(self.options.binnmu_options.suite),
+            CacheEntries::FTBFSBugs(self.options.binnmu_options.suite),
         ]
-        .into()
     }
 }
 

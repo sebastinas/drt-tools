@@ -263,10 +263,10 @@ impl AsyncCommand for NMUVersionSkew<'_> {
 
 impl Downloads for NMUVersionSkew<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::FTBFSBugs(self.options.suite.into())]
+        vec![CacheEntries::FTBFSBugs(self.options.suite)]
     }
 
     fn required_downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::Packages(self.options.suite.into())]
+        vec![CacheEntries::Packages(self.options.suite)]
     }
 }

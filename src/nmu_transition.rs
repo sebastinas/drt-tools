@@ -139,8 +139,6 @@ impl AsyncCommand for NMUTransition<'_> {
 
 impl Downloads for NMUTransition<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::FTBFSBugs(
-            self.options.binnmu_options.suite.into(),
-        )]
+        vec![CacheEntries::FTBFSBugs(self.options.binnmu_options.suite)]
     }
 }

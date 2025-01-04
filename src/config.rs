@@ -12,7 +12,7 @@ use std::{
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Extension, Suite},
+    archive::{Codename, Extension, Suite, SuiteOrCodename},
     release,
 };
 use chrono::DateTime;
@@ -36,11 +36,11 @@ pub(crate) fn default_progress_template() -> &'static str {
 #[allow(dead_code)]
 pub(crate) enum CacheEntries {
     Excuses,
-    Packages(Suite),
-    Sources(Suite),
-    FTBFSBugs(Codename),
+    Packages(SuiteOrCodename),
+    Sources(SuiteOrCodename),
+    FTBFSBugs(SuiteOrCodename),
     AutoRemovals,
-    Release(Suite),
+    Release(SuiteOrCodename),
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -277,14 +277,14 @@ impl Cache {
         // download Release files for unstable, testing and stable
         cache
             .download(&[
-                CacheEntries::Release(Suite::Unstable),
-                CacheEntries::Release(Suite::Testing(None)),
-                CacheEntries::Release(Suite::Stable(None)),
-                CacheEntries::Release(Suite::OldStable(None)),
-                CacheEntries::Release(Suite::Experimental),
-                CacheEntries::Release(Suite::Stable(Some(Extension::ProposedUpdates))),
-                CacheEntries::Release(Suite::OldStable(Some(Extension::ProposedUpdates))),
-                CacheEntries::Release(Suite::Stable(Some(Extension::Backports))),
+                CacheEntries::Release(SuiteOrCodename::UNSTABLE),
+                CacheEntries::Release(SuiteOrCodename::TESTING),
+                CacheEntries::Release(SuiteOrCodename::STABLE),
+                CacheEntries::Release(SuiteOrCodename::OLDSTABLE),
+                CacheEntries::Release(SuiteOrCodename::EXPERIMENTAL),
+                CacheEntries::Release(SuiteOrCodename::STABLE_PU),
+                CacheEntries::Release(SuiteOrCodename::OLDSTABLE_PU),
+                CacheEntries::Release(SuiteOrCodename::STABLE_BACKPORTS),
                 // CacheEntries::Release(Suite::OldStable(Some(Extension::Backports))),
             ])
             .await?;
@@ -382,11 +382,11 @@ impl Cache {
             .flat_map(|entry| {
                 match entry {
                     CacheEntries::Excuses => excuses_urls(),
-                    CacheEntries::Packages(suite) => self.packages_urls(*suite),
-                    CacheEntries::Sources(suite) => self.source_urls(*suite),
-                    CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls(*codename),
+                    CacheEntries::Packages(suite) => self.packages_urls((*suite).into()),
+                    CacheEntries::Sources(suite) => self.source_urls((*suite).into()),
+                    CacheEntries::FTBFSBugs(codename) => ftbfs_bugs_urls((*codename).into()),
                     CacheEntries::AutoRemovals => auto_removals_urls(),
-                    CacheEntries::Release(suite) => self.release_urls(*suite),
+                    CacheEntries::Release(suite) => self.release_urls((*suite).into()),
                 }
                 .into_iter()
             })

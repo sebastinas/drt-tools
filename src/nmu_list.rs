@@ -141,8 +141,6 @@ impl AsyncCommand for NMUList<'_> {
 
 impl Downloads for NMUList<'_> {
     fn downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::FTBFSBugs(
-            self.options.binnmu_options.suite.into(),
-        )]
+        vec![CacheEntries::FTBFSBugs(self.options.binnmu_options.suite)]
     }
 }

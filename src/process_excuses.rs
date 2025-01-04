@@ -6,7 +6,7 @@ use std::{cmp::min, collections::HashSet};
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Component, Suite},
+    archive::{Component, Suite, SuiteOrCodename},
     excuses::{self, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
@@ -351,6 +351,6 @@ impl Downloads for ProcessExcuses<'_> {
     }
 
     fn downloads(&self) -> Vec<CacheEntries> {
-        vec![CacheEntries::Packages(Suite::Unstable)]
+        vec![CacheEntries::Packages(SuiteOrCodename::UNSTABLE)]
     }
 }
