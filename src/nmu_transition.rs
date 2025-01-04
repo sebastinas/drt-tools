@@ -1,9 +1,11 @@
 // Copyright 2021-2023 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
-use std::path::PathBuf;
+use std::{
+    fs::File,
+    io::{self, BufRead, BufReader},
+    path::PathBuf,
+};
 
 use anyhow::Result;
 use assorted_debian_utils::{
