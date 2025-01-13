@@ -6,9 +6,10 @@ authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 repository = "https://github.com/sebastinas/drt-tools"
 license = "GPL-3.0-or-later"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.84"
 readme = "README.md"
 keywords = ["debian"]
+resolver = "3"
 
 [workspace]
 members = ["assorted-debian-utils"]
