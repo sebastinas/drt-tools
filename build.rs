@@ -38,7 +38,13 @@ fn build_man_page(out_dir: &Path) -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").ok_or(io::ErrorKind::NotFound)?);
+    // use PKGBUILD_OUT_DIR to better control output directory when packaging drt-tools
+    let out_dir = if let Some(out_dir) = std::env::var_os("PKGBUILD_OUT_DIR") {
+        out_dir
+    } else {
+        std::env::var_os("OUT_DIR").ok_or(io::ErrorKind::NotFound)?
+    };
+    let out_dir = PathBuf::from(out_dir);
 
     build_completion_scripts(&out_dir)?;
     build_man_page(&out_dir)
