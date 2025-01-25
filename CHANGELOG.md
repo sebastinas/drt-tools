@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.27 (2025-01-25)
+
+* Bump MSRV to 1.84 for MSRV-aware resolver.
+* `nmu-list`: Also supported whitespace separated list of packages.
+* Build manpages and shell completion.
+
 ## 0.2.26 (2025-01-01)
 
 * `nmu-eso`: Produce architecture binNMU commands if possible.
