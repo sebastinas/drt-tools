@@ -76,22 +76,19 @@ impl AsyncCommand for NMUList<'_> {
         };
 
         let mut wb_commands = Vec::new();
-        {
-            let reader: Box<dyn BufRead> = match &self.options.input {
-                None => Box::new(BufReader::new(io::stdin())),
-                Some(filename) => Box::new(BufReader::new(File::open(filename)?)),
+        let reader: Box<dyn BufRead> = match &self.options.input {
+            None => Box::new(BufReader::new(io::stdin())),
+            Some(filename) => Box::new(BufReader::new(File::open(filename)?)),
+        };
+        for line in reader.lines() {
+            let Ok(line) = line else {
+                // EOF
+                break;
             };
 
-            for line in reader.lines() {
-                let Ok(source) = line else {
-                    break;
-                };
-
-                let source = source
-                    .split_once(|c: char| c.is_ascii_whitespace())
-                    .map(|(source, _)| source)
-                    .unwrap_or(&source);
+            for source in line.split_whitespace() {
                 if source.is_empty() {
+                    // should never happen
                     continue;
                 }
 
