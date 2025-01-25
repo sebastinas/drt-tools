@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.6 (2025-01-25)
+
+* Bump MSVR to 1.84 for the MSRV-aware resolver.
+* archive: add shortcuts for `SuitesOrCodename`.
+
 ## 0.7.5 (2025-01-01)
 
 * Provide implementations of `Hash` for more structs and enums.
