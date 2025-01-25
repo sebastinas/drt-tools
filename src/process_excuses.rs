@@ -11,16 +11,16 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cli::{BaseOptions, ProcessExcusesOptions},
     config::{self, default_progress_template, CacheEntries},
     source_packages::SourcePackages,
     utils::execute_wb_commands,
-    AsyncCommand, BaseOptions, Downloads,
+    AsyncCommand, Downloads,
 };
 
 const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
@@ -44,16 +44,6 @@ impl ScheduledBinNMUs {
 enum Action {
     BinNMU(WBCommand),
     Unblock(String),
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct ProcessExcusesOptions {
-    /// Ignore age to identify packages to rebuild.
-    #[clap(long)]
-    ignore_age: bool,
-    /// Ignore results from autopkgtests.
-    #[clap(long)]
-    ignore_autopkgtests: bool,
 }
 
 pub(crate) struct ProcessExcuses<'a> {

@@ -40,3 +40,11 @@ tokio = { version = "1.21", default-features = false, features = [
 voca_rs = "1.14"
 xdg = "2.4"
 xz2 = { version = "0.1", default-features = false }
+
+[build-dependencies]
+assorted-debian-utils = { version = "0.7.5", path = "assorted-debian-utils" }
+clap = { version = "4", features = ["cargo", "derive"] }
+clap_complete = "4.4"
+clap_mangen = "0.2"
+clap-verbosity-flag = "3"
+thiserror = { version = "2" }

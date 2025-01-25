@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{anyhow, Context, Result};
@@ -16,16 +16,16 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
 use crate::{
+    cli::{BaseOptions, BinNMUBuildinfoOptions},
     config::{default_progress_style, default_progress_template, Cache, CacheEntries},
     source_packages::SourcePackages,
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
-    AsyncCommand, BaseOptions, BinNMUsOptions, Downloads,
+    AsyncCommand, Downloads,
 };
 
 #[derive(Deserialize)]
@@ -34,14 +34,6 @@ struct BinaryPackage {
     source: Option<String>,
     package: String,
     version: PackageVersion,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct BinNMUBuildinfoOptions {
-    #[clap(flatten)]
-    binnmu_options: BinNMUsOptions,
-    /// Input files
-    inputs: Vec<PathBuf>,
 }
 
 pub(crate) struct BinNMUBuildinfo<'a> {

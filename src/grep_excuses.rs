@@ -10,22 +10,12 @@ use assorted_debian_utils::{
     version::PackageVersion,
 };
 use chrono::Utc;
-use clap::Parser;
 
 use crate::{
+    cli::GrepExcusesOptions,
     config::{self, CacheEntries},
     Command, Downloads,
 };
-
-#[derive(Debug, Parser)]
-pub(crate) struct GrepExcusesOptions {
-    /// Currently not implemented
-    #[clap(long)]
-    autopkgtests: bool,
-    /// The maintainer or package to grep for
-    #[clap(num_args = 1, required = true)]
-    maintainer_package: Vec<String>,
-}
 
 pub(crate) struct GrepExcuses<'a> {
     cache: &'a config::Cache,

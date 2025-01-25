@@ -11,26 +11,26 @@ use std::{
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, MultiArch, Suite, SuiteOrCodename},
+    archive::{Codename, MultiArch, Suite},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
 use itertools::Itertools;
 use log::{debug, error};
 use serde::Deserialize;
 
 use crate::{
+    cli::{BaseOptions, NMUVersionSkewOptions},
     config::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     source_packages,
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
-    AsyncCommand, BaseOptions, Downloads,
+    AsyncCommand, Downloads,
 };
 
 #[derive(Deserialize)]
@@ -39,16 +39,6 @@ struct BinaryPackage {
     #[serde(flatten)]
     package: source_packages::BinaryPackage,
     architecture: Architecture,
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct NMUVersionSkewOptions {
-    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
-    #[clap(long = "bp", default_value_t = -50)]
-    build_priority: i32,
-    /// Suite for binNMUs.
-    #[clap(short, long, default_value_t = SuiteOrCodename::Suite(Suite::Unstable))]
-    suite: SuiteOrCodename,
 }
 
 struct BinaryPackageParser {

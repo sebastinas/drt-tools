@@ -6,7 +6,7 @@ use assorted_debian_utils::wb::{Error, WBCommand};
 use openssh::{KnownHosts, Session, Stdio};
 use tokio::io::AsyncWriteExt;
 
-use crate::BaseOptions;
+use crate::cli::BaseOptions;
 
 pub(crate) async fn execute_wb_commands<I>(commands: I, options: &BaseOptions) -> Result<()>
 where

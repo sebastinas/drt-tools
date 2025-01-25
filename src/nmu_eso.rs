@@ -3,36 +3,34 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    fmt,
     iter::FusedIterator,
     path::Path,
-    str::FromStr,
     vec::IntoIter,
 };
 
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Extension, Suite, SuiteOrCodename},
+    archive::{Codename, Extension, Suite},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use clap::Parser;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
 use itertools::Itertools;
 use log::{debug, trace, warn};
 use serde::Deserialize;
 
 use crate::{
+    cli::{BaseOptions, Field, NMUOutdatedBuiltUsingOptions},
     config::{
         default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
     },
     source_packages::{self, SourcePackages},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
-    AsyncCommand, BaseOptions, Downloads,
+    AsyncCommand, Downloads,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -47,59 +45,6 @@ struct BinaryPackage {
     static_built_using: Option<String>,
     #[serde(rename = "X-Cargo-Built-Using")]
     x_cargo_built_using: Option<String>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[allow(clippy::enum_variant_names)]
-pub enum Field {
-    BuiltUsing,
-    StaticBuiltUsing,
-    XCargoBuiltUsing,
-}
-
-impl fmt::Display for Field {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::BuiltUsing => write!(f, "Built-Using"),
-            Self::StaticBuiltUsing => write!(f, "Static-Built-Using"),
-            Self::XCargoBuiltUsing => write!(f, "X-Cargo-Built-Using"),
-        }
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub struct ParseError;
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid reference field")
-    }
-}
-
-impl FromStr for Field {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "Built-Using" => Ok(Self::BuiltUsing),
-            "Static-Built-Using" => Ok(Self::StaticBuiltUsing),
-            "X-Cargo-Built-Using" => Ok(Self::XCargoBuiltUsing),
-            _ => Err(ParseError),
-        }
-    }
-}
-
-#[derive(Debug, Parser)]
-pub(crate) struct NMUOutdatedBuiltUsingOptions {
-    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
-    #[clap(long = "bp", default_value_t = -50)]
-    build_priority: i32,
-    /// Suite for binNMUs.
-    #[clap(short, long, default_value_t = SuiteOrCodename::Suite(Suite::Unstable))]
-    suite: SuiteOrCodename,
-    /// Select the binary package field to check for outdated information. By default, the `Built-Using` field is checked.
-    #[clap(long, default_value_t = Field::BuiltUsing)]
-    field: Field,
 }
 
 #[derive(PartialEq, Eq, Hash)]

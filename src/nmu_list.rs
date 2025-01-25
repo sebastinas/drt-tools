@@ -4,7 +4,6 @@
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},
-    path::PathBuf,
 };
 
 use anyhow::Result;
@@ -14,24 +13,16 @@ use assorted_debian_utils::{
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use clap::Parser;
 use log::debug;
 
 use crate::{
+    cli::{BaseOptions, NMUListOptions},
     config::{self, CacheEntries},
     source_packages::SourcePackages,
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
-    AsyncCommand, BaseOptions, BinNMUsOptions, Downloads,
+    AsyncCommand, Downloads,
 };
-
-#[derive(Debug, Parser)]
-pub(crate) struct NMUListOptions {
-    #[clap(flatten)]
-    binnmu_options: BinNMUsOptions,
-    /// Input file with a list of packages. If not specified, the list of packages will be read from the standard input.
-    input: Option<PathBuf>,
-}
 
 pub(crate) struct NMUList<'a> {
     cache: &'a config::Cache,
