@@ -16,7 +16,7 @@ members = ["assorted-debian-utils"]
 
 [dependencies]
 anyhow = "1"
-assorted-debian-utils = { version = "0.7.5", path = "assorted-debian-utils" }
+assorted-debian-utils = { version = "0.7.6", path = "assorted-debian-utils" }
 async-trait = { version = "0.1", default-features = false }
 chrono = { version = "0.4", default-features = false }
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
@@ -42,7 +42,7 @@ xdg = "2.4"
 xz2 = { version = "0.1", default-features = false }
 
 [build-dependencies]
-assorted-debian-utils = { version = "0.7.5", path = "assorted-debian-utils" }
+assorted-debian-utils = { version = "0.7.6", path = "assorted-debian-utils" }
 clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.4"
 clap_mangen = "0.2"
