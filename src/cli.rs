@@ -8,20 +8,30 @@ use std::{fmt, path::PathBuf, str::FromStr};
 #[derive(Debug, Parser)]
 pub struct BaseOptions {
     /// Force download of files
+    ///
+    /// If this option is set, all files will be fetched from mirrors, UDD, etc.
     #[clap(long)]
     pub force_download: bool,
-    /// Force processing
+    /// Force processing.
     #[clap(short, long = "force")]
     pub force_processing: bool,
     /// Only print actions to perform without running any commands
+    ///
+    /// This option is especially useful if one wants to produce a list of `wb`
+    /// commands where the output is copied to the `buildd` server and directly
+    /// executed there.
     #[clap(short = 'n')]
     pub dry_run: bool,
     #[clap(flatten)]
     pub verbose: clap_verbosity_flag::Verbosity,
     /// Archive mirror
+    ///
+    /// Information on packages, sources and releases is downloaded from this mirror.
     #[clap(long, default_value = "https://deb.debian.org/debian")]
     pub mirror: String,
-    /// buildd server
+    /// `buildd` server
+    ///
+    /// To schedule `wanna-build` actions, a SSH connection is established to this server.
     #[clap(long, default_value = "wuiet.debian.org")]
     pub buildd: String,
 }
@@ -31,19 +41,31 @@ pub struct BinNMUsOptions {
     /// Message for binNMUs
     #[clap(short, long)]
     pub message: String,
-    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
+    /// Build priority
+    ///
+    /// If specified, the binNMUs are scheduled with the given build priority.
+    /// Builds with a positive priority will be built earlier.
     #[clap(long = "bp")]
     pub build_priority: Option<i32>,
-    /// Dependency-wait. If specified, the builds will wait until the given dependency relation is satisfied.
+    /// Dependency-wait
+    ///
+    /// If specified, the builds will wait until the given dependency relation is satisfied.
     #[clap(long = "dw")]
     pub dep_wait: Option<String>,
-    /// Extra dependencies. If specified, the given dependency will be installed during the build.
+    /// Extra dependencies
+    ///
+    /// If specified, the given dependency will be installed during the build.
     #[clap(long)]
     pub extra_depends: Option<String>,
     /// Suite for binNMUs.
     #[clap(short, long, default_value = "unstable")]
     pub suite: SuiteOrCodename,
-    /// Set architectures for binNMUs. If no architectures are specified, the binNMUs are scheduled with ANY.
+    /// Architectures for binNMUs
+    ///
+    /// If no architectures are specified, the binNMUs are scheduled with ANY.
+    /// Otherwise, the architectures specified here are taken. The option
+    /// supports the special architecture `ANY` as well as removing
+    /// architectures from `ANY` by specifying `-$arch`.
     #[clap(short, long)]
     pub architecture: Option<Vec<WBArchitecture>>,
 }
@@ -51,6 +73,8 @@ pub struct BinNMUsOptions {
 #[derive(Debug, Parser)]
 pub struct GrepExcusesOptions {
     /// Currently not implemented
+    ///
+    /// This is currently only provided as option for compatibility with `grep-excuses` from `devscripts`.
     #[clap(long)]
     pub autopkgtests: bool,
     /// The maintainer or package to grep for
@@ -68,10 +92,10 @@ pub struct BinNMUBuildinfoOptions {
 
 #[derive(Debug, Parser)]
 pub struct ProcessExcusesOptions {
-    /// Ignore age to identify packages to rebuild.
+    /// Ignore age of packages
     #[clap(long)]
     pub ignore_age: bool,
-    /// Ignore results from autopkgtests.
+    /// Ignore results from autopkgtests
     #[clap(long)]
     pub ignore_autopkgtests: bool,
 }
@@ -118,20 +142,29 @@ impl FromStr for Field {
 
 #[derive(Debug, Parser)]
 pub struct NMUOutdatedBuiltUsingOptions {
-    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
+    /// Build priority
+    ///
+    /// If specified, the binNMUs are scheduled with the given build priority.
+    /// Builds with a positive priority will be built earlier.
     #[clap(long = "bp", default_value_t = -50)]
     pub build_priority: i32,
-    /// Suite for binNMUs.
+    /// Suite for binNMUs
     #[clap(short, long, default_value_t = SuiteOrCodename::UNSTABLE)]
     pub suite: SuiteOrCodename,
-    /// Select the binary package field to check for outdated information. By default, the `Built-Using` field is checked.
+    /// Select the binary package field to check for outdated information
+    ///
+    /// By default, the `Built-Using` field is checked. Other supported values
+    /// are `Static-Built-Using` and `X-Cargo-Built-Using`.
     #[clap(long, default_value_t = Field::BuiltUsing)]
     pub field: Field,
 }
 
 #[derive(Debug, Parser)]
 pub struct NMUVersionSkewOptions {
-    /// Build priority. If specified, the binNMUs are scheduled with the given build priority. Builds with a positive priority will be built earlier.
+    /// Build priority
+    ///
+    /// If specified, the binNMUs are scheduled with the given build priority.
+    /// Builds with a positive priority will be built earlier.
     #[clap(long = "bp", default_value_t = -50)]
     pub build_priority: i32,
     /// Suite for binNMUs.
@@ -143,7 +176,9 @@ pub struct NMUVersionSkewOptions {
 pub struct NMUListOptions {
     #[clap(flatten)]
     pub binnmu_options: BinNMUsOptions,
-    /// Input file with a list of packages. If not specified, the list of packages will be read from the standard input.
+    /// Input file with a list of packages
+    ///
+    /// If not specified, the list of packages will be read from the standard input.
     pub input: Option<PathBuf>,
 }
 
@@ -155,6 +190,12 @@ pub enum DrtToolsCommands {
     /// For unblocks, this command parses the current excuses and prepares a
     /// list of packages in testing-proposed-updates and packages that have been
     /// rebuilt in unstable but are blocked by the freeze.
+    ///
+    /// For rebuilds, the command checks for packages that could migrate to
+    /// testing if all binaries would have been built on a `buildd`. Packages
+    /// are only consider if all other checks pass (e.g., `piuparts` and
+    /// `autopkgtests`) that also have reached half of the required age are
+    /// considered.
     ProcessExcuses(ProcessExcusesOptions),
     /// Prepare and schedule binNMUs for a transition.
     ///
@@ -182,8 +223,11 @@ pub enum DrtToolsCommands {
     GrepExcuses(GrepExcusesOptions),
     /// Prepare binNMUs to rebuild for outdated Built-Using
     ///
-    /// Based on the `Extra-Source-Only` flag, this command prepares and
-    /// schedules binNMUs for packages with outdated `Built-Using` fields.
+    /// Collect a list of all packages that refer to `Extra-Source-Only: yes`
+    /// source packages in their `Built-Using` field. The command also support
+    /// to check packages where `Static-Built-Using` or `X-Cargo-Built-Using`
+    /// refers to packages no longer in the archive. The latter is useful to
+    /// check for rebuilds of Rust and Go packages.
     #[clap(name = "nmu-eso")]
     NMUOutdatedBuiltUsing(NMUOutdatedBuiltUsingOptions),
     /// Prepare rebuilds for version skew in Multi-Arch: same packages
