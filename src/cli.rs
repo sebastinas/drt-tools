@@ -106,7 +106,7 @@ impl fmt::Display for ParseError {
 impl FromStr for Field {
     type Err = ParseError;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Built-Using" => Ok(Self::BuiltUsing),
             "Static-Built-Using" => Ok(Self::StaticBuiltUsing),
@@ -140,14 +140,6 @@ pub struct NMUVersionSkewOptions {
 }
 
 #[derive(Debug, Parser)]
-pub struct NMUTransitionOptions {
-    #[clap(flatten)]
-    pub binnmu_options: BinNMUsOptions,
-    /// Input file with a list of packages. If not specified, the list of packages will be read from the standard input.
-    pub input: Option<PathBuf>,
-}
-
-#[derive(Debug, Parser)]
 pub struct NMUListOptions {
     #[clap(flatten)]
     pub binnmu_options: BinNMUsOptions,
@@ -178,7 +170,7 @@ pub enum DrtToolsCommands {
     /// The list of packages can be either given on the standard input or they
     /// are read from a file.
     #[clap(name = "nmu-transition")]
-    NMUTransition(NMUTransitionOptions),
+    NMUTransition(NMUListOptions),
     /// Prepare binNMUs based on a list of buildinfo files
     #[clap(name = "nmu-buildinfo")]
     NMUBuildinfo(BinNMUBuildinfoOptions),

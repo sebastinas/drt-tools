@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use log::{debug, warn};
 
 use crate::{
-    cli::{BaseOptions, NMUTransitionOptions},
+    cli::{BaseOptions, NMUListOptions},
     config::{self, CacheEntries},
     udd_bugs::{load_bugs_from_reader, UDDBugs},
     utils::execute_wb_commands,
@@ -25,14 +25,14 @@ use crate::{
 pub(crate) struct NMUTransition<'a> {
     cache: &'a config::Cache,
     base_options: &'a BaseOptions,
-    options: NMUTransitionOptions,
+    options: NMUListOptions,
 }
 
 impl<'a> NMUTransition<'a> {
     pub(crate) fn new(
         cache: &'a config::Cache,
         base_options: &'a BaseOptions,
-        options: NMUTransitionOptions,
+        options: NMUListOptions,
     ) -> Self {
         Self {
             cache,
