@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.28 (2025-02-20)
+
+* `nmu-list`: Download all required Package files.
+* Extend documentation for manpages.
+
 ## 0.2.27 (2025-01-25)
 
 * Bump MSRV to 1.84 for MSRV-aware resolver.
