@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 use std::io::{BufRead, Cursor};
 
 use chrono::{DateTime, Utc};
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 
 use crate::architectures::Architecture;
 use crate::archive::{Codename, Component, Suite};

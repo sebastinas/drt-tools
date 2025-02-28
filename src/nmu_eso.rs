@@ -23,14 +23,14 @@ use log::{debug, trace, warn};
 use serde::Deserialize;
 
 use crate::{
+    AsyncCommand, Downloads,
     cli::{BaseOptions, Field, NMUOutdatedBuiltUsingOptions},
     config::{
-        default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
+        Cache, CacheEntries, default_progress_style, default_progress_template, source_skip_binnmu,
     },
     source_packages::{self, SourcePackages},
-    udd_bugs::{load_bugs_from_reader, UDDBugs},
+    udd_bugs::{UDDBugs, load_bugs_from_reader},
     utils::execute_wb_commands,
-    AsyncCommand, Downloads,
 };
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -167,8 +167,7 @@ impl Iterator for BinaryPackageParser<'_> {
                         // rebuild those packages in any case.
                         trace!(
                             "Package '{}' refers to non-existing source package '{}'.",
-                            binary_package.package.package,
-                            source
+                            binary_package.package.package, source
                         );
                         true
                     }
@@ -178,8 +177,7 @@ impl Iterator for BinaryPackageParser<'_> {
             if built_using.is_empty() {
                 trace!(
                     "Skipping {}: all dependencies in {} are up-to-date.",
-                    source_package,
-                    self.field
+                    source_package, self.field
                 );
                 continue;
             }

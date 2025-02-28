@@ -10,8 +10,8 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::utils::TryFromStrVisitor;
 pub use crate::ParseError;
+use crate::utils::TryFromStrVisitor;
 
 /// "Extensions" to a codename or a suite
 ///

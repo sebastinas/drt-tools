@@ -9,7 +9,7 @@
 use std::{collections::HashMap, fmt::Formatter, io};
 
 use chrono::{DateTime, Utc};
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 use smallvec::SmallVec;
 
 use crate::{

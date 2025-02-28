@@ -12,9 +12,9 @@ use assorted_debian_utils::{
 use chrono::Utc;
 
 use crate::{
+    Command, Downloads,
     cli::GrepExcusesOptions,
     config::{self, CacheEntries},
-    Command, Downloads,
 };
 
 pub(crate) struct GrepExcuses<'a> {

@@ -20,7 +20,7 @@ use flate2::write::GzDecoder;
 use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{debug, trace};
-use reqwest::{header, Client, Response, StatusCode};
+use reqwest::{Client, Response, StatusCode, header};
 use tokio::task::JoinSet;
 use xdg::BaseDirectories;
 use xz2::write::XzDecoder;

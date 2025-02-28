@@ -16,11 +16,11 @@ use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    AsyncCommand, Downloads,
     cli::{BaseOptions, ProcessExcusesOptions},
-    config::{self, default_progress_template, CacheEntries},
+    config::{self, CacheEntries, default_progress_template},
     source_packages::SourcePackages,
     utils::execute_wb_commands,
-    AsyncCommand, Downloads,
 };
 
 const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
@@ -85,8 +85,7 @@ impl<'a> ProcessExcuses<'a> {
                 // too young
                 trace!(
                     "no binnmu possible: too young: {} days (required: {} days)",
-                    a.current_age,
-                    a.age_requirement
+                    a.current_age, a.age_requirement
                 );
                 return false;
             }

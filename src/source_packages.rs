@@ -11,8 +11,8 @@ use anyhow::Result;
 use assorted_debian_utils::{archive::MultiArch, rfc822_like, version::PackageVersion};
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::{
-    de::{self, DeserializeOwned},
     Deserialize,
+    de::{self, DeserializeOwned},
 };
 
 use crate::config;
@@ -45,7 +45,10 @@ impl<'de> Deserialize<'de> for SourceWithVersion {
             type Value = SourceWithVersion;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "a source package name or a source package name with version formatted as $source ($version)")
+                write!(
+                    formatter,
+                    "a source package name or a source package name with version formatted as $source ($version)"
+                )
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

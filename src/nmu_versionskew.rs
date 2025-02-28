@@ -23,14 +23,14 @@ use log::{debug, error};
 use serde::Deserialize;
 
 use crate::{
+    AsyncCommand, Downloads,
     cli::{BaseOptions, NMUVersionSkewOptions},
     config::{
-        default_progress_style, default_progress_template, source_skip_binnmu, Cache, CacheEntries,
+        Cache, CacheEntries, default_progress_style, default_progress_template, source_skip_binnmu,
     },
     source_packages,
-    udd_bugs::{load_bugs_from_reader, UDDBugs},
+    udd_bugs::{UDDBugs, load_bugs_from_reader},
     utils::execute_wb_commands,
-    AsyncCommand, Downloads,
 };
 
 #[derive(Deserialize)]

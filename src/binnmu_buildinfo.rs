@@ -6,7 +6,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::{collections::HashSet, fs::File};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Suite},
@@ -20,12 +20,12 @@ use indicatif::{ProgressBar, ProgressIterator};
 use serde::Deserialize;
 
 use crate::{
-    cli::{BaseOptions, BinNMUBuildinfoOptions},
-    config::{default_progress_style, default_progress_template, Cache, CacheEntries},
-    source_packages::SourcePackages,
-    udd_bugs::{load_bugs_from_reader, UDDBugs},
-    utils::execute_wb_commands,
     AsyncCommand, Downloads,
+    cli::{BaseOptions, BinNMUBuildinfoOptions},
+    config::{Cache, CacheEntries, default_progress_style, default_progress_template},
+    source_packages::SourcePackages,
+    udd_bugs::{UDDBugs, load_bugs_from_reader},
+    utils::execute_wb_commands,
 };
 
 #[derive(Deserialize)]

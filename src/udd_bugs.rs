@@ -95,7 +95,7 @@ pub fn load_bugs_from_reader(reader: impl Read) -> Result<UDDBugs> {
 
 #[cfg(test)]
 mod test {
-    use super::{load_bugs_from_reader, Severity};
+    use super::{Severity, load_bugs_from_reader};
 
     const TEST_DATA: &str = r"
 ---

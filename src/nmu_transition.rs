@@ -15,11 +15,11 @@ use async_trait::async_trait;
 use log::{debug, warn};
 
 use crate::{
+    AsyncCommand, Downloads,
     cli::{BaseOptions, NMUListOptions},
     config::{self, CacheEntries},
-    udd_bugs::{load_bugs_from_reader, UDDBugs},
+    udd_bugs::{UDDBugs, load_bugs_from_reader},
     utils::execute_wb_commands,
-    AsyncCommand, Downloads,
 };
 
 pub(crate) struct NMUTransition<'a> {

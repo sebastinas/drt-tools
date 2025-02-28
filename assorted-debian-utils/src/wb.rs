@@ -486,21 +486,24 @@ mod test {
             "nmu zathura . ANY . testing . -m \"Rebuild on buildd\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd").unwrap()
+            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+                .unwrap()
                 .with_extra_depends("libgirara-dev")
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\" --extra-depends \"libgirara-dev\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd").unwrap()
+            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+                .unwrap()
                 .with_dependency_wait("libgirara-dev")
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\"\ndw zathura . ANY . unstable . -m \"libgirara-dev\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd").unwrap()
+            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+                .unwrap()
                 .with_build_priority(-10)
                 .build()
                 .to_string(),

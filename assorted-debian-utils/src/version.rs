@@ -31,8 +31,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::utils::TryFromStrVisitor;
 pub use crate::ParseError;
+use crate::utils::TryFromStrVisitor;
 
 /// Compare non-digits part of a version
 ///

@@ -16,12 +16,12 @@ use async_trait::async_trait;
 use log::debug;
 
 use crate::{
+    AsyncCommand, Downloads,
     cli::{BaseOptions, NMUListOptions},
     config::{self, CacheEntries},
     source_packages::SourcePackages,
-    udd_bugs::{load_bugs_from_reader, UDDBugs},
+    udd_bugs::{UDDBugs, load_bugs_from_reader},
     utils::execute_wb_commands,
-    AsyncCommand, Downloads,
 };
 
 pub(crate) struct NMUList<'a> {
