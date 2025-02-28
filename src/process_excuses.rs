@@ -300,7 +300,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .progress_with(pb)
             .filter_map(|item| self.build_action(item, &source_packages))
             .filter(|action| match action {
-                Action::BinNMU(ref command) => {
+                Action::BinNMU(command) => {
                     if scheduled_binnmus.contains(command) {
                         info!("{}: skipping, already scheduled", command);
                         false
