@@ -68,6 +68,19 @@ impl FromStr for Extension {
     }
 }
 
+/// Trait to add/remove archive extensions from `Suite` and `Codename`
+pub trait WithExtension {
+    /// Extend suite with an extension archive.
+    ///
+    /// An existing extension will overriden and the method has no effect for`unstable` and `experimental`.
+    fn with_extension(&self, extension: Extension) -> Self;
+
+    /// Remove an extension archive from the suite.
+    ///
+    /// The method has no effect for`unstable` and `experimental`.
+    fn without_extension(&self) -> Self;
+}
+
 /// Debian archive suites
 ///
 /// This enum describes the suite names found in the Debian archive.
@@ -85,11 +98,8 @@ pub enum Suite {
     Experimental,
 }
 
-impl Suite {
-    /// Extend suite with an extension archive.
-    ///
-    /// An existing extension will overriden and the method has no effect for`unstable` and `experimental`.
-    pub fn with_extension(&self, extension: Extension) -> Self {
+impl WithExtension for Suite {
+    fn with_extension(&self, extension: Extension) -> Self {
         match self {
             Self::Unstable | Self::Experimental => *self,
             Self::Testing(_) => Self::Testing(Some(extension)),
@@ -98,10 +108,7 @@ impl Suite {
         }
     }
 
-    /// Remove an extension archive from the suite.
-    ///
-    /// The method has no effect for`unstable` and `experimental`.
-    pub fn without_extension(&self) -> Self {
+    fn without_extension(&self) -> Self {
         match self {
             Self::Unstable | Self::Experimental => *self,
             Self::Testing(_) => Self::Testing(None),
@@ -193,6 +200,26 @@ pub enum Codename {
     Bullseye(Option<Extension>),
     /// The experimental suite
     RCBuggy,
+}
+
+impl WithExtension for Codename {
+    fn with_extension(&self, extension: Extension) -> Self {
+        match self {
+            Self::Sid | Self::RCBuggy => *self,
+            Self::Trixie(_) => Self::Trixie(Some(extension)),
+            Self::Bookworm(_) => Self::Bookworm(Some(extension)),
+            Self::Bullseye(_) => Self::Bullseye(Some(extension)),
+        }
+    }
+
+    fn without_extension(&self) -> Self {
+        match self {
+            Self::Sid | Self::RCBuggy => *self,
+            Self::Trixie(_) => Self::Trixie(None),
+            Self::Bookworm(_) => Self::Bookworm(None),
+            Self::Bullseye(_) => Self::Bullseye(None),
+        }
+    }
 }
 
 impl Display for Codename {
@@ -312,6 +339,22 @@ impl SuiteOrCodename {
     pub const OLDSTABLE_PU: Self = Self::Suite(Suite::OldStable(Some(Extension::ProposedUpdates)));
     /// Stable backports
     pub const STABLE_BACKPORTS: Self = Self::Suite(Suite::Stable(Some(Extension::Backports)));
+}
+
+impl WithExtension for SuiteOrCodename {
+    fn with_extension(&self, extension: Extension) -> Self {
+        match self {
+            Self::Suite(suite) => Self::Suite(suite.with_extension(extension)),
+            Self::Codename(suite) => Self::Codename(suite.with_extension(extension)),
+        }
+    }
+
+    fn without_extension(&self) -> Self {
+        match self {
+            Self::Suite(suite) => Self::Suite(suite.without_extension()),
+            Self::Codename(suite) => Self::Codename(suite.without_extension()),
+        }
+    }
 }
 
 impl From<Codename> for SuiteOrCodename {

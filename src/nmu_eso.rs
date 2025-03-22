@@ -11,7 +11,7 @@ use std::{
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Extension, Suite},
+    archive::{Codename, Extension, Suite, WithExtension},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
