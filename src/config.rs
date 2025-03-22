@@ -461,13 +461,22 @@ impl Cache {
         )?))
     }
 
-    pub fn get_package_path(&self, suite: Suite, architecture: Architecture) -> Result<PathBuf> {
+    pub fn get_package_path(
+        &self,
+        suite: SuiteOrCodename,
+        architecture: Architecture,
+    ) -> Result<PathBuf> {
+        let suite: Suite = suite.into();
         self.get_cache_path(format!("Packages_{suite}_{architecture}"))
     }
 
-    pub fn get_package_paths(&self, suite: Suite, with_all: bool) -> Result<Vec<PathBuf>> {
+    pub fn get_package_paths(
+        &self,
+        suite: SuiteOrCodename,
+        with_all: bool,
+    ) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
-        for architecture in self.architectures_for_suite(suite) {
+        for architecture in self.architectures_for_suite(suite.into()) {
             if !with_all && architecture == Architecture::All {
                 continue;
             }
@@ -477,7 +486,8 @@ impl Cache {
         Ok(all_paths)
     }
 
-    pub fn get_source_path(&self, suite: Suite) -> Result<PathBuf> {
+    pub fn get_source_path(&self, suite: SuiteOrCodename) -> Result<PathBuf> {
+        let suite: Suite = suite.into();
         self.get_cache_path(format!("Sources_{suite}"))
     }
 

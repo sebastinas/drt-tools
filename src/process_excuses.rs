@@ -6,7 +6,7 @@ use std::{cmp::min, collections::HashSet};
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Component, Suite, SuiteOrCodename},
+    archive::{Component, SuiteOrCodename},
     excuses::{self, ExcusesItem, PolicyInfo, Verdict},
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
@@ -281,8 +281,11 @@ impl<'a> ProcessExcuses<'a> {
 #[async_trait]
 impl AsyncCommand for ProcessExcuses<'_> {
     async fn run(&self) -> Result<()> {
-        let source_packages =
-            SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;
+        let source_packages = SourcePackages::new(
+            &self
+                .cache
+                .get_package_paths(SuiteOrCodename::UNSTABLE, false)?,
+        )?;
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 

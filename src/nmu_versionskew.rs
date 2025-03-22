@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, MultiArch, Suite},
+    archive::{Codename, MultiArch, SuiteOrCodename},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
@@ -121,12 +121,11 @@ impl<'a> NMUVersionSkew<'a> {
 
     fn load_version_skew(
         &self,
-        suite: Suite,
+        suite: SuiteOrCodename,
     ) -> Result<Vec<(String, PackageVersion, Vec<Architecture>)>> {
-        let codename = suite.into();
         let ftbfs_bugs = self
-            .load_bugs(codename)
-            .with_context(|| format!("Failed to load bugs for {codename}"))?;
+            .load_bugs(suite.into())
+            .with_context(|| format!("Failed to load bugs for {suite}"))?;
         let mut packages: HashMap<String, HashSet<(Architecture, PackageVersion)>> = HashMap::new();
         for path in self.cache.get_package_paths(suite, false)? {
             for (source, architecture, version) in BinaryPackageParser::new(path)? {
@@ -225,8 +224,7 @@ impl<'a> NMUVersionSkew<'a> {
 #[async_trait]
 impl AsyncCommand for NMUVersionSkew<'_> {
     async fn run(&self) -> Result<()> {
-        let suite = self.options.suite.into();
-        let sources = self.load_version_skew(suite)?;
+        let sources = self.load_version_skew(self.options.suite)?;
 
         let mut wb_commands = Vec::new();
         for (source, version, architectures) in sources {

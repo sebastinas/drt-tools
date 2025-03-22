@@ -54,16 +54,15 @@ impl<'a> NMUList<'a> {
 #[async_trait]
 impl AsyncCommand for NMUList<'_> {
     async fn run(&self) -> Result<()> {
-        let codename: Codename = self.options.binnmu_options.suite.into();
         let source_packages = SourcePackages::new(
             &self
                 .cache
-                .get_package_paths(self.options.binnmu_options.suite.into(), false)?,
+                .get_package_paths(self.options.binnmu_options.suite, false)?,
         )?;
         let ftbfs_bugs = if self.base_options.force_processing {
             UDDBugs::new(vec![])
         } else {
-            self.load_bugs(codename)?
+            self.load_bugs(self.options.binnmu_options.suite.into())?
         };
 
         let mut wb_commands = Vec::new();

@@ -7,9 +7,10 @@ use std::path::Path;
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{Context, Result, anyhow};
+use assorted_debian_utils::archive::SuiteOrCodename;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Suite},
+    archive::Codename,
     buildinfo::{self, Buildinfo},
     rfc822_like,
     version::PackageVersion,
@@ -185,7 +186,10 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
     async fn run(&self) -> Result<()> {
         // store latest version of all source packages
         let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
-        for path in self.cache.get_package_paths(Suite::Unstable, true)? {
+        for path in self
+            .cache
+            .get_package_paths(SuiteOrCodename::UNSTABLE, true)?
+        {
             for (source, version) in Self::parse_packages(path)? {
                 match source_versions.get_mut(&source) {
                     Some(old_ver) => {
@@ -199,8 +203,11 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
                 }
             }
         }
-        let source_packages =
-            SourcePackages::new(&self.cache.get_package_paths(Suite::Unstable, false)?)?;
+        let source_packages = SourcePackages::new(
+            &self
+                .cache
+                .get_package_paths(SuiteOrCodename::UNSTABLE, false)?,
+        )?;
 
         let ftbfs_bugs = if self.base_options.force_processing {
             UDDBugs::new(vec![])

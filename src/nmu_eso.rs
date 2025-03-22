@@ -11,7 +11,7 @@ use std::{
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Extension, Suite, WithExtension},
+    archive::{Codename, Extension, Suite, SuiteOrCodename, WithExtension},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
@@ -229,7 +229,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
     }
 
     /// Load source packages from multiple suites with the highest version
-    fn load_sources_for_suites(&self, suites: &[Suite]) -> Result<SourcePackages> {
+    fn load_sources_for_suites(&self, suites: &[SuiteOrCodename]) -> Result<SourcePackages> {
         let paths: Result<Vec<_>> = suites
             .iter()
             .map(|suite| self.cache.get_package_paths(*suite, false))
@@ -242,9 +242,12 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         SourcePackages::new_with_source(&sources?, &paths?)
     }
 
-    fn load_eso(&self, field: Field, suite: Suite) -> Result<Vec<CombinedOutdatedPackage>> {
-        let codename = suite.into();
-        let ftbfs_bugs = self.load_bugs(codename)?;
+    fn load_eso(
+        &self,
+        field: Field,
+        suite: SuiteOrCodename,
+    ) -> Result<Vec<CombinedOutdatedPackage>> {
+        let ftbfs_bugs = self.load_bugs(suite.into())?;
         let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
         let mut packages = HashSet::new();
         for suite in self.expand_suite_for_binaries() {
@@ -260,7 +263,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                         |(outdated_dependency, outdated_version)| OutdatedPackage {
                             source: source.clone(),
                             version: version.clone(),
-                            suite,
+                            suite: suite.into(),
                             outdated_dependency,
                             outdated_version,
                             architecture,
@@ -343,33 +346,43 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             .collect())
     }
 
-    fn expand_suite_for_sources(&self) -> Vec<Suite> {
+    fn expand_suite_for_sources(&self) -> Vec<SuiteOrCodename> {
         let suite: Suite = self.options.suite.into();
         match suite {
             // when looking at testing, ignore testing-proposed-updates
-            Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![suite],
+            Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![self.options.suite],
             // when looking at stable, consider stable and proposed-updates
             Suite::Stable(None) | Suite::OldStable(None) => {
-                vec![suite, suite.with_extension(Extension::ProposedUpdates)]
+                vec![
+                    self.options.suite,
+                    self.options
+                        .suite
+                        .with_extension(Extension::ProposedUpdates),
+                ]
             }
             // always consider base suite as well
             Suite::Stable(Some(_)) | Suite::OldStable(Some(_)) => {
-                vec![suite.without_extension(), suite]
+                vec![self.options.suite.without_extension(), self.options.suite]
             }
         }
     }
 
-    fn expand_suite_for_binaries(&self) -> Vec<Suite> {
+    fn expand_suite_for_binaries(&self) -> Vec<SuiteOrCodename> {
         let suite: Suite = self.options.suite.into();
         match suite {
             // when looking at testing, ignore testing-proposed-updates
-            Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![suite],
+            Suite::Testing(_) | Suite::Unstable | Suite::Experimental => vec![self.options.suite],
             // when looking at stable, consider stable and proposed-updates
             Suite::Stable(None) | Suite::OldStable(None) => {
-                vec![suite, suite.with_extension(Extension::ProposedUpdates)]
+                vec![
+                    self.options.suite,
+                    self.options
+                        .suite
+                        .with_extension(Extension::ProposedUpdates),
+                ]
             }
             Suite::Stable(Some(_)) | Suite::OldStable(Some(_)) => {
-                vec![suite]
+                vec![self.options.suite]
             }
         }
     }
@@ -378,8 +391,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 #[async_trait]
 impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
     async fn run(&self) -> Result<()> {
-        let suite = self.options.suite.into();
-        let eso_sources = self.load_eso(self.options.field, suite)?;
+        let eso_sources = self.load_eso(self.options.field, self.options.suite)?;
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
@@ -415,11 +427,11 @@ impl Downloads for NMUOutdatedBuiltUsing<'_> {
     fn required_downloads(&self) -> Vec<CacheEntries> {
         self.expand_suite_for_binaries()
             .into_iter()
-            .map(|suite| CacheEntries::Packages(suite.into()))
+            .map(CacheEntries::Packages)
             .chain(
                 self.expand_suite_for_sources()
                     .into_iter()
-                    .map(|suite| CacheEntries::Sources(suite.into())),
+                    .map(CacheEntries::Sources),
             )
             .collect()
     }
