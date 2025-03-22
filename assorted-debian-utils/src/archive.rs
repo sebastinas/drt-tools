@@ -6,6 +6,7 @@
 //! These helpers includes enums to handle suites, codenames, and other fields found in Debian archive files.
 
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize, Serializer};
@@ -314,7 +315,7 @@ impl<'de> Deserialize<'de> for Codename {
 /// Represents either a suite or codename
 ///
 /// This enum is useful whenever a suite name or codename works
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub enum SuiteOrCodename {
     /// A suite
     Suite(Suite),
@@ -339,6 +340,29 @@ impl SuiteOrCodename {
     pub const OLDSTABLE_PU: Self = Self::Suite(Suite::OldStable(Some(Extension::ProposedUpdates)));
     /// Stable backports
     pub const STABLE_BACKPORTS: Self = Self::Suite(Suite::Stable(Some(Extension::Backports)));
+}
+
+impl PartialEq for SuiteOrCodename {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Suite(l0), Self::Suite(r0)) => l0 == r0,
+            (Self::Codename(l0), Self::Codename(r0)) => l0 == r0,
+            (Self::Suite(l0), Self::Codename(r0)) => Suite::from(*r0) == *l0,
+            (Self::Codename(l0), Self::Suite(r0)) => Suite::from(*l0) == *r0,
+        }
+    }
+}
+
+impl Hash for SuiteOrCodename {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        match self {
+            Self::Suite(suite) => suite.hash(state),
+            Self::Codename(codename) => Suite::from(*codename).hash(state),
+        }
+    }
 }
 
 impl WithExtension for SuiteOrCodename {
@@ -546,6 +570,8 @@ impl FromStr for Component {
 
 #[cfg(test)]
 mod test {
+    use std::hash::DefaultHasher;
+
     use super::*;
 
     #[test]
@@ -599,6 +625,28 @@ mod test {
             SuiteOrCodename::try_from("sid").unwrap(),
             SuiteOrCodename::from(Codename::Sid)
         );
+    }
+
+    #[test]
+    fn suite_or_codename_eq() {
+        assert_eq!(
+            SuiteOrCodename::UNSTABLE,
+            SuiteOrCodename::Codename(Codename::Sid)
+        );
+        assert_eq!(
+            SuiteOrCodename::STABLE_PU,
+            SuiteOrCodename::Codename(Codename::Bookworm(Some(Extension::ProposedUpdates)))
+        );
+    }
+
+    #[test]
+    fn suite_or_codename_hash() {
+        let mut hasher_1 = DefaultHasher::new();
+        let mut hasher_2 = DefaultHasher::new();
+
+        SuiteOrCodename::UNSTABLE.hash(&mut hasher_1);
+        SuiteOrCodename::Codename(Codename::Sid).hash(&mut hasher_2);
+        assert_eq!(hasher_1.finish(), hasher_2.finish());
     }
 
     #[test]
