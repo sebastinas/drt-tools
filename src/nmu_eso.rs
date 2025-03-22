@@ -251,6 +251,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
         let mut packages = HashSet::new();
         for suite in self.expand_suite_for_binaries() {
+            let converted_suite: Suite = suite.into();
             for path in self.cache.get_package_paths(suite, false)? {
                 for OutdatedSourcePackage {
                     source,
@@ -263,7 +264,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                         |(outdated_dependency, outdated_version)| OutdatedPackage {
                             source: source.clone(),
                             version: version.clone(),
-                            suite: suite.into(),
+                            suite: converted_suite,
                             outdated_dependency,
                             outdated_version,
                             architecture,
