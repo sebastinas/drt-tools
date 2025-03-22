@@ -1,9 +1,10 @@
 // Copyright 2021-2025 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::{fmt, path::PathBuf, str::FromStr};
+
 use assorted_debian_utils::{archive::SuiteOrCodename, wb::WBArchitecture};
 use clap::{Parser, Subcommand};
-use std::{fmt, path::PathBuf, str::FromStr};
 
 #[derive(Debug, Parser)]
 pub struct BaseOptions {

@@ -1,10 +1,12 @@
 // Copyright 2022-2023 Sebastian Ramacher
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Write};
-use std::path::Path;
-use std::{collections::HashSet, fs::File};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::{BufRead, BufReader, Write},
+    path::Path,
+};
 
 use anyhow::{Context, Result, anyhow};
 use assorted_debian_utils::{

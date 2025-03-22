@@ -5,9 +5,11 @@
 //!
 //! These helpers includes enums to handle suites, codenames, and other fields found in Debian archive files.
 
-use std::fmt::{Display, Formatter};
-use std::hash::{Hash, Hasher};
-use std::str::FromStr;
+use std::{
+    fmt::{Display, Formatter},
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize, Serializer};
 
