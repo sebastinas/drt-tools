@@ -7,10 +7,9 @@ use std::path::Path;
 use std::{collections::HashSet, fs::File};
 
 use anyhow::{Context, Result, anyhow};
-use assorted_debian_utils::archive::SuiteOrCodename;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::Codename,
+    archive::{Codename, SuiteOrCodename},
     buildinfo::{self, Buildinfo},
     rfc822_like,
     version::PackageVersion,
