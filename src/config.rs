@@ -510,7 +510,8 @@ pub fn source_skip_binnmu(source: &str) -> bool {
             && (source.starts_with("grub-")
                 || source.starts_with("linux-")
                 || source.starts_with("shim-")
-                || source.starts_with("fwupd-")))
+                || source.starts_with("fwupd-")
+                || source.starts_with("systemd-boot-efi")))
         || (source.contains("cross")
             && (source.starts_with("gcc-") || source.starts_with("binutils-")))
 }
