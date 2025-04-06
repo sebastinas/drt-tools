@@ -404,6 +404,42 @@ impl WBCommandBuilder for Fail<'_> {
     }
 }
 
+/// Builder for the `info` command
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Info<'a> {
+    source: &'a SourceSpecifier<'a>,
+}
+
+impl<'a> Info<'a> {
+    /// Create a new `info` command for the given `source`.
+    pub fn new(source: &'a SourceSpecifier<'a>) -> Result<Self, Error> {
+        for arch in &source.architectures {
+            match *arch {
+                // unable to info with source, -source
+                WBArchitecture::Architecture(Architecture::Source)
+                | WBArchitecture::ExcludeArchitecture(Architecture::Source) => {
+                    return Err(Error::InvalidArchitecture(*arch, "info"));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Self { source })
+    }
+}
+
+impl Display for Info<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "info {}", self.source)
+    }
+}
+
+impl WBCommandBuilder for Info<'_> {
+    fn build(&self) -> WBCommand {
+        WBCommand(self.to_string())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{
