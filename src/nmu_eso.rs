@@ -12,6 +12,7 @@ use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Extension, Suite, SuiteOrCodename, WithExtension},
+    package::PackageName,
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
@@ -49,21 +50,21 @@ struct BinaryPackage {
 
 #[derive(PartialEq, Eq, Hash)]
 struct OutdatedPackage {
-    source: String,
+    source: PackageName,
     version: PackageVersion,
     suite: Suite,
-    outdated_dependency: String,
+    outdated_dependency: PackageName,
     outdated_version: PackageVersion,
     architecture: WBArchitecture,
 }
 
 #[derive(PartialEq, Eq)]
 struct CombinedOutdatedPackage {
-    source: String,
+    source: PackageName,
     version: PackageVersion,
     suite: Suite,
     architecture: WBArchitecture,
-    outdated_dependencies: Vec<(String, PackageVersion)>,
+    outdated_dependencies: Vec<(PackageName, PackageVersion)>,
 }
 
 impl PartialOrd for CombinedOutdatedPackage {
@@ -78,14 +79,18 @@ impl Ord for CombinedOutdatedPackage {
     }
 }
 
-fn split_dependency(dependency: &str) -> Option<(String, PackageVersion)> {
+fn split_dependency(dependency: &str) -> Option<(PackageName, PackageVersion)> {
     // this should never fail unless the archive is broken
     dependency.split_once(' ').and_then(|(source, version)| {
-        version
+        let version = version
             .strip_suffix(')')
             .and_then(|version| version.strip_prefix("(= "))
-            .and_then(|version| PackageVersion::try_from(version).ok())
-            .map(|version| (source.to_string(), version))
+            .and_then(|version| PackageVersion::try_from(version).ok());
+        let source = PackageName::try_from(source);
+        match (source, version) {
+            (Ok(source), Some(version)) => Some((source, version)),
+            _ => None,
+        }
     })
 }
 
@@ -115,9 +120,9 @@ impl<'a> BinaryPackageParser<'a> {
 }
 
 struct OutdatedSourcePackage {
-    source: String,
+    source: PackageName,
     version: PackageVersion,
-    built_using: HashSet<(String, PackageVersion)>,
+    built_using: HashSet<(PackageName, PackageVersion)>,
     architecture: WBArchitecture,
 }
 
@@ -159,7 +164,7 @@ impl Iterator for BinaryPackageParser<'_> {
                     split
                 })
                 .filter(|(source, version)| {
-                    if let Some(max_version) = self.sources.version(source) {
+                    if let Some(max_version) = self.sources.version(source.as_ref()) {
                         version < max_version
                     } else {
                         // This can happen when considering packages with
@@ -183,13 +188,13 @@ impl Iterator for BinaryPackageParser<'_> {
             }
 
             // if the package builds any MA: same packages, schedule binNMUs with ANY
-            let architecture = if self.sources.is_ma_same(source_package) {
+            let architecture = if self.sources.is_ma_same(source_package.as_ref()) {
                 WBArchitecture::Any
             } else {
                 WBArchitecture::Architecture(binary_package.architecture)
             };
             return Some(OutdatedSourcePackage {
-                source: source_package.into(),
+                source: source_package.clone(),
                 version: version.without_binnmu_version(),
                 built_using,
                 architecture,
@@ -275,12 +280,12 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         }
 
         let mut result = HashMap::<
-            (String, Suite, WBArchitecture),
-            HashSet<(PackageVersion, String, PackageVersion)>,
+            (PackageName, Suite, WBArchitecture),
+            HashSet<(PackageVersion, PackageName, PackageVersion)>,
         >::new();
         for outdated_package in packages {
             // skip some packages that make no sense to binNMU
-            if source_skip_binnmu(&outdated_package.source) {
+            if source_skip_binnmu(outdated_package.source.as_ref()) {
                 debug!(
                     "Skipping {}: signed or d-i package",
                     outdated_package.source
@@ -289,7 +294,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             }
 
             // check if package FTBFS
-            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&outdated_package.source) {
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(outdated_package.source.as_ref()) {
                 println!(
                     "# Skipping {} due to FTBFS bugs ...",
                     outdated_package.source
@@ -396,7 +401,7 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
-            let mut source = SourceSpecifier::new(&outdated_package.source);
+            let mut source = SourceSpecifier::new(outdated_package.source.as_ref());
             source.with_version(&outdated_package.version);
             source.with_suite(outdated_package.suite.into());
             source.with_architectures(&[outdated_package.architecture]);

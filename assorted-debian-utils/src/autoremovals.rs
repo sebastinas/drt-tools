@@ -11,7 +11,7 @@ use std::{collections::HashMap, io};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::{utils::DateTimeVisitor, version::PackageVersion};
+use crate::{package::PackageName, utils::DateTimeVisitor, version::PackageVersion};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
@@ -22,7 +22,7 @@ where
 }
 
 /// All autoremovals
-pub type AutoRemovals = HashMap<String, AutoRemoval>;
+pub type AutoRemovals = HashMap<PackageName, AutoRemoval>;
 
 /// An autoremoval
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -32,7 +32,7 @@ pub struct AutoRemoval {
     /// The RC bugs of dependencies causing auto-removal.
     pub bugs_dependencies: Option<Vec<String>>,
     /// List of RC-buggy dependencies causing auto-removal.
-    pub buggy_dependencies: Option<Vec<String>>,
+    pub buggy_dependencies: Option<Vec<PackageName>>,
     /// Auto-removal is caused by dependencies.
     pub dependencies_only: bool,
     /// Date of the last check.
@@ -46,7 +46,7 @@ pub struct AutoRemoval {
     /// Package version.
     pub version: PackageVersion,
     /// List of reverse dependencies that will also be auto-removed.
-    pub rdeps: Option<Vec<String>>,
+    pub rdeps: Option<Vec<PackageName>>,
 }
 
 /// Result type

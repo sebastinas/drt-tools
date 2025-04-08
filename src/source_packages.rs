@@ -8,7 +8,9 @@ use std::{
 };
 
 use anyhow::Result;
-use assorted_debian_utils::{archive::MultiArch, rfc822_like, version::PackageVersion};
+use assorted_debian_utils::{
+    archive::MultiArch, package::PackageName, rfc822_like, version::PackageVersion,
+};
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::{
     Deserialize,
@@ -20,7 +22,7 @@ use crate::config;
 /// Source package name with optional version in parenthesis
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceWithVersion {
-    pub source: String,
+    pub source: PackageName,
     pub version: Option<PackageVersion>,
 }
 
@@ -55,23 +57,22 @@ impl<'de> Deserialize<'de> for SourceWithVersion {
             where
                 E: de::Error,
             {
-                if let Some((source, version)) = v.split_once(' ') {
+                let (source, version) = if let Some((source, version)) = v.split_once(' ') {
                     if !version.starts_with('(') || !version.ends_with(')') {
                         return Err(E::invalid_value(de::Unexpected::Str(v), &self));
                     }
 
                     let version = PackageVersion::try_from(&version[1..version.len() - 1])
                         .map_err(|_| E::invalid_value(de::Unexpected::Str(v), &self))?;
-                    Ok(SourceWithVersion {
-                        source: source.into(),
-                        version: Some(version),
-                    })
+                    (source, Some(version))
                 } else {
-                    Ok(SourceWithVersion {
-                        source: v.into(),
-                        version: None,
-                    })
-                }
+                    (v, None)
+                };
+
+                source
+                    .try_into()
+                    .map_err(|_| E::invalid_value(de::Unexpected::Str(v), &self))
+                    .map(|source| SourceWithVersion { source, version })
             }
         }
 
@@ -83,14 +84,14 @@ impl<'de> Deserialize<'de> for SourceWithVersion {
 #[serde(rename_all = "PascalCase")]
 pub struct BinaryPackage {
     pub source: Option<SourceWithVersion>,
-    pub package: String,
+    pub package: PackageName,
     pub version: PackageVersion,
     #[serde(rename = "Multi-Arch")]
     pub multi_arch: Option<MultiArch>,
 }
 
 impl BinaryPackage {
-    pub fn name_and_version(&self) -> (&str, PackageVersion) {
+    pub fn name_and_version(&self) -> (&PackageName, PackageVersion) {
         if let Some(source_package) = &self.source {
             (
                 &source_package.source,
@@ -109,7 +110,7 @@ impl BinaryPackage {
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 struct SourcePackage {
-    package: String,
+    package: PackageName,
     version: PackageVersion,
 }
 
@@ -119,7 +120,7 @@ struct SourcePackageInfo {
     version: PackageVersion,
 }
 
-pub struct SourcePackages(HashMap<String, SourcePackageInfo>);
+pub struct SourcePackages(HashMap<PackageName, SourcePackageInfo>);
 
 impl SourcePackages {
     /// Extract source package information from binary package files
@@ -130,7 +131,7 @@ impl SourcePackages {
     where
         P: AsRef<Path>,
     {
-        let mut all_sources = HashMap::<String, SourcePackageInfo>::new();
+        let mut all_sources = HashMap::<PackageName, SourcePackageInfo>::new();
         for path in paths {
             for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
                 let (source, version) = binary_package.name_and_version();
@@ -145,7 +146,7 @@ impl SourcePackages {
                     }
                 } else {
                     all_sources.insert(
-                        source.to_string(),
+                        source.clone(),
                         SourcePackageInfo {
                             version,
                             ma_same: binary_package.multi_arch == Some(MultiArch::Same),
@@ -167,7 +168,7 @@ impl SourcePackages {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let mut all_sources = HashMap::<String, SourcePackageInfo>::new();
+        let mut all_sources = HashMap::<PackageName, SourcePackageInfo>::new();
         for path in sources {
             for source_package in parse_packages::<SourcePackage>(path.as_ref())? {
                 if let Some(data) = all_sources.get_mut(&source_package.package) {
@@ -201,7 +202,7 @@ impl SourcePackages {
                     }
                 } else {
                     all_sources.insert(
-                        source.to_string(),
+                        source.clone(),
                         SourcePackageInfo {
                             version,
                             ma_same: binary_package.multi_arch == Some(MultiArch::Same),

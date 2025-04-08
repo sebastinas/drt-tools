@@ -9,7 +9,10 @@ use std::io::BufRead;
 
 use serde::{Deserialize, Deserializer};
 
-use crate::{architectures::Architecture, utils::WhitespaceListVisitor, version::PackageVersion};
+use crate::{
+    architectures::Architecture, package::PackageName, utils::WhitespaceListVisitor,
+    version::PackageVersion,
+};
 
 fn deserialize_architecture<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
 where
@@ -23,7 +26,7 @@ where
 #[serde(rename_all = "PascalCase")]
 pub struct Buildinfo {
     /// Source package
-    pub source: String,
+    pub source: PackageName,
     /// Version of the package
     pub version: PackageVersion,
     /// Architectures of the build

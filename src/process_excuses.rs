@@ -143,9 +143,9 @@ impl<'a> ProcessExcuses<'a> {
             return None;
         }
 
-        let mut source_specifier = SourceSpecifier::new(&item.source);
+        let mut source_specifier = SourceSpecifier::new(item.source.as_ref());
         source_specifier.with_version(item.new_version.as_ref().unwrap());
-        if !source_packages.is_ma_same(&item.source) {
+        if !source_packages.is_ma_same(item.source.as_ref()) {
             source_specifier.with_architectures(&archs);
         }
         if let Ok(command) = BinNMU::new(&source_specifier, "Rebuild on buildd") {
@@ -173,7 +173,7 @@ impl<'a> ProcessExcuses<'a> {
 
     fn build_unblock(item: &ExcusesItem) -> Option<String> {
         let mut unblock = String::from("unblock ");
-        unblock.push_str(&item.source);
+        unblock.push_str(item.source.as_ref());
         // append _tpu if item is from _tpu
         if item.is_from_tpu() {
             unblock.push_str("_tpu");

@@ -12,6 +12,7 @@ use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, MultiArch, SuiteOrCodename},
+    package::PackageName,
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
@@ -66,7 +67,7 @@ impl BinaryPackageParser {
 }
 
 impl Iterator for BinaryPackageParser {
-    type Item = (String, Architecture, PackageVersion);
+    type Item = (PackageName, Architecture, PackageVersion);
 
     fn next(&mut self) -> Option<Self::Item> {
         for binary_package in self.iterator.by_ref() {
@@ -81,7 +82,7 @@ impl Iterator for BinaryPackageParser {
 
             let (source_package, _) = binary_package.package.name_and_version();
             return Some((
-                source_package.into(),
+                source_package.clone(),
                 binary_package.architecture,
                 binary_package.package.version,
             ));
@@ -122,15 +123,16 @@ impl<'a> NMUVersionSkew<'a> {
     fn load_version_skew(
         &self,
         suite: SuiteOrCodename,
-    ) -> Result<Vec<(String, PackageVersion, Vec<Architecture>)>> {
+    ) -> Result<Vec<(PackageName, PackageVersion, Vec<Architecture>)>> {
         let ftbfs_bugs = self
             .load_bugs(suite.into())
             .with_context(|| format!("Failed to load bugs for {suite}"))?;
-        let mut packages: HashMap<String, HashSet<(Architecture, PackageVersion)>> = HashMap::new();
+        let mut packages: HashMap<PackageName, HashSet<(Architecture, PackageVersion)>> =
+            HashMap::new();
         for path in self.cache.get_package_paths(suite, false)? {
             for (source, architecture, version) in BinaryPackageParser::new(path)? {
                 // skip some packages that make no sense to binNMU
-                if source_skip_binnmu(&source) {
+                if source_skip_binnmu(source.as_ref()) {
                     continue;
                 }
 
@@ -147,7 +149,7 @@ impl<'a> NMUVersionSkew<'a> {
         }
 
         let mut sources_architectures =
-            Vec::<(String, PackageVersion, Vec<Architecture>)>::default();
+            Vec::<(PackageName, PackageVersion, Vec<Architecture>)>::default();
         for (source, source_info) in packages.into_iter().sorted_by_key(|value| value.0.clone()) {
             let mut max_version_per_architecture: HashMap<Architecture, PackageVersion> =
                 HashMap::default();
@@ -180,7 +182,7 @@ impl<'a> NMUVersionSkew<'a> {
             }
 
             // check if package FTBFS
-            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
                 println!("# Skipping {source} due to FTBFS bugs ...");
                 for bug in bugs {
                     debug!(
@@ -228,7 +230,7 @@ impl AsyncCommand for NMUVersionSkew<'_> {
 
         let mut wb_commands = Vec::new();
         for (source, version, architectures) in sources {
-            let mut source = SourceSpecifier::new(&source);
+            let mut source = SourceSpecifier::new(source.as_ref());
             source.with_suite(self.options.suite);
             source.with_archive_architectures(architectures.as_ref());
             let version_without_binnmu = version.clone().without_binnmu_version();

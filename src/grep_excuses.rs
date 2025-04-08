@@ -98,7 +98,7 @@ impl Command for GrepExcuses<'_> {
 
         for maintainer_package in &self.options.maintainer_package {
             // first print the autoremoval
-            if let Some(autoremoval) = autoremovals.get(maintainer_package) {
+            if let Some(autoremoval) = autoremovals.get(maintainer_package.as_str()) {
                 print_autoremoval(autoremoval);
             }
 

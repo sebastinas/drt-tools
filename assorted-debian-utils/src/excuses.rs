@@ -13,7 +13,7 @@ use serde::{Deserialize, Deserializer, de};
 use smallvec::SmallVec;
 
 use crate::{
-    architectures::Architecture, archive::Component, utils::DateTimeVisitor,
+    architectures::Architecture, archive::Component, package::PackageName, utils::DateTimeVisitor,
     version::PackageVersion,
 };
 
@@ -186,7 +186,7 @@ pub struct ExcusesItem {
     /// Migration item name
     pub item_name: String,
     /// Source package name
-    pub source: String,
+    pub source: PackageName,
     /// Migration is blocked by another package
     pub invalidated_by_other_package: Option<bool>,
     /// Component of the source package

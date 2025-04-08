@@ -26,7 +26,7 @@ fn parse_excuses(data_file: &str) {
     assert!(!excuses.sources.is_empty());
 
     for source in excuses.sources {
-        assert!(source.item_name.contains(source.source.as_str()));
+        assert!(source.item_name.contains(source.source.as_ref()));
 
         if source.is_binnmu() {
             assert!(source.binnmu_arch().is_some());

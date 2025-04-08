@@ -91,9 +91,6 @@ impl<'a> BinNMUBuildinfo<'a> {
         source_versions: &HashMap<String, PackageVersion>,
         ftbfs_bugs: &UDDBugs,
     ) -> Result<WBCommand> {
-        let mut source_split = buildinfo.source.split_whitespace();
-        let source_package = source_split.next().unwrap();
-
         let architectures: Vec<Architecture> = buildinfo
             .architecture
             .into_iter()
@@ -103,6 +100,7 @@ impl<'a> BinNMUBuildinfo<'a> {
             return Err(anyhow!("no binNMU-able architecture"));
         }
 
+        let source_package = buildinfo.source.as_ref();
         match source_versions.get(source_package) {
             Some(version) => {
                 if version > &buildinfo.version {
