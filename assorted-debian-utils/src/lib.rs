@@ -22,6 +22,7 @@ pub mod archive;
 pub mod autoremovals;
 pub mod buildinfo;
 pub mod excuses;
+pub mod package;
 pub mod release;
 mod utils;
 pub mod version;
@@ -57,4 +58,7 @@ pub enum ParseError {
     #[error("invalid component")]
     /// Given string is not a valid component
     InvalidComponent,
+    #[error("invalid package: {0}")]
+    /// Given string is not a valid package
+    InvalidPackage(#[from] package::PackageError),
 }
