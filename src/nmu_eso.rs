@@ -187,7 +187,7 @@ impl Iterator for BinaryPackageParser<'_> {
             }
 
             // if the package builds any MA: same packages, schedule binNMUs with ANY
-            let architecture = if self.sources.is_ma_same(source_package) {
+            let architecture = if self.sources.is_ma_same(&source_package) {
                 WBArchitecture::Any
             } else {
                 WBArchitecture::Architecture(binary_package.architecture)

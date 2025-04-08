@@ -93,10 +93,10 @@ pub struct BinaryPackage {
 }
 
 impl BinaryPackage {
-    pub fn name_and_version(&self) -> (&PackageName, PackageVersion) {
+    pub fn name_and_version(&self) -> (PackageName, PackageVersion) {
         if let Some(source_package) = &self.source {
             (
-                &source_package.source,
+                source_package.source.clone(),
                 source_package
                     .version
                     .clone()
@@ -104,7 +104,10 @@ impl BinaryPackage {
             )
         } else {
             // no Source set, so Source == Package
-            (&self.package, self.version.clone_without_binnmu_version())
+            (
+                self.package.clone(),
+                self.version.clone_without_binnmu_version(),
+            )
         }
     }
 }
@@ -138,7 +141,7 @@ impl SourcePackages {
             for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
                 let (source, version) = binary_package.name_and_version();
 
-                if let Some(data) = all_sources.get_mut(source) {
+                if let Some(data) = all_sources.get_mut(&source) {
                     // store only highest version
                     if version > data.version {
                         data.version = version;
@@ -148,7 +151,7 @@ impl SourcePackages {
                     }
                 } else {
                     all_sources.insert(
-                        source.clone(),
+                        source,
                         SourcePackageInfo {
                             version,
                             ma_same: binary_package.multi_arch == Some(MultiArch::Same),
@@ -194,7 +197,7 @@ impl SourcePackages {
             for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
                 let (source, version) = binary_package.name_and_version();
 
-                if let Some(data) = all_sources.get_mut(source) {
+                if let Some(data) = all_sources.get_mut(&source) {
                     // store only highest version
                     if version > data.version {
                         data.version = version;
@@ -204,7 +207,7 @@ impl SourcePackages {
                     }
                 } else {
                     all_sources.insert(
-                        source.clone(),
+                        source,
                         SourcePackageInfo {
                             version,
                             ma_same: binary_package.multi_arch == Some(MultiArch::Same),

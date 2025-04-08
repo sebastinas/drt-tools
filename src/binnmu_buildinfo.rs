@@ -13,30 +13,22 @@ use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, SuiteOrCodename},
     buildinfo::{self, Buildinfo},
+    package::PackageName,
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressIterator};
-use serde::Deserialize;
 
 use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, BinNMUBuildinfoOptions},
     config::{Cache, CacheEntries, default_progress_style, default_progress_template},
-    source_packages::SourcePackages,
+    source_packages::{BinaryPackage, SourcePackages},
     udd_bugs::{UDDBugs, load_bugs_from_reader},
     utils::execute_wb_commands,
 };
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct BinaryPackage {
-    source: Option<String>,
-    package: String,
-    version: PackageVersion,
-}
 
 pub(crate) struct BinNMUBuildinfo<'a> {
     cache: &'a Cache,
@@ -57,7 +49,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         }
     }
 
-    fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<(String, PackageVersion)>> {
+    fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<(PackageName, PackageVersion)>> {
         // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())
             .with_context(|| {
@@ -70,17 +62,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         Ok(binary_packages
             .into_iter()
             .progress_with(pb)
-            .map(|binary_package| {
-                if let Some(source_package) = &binary_package.source {
-                    (
-                        source_package.split_whitespace().next().unwrap().into(),
-                        binary_package.version,
-                    )
-                } else {
-                    // no Source set, so Source == Package
-                    (binary_package.package, binary_package.version)
-                }
-            })
+            .map(|binary_package| binary_package.name_and_version())
             .collect())
     }
 
@@ -88,7 +70,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         &self,
         buildinfo: Buildinfo,
         source_packages: &SourcePackages,
-        source_versions: &HashMap<String, PackageVersion>,
+        source_versions: &HashMap<PackageName, PackageVersion>,
         ftbfs_bugs: &UDDBugs,
     ) -> Result<WBCommand> {
         let architectures: Vec<Architecture> = buildinfo
@@ -100,8 +82,7 @@ impl<'a> BinNMUBuildinfo<'a> {
             return Err(anyhow!("no binNMU-able architecture"));
         }
 
-        let source_package = buildinfo.source.as_ref();
-        match source_versions.get(source_package) {
+        match source_versions.get(&buildinfo.source) {
             Some(version) => {
                 if version > &buildinfo.version {
                     return Err(anyhow!("newer version in archive"));
@@ -110,7 +91,10 @@ impl<'a> BinNMUBuildinfo<'a> {
             None => return Err(anyhow!("removed from the archive")),
         }
 
-        if ftbfs_bugs.bugs_for_source(source_package).is_some() {
+        if ftbfs_bugs
+            .bugs_for_source(buildinfo.source.as_ref())
+            .is_some()
+        {
             return Err(anyhow!("skipping due to FTBFS bugs"));
         }
 
@@ -141,7 +125,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         &self,
         path: impl AsRef<Path>,
         source_packages: &SourcePackages,
-        source_versions: &HashMap<String, PackageVersion>,
+        source_versions: &HashMap<PackageName, PackageVersion>,
         ftbfs_bugs: &UDDBugs,
     ) -> Result<HashSet<WBCommand>> {
         let mut ret = HashSet::new();
@@ -184,7 +168,7 @@ impl<'a> BinNMUBuildinfo<'a> {
 impl AsyncCommand for BinNMUBuildinfo<'_> {
     async fn run(&self) -> Result<()> {
         // store latest version of all source packages
-        let mut source_versions: HashMap<String, PackageVersion> = HashMap::new();
+        let mut source_versions = HashMap::new();
         for path in self
             .cache
             .get_package_paths(SuiteOrCodename::UNSTABLE, true)?

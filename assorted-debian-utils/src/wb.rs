@@ -452,8 +452,6 @@ mod test {
     };
     use crate::{architectures::Architecture, archive::SuiteOrCodename, package::PackageName};
 
-    const TESTING: SuiteOrCodename = SuiteOrCodename::TESTING;
-
     #[test]
     fn arch_from_str() {
         assert_eq!(
@@ -519,7 +517,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new(&source).with_suite(TESTING),
+                SourceSpecifier::new(&source).with_suite(SuiteOrCodename::TESTING),
                 "Rebuild on buildd"
             )
             .unwrap()
@@ -606,10 +604,13 @@ mod test {
             "bp 10 zathura . ANY -i386 . unstable"
         );
         assert_eq!(
-            BuildPriority::new(SourceSpecifier::new(&source).with_suite(TESTING), 10)
-                .unwrap()
-                .build()
-                .to_string(),
+            BuildPriority::new(
+                SourceSpecifier::new(&source).with_suite(SuiteOrCodename::TESTING),
+                10
+            )
+            .unwrap()
+            .build()
+            .to_string(),
             "bp 10 zathura . ANY . testing"
         );
     }
@@ -650,7 +651,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new(&source).with_suite(TESTING),
+                SourceSpecifier::new(&source).with_suite(SuiteOrCodename::TESTING),
                 "libgirara-dev"
             )
             .unwrap()
