@@ -7,8 +7,10 @@
 //! appear in various files related to Debian binary and source packages,
 //! archive indices, etc.
 
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
+use std::{
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize};
 

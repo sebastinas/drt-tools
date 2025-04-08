@@ -3,16 +3,20 @@
 
 //! # Helper to handle `Release` files
 
-use std::collections::HashMap;
-use std::fmt::Formatter;
-use std::io::{BufRead, Cursor};
+use std::{
+    collections::HashMap,
+    fmt::Formatter,
+    io::{BufRead, Cursor},
+};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, de};
 
-use crate::architectures::Architecture;
-use crate::archive::{Codename, Component, Suite};
-use crate::utils::{DateTimeVisitor, WhitespaceListVisitor};
+use crate::{
+    architectures::Architecture,
+    archive::{Codename, Component, Suite},
+    utils::{DateTimeVisitor, WhitespaceListVisitor},
+};
 
 /// Deserialize a datetime string into a `DateTime<Utc>`
 fn deserialize_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>

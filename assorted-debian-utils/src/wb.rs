@@ -5,17 +5,21 @@
 //!
 //! This module provides builders to generate commands for [wanna-build](https://release.debian.org/wanna-build.txt).
 
-use std::fmt::{Display, Formatter};
-use std::io::Write;
-use std::process::{Command, Stdio};
-use std::str::FromStr;
+use std::{
+    fmt::{Display, Formatter},
+    io::Write,
+    process::{Command, Stdio},
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::architectures::{Architecture, ParseError};
-use crate::archive::{Suite, SuiteOrCodename};
-use crate::version::PackageVersion;
+use crate::{
+    architectures::{Architecture, ParseError},
+    archive::{Suite, SuiteOrCodename},
+    version::PackageVersion,
+};
 
 /// Errors when working with `wb`
 #[derive(Debug, Error)]
