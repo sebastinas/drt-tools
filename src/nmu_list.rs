@@ -9,11 +9,12 @@ use std::{
 use anyhow::Result;
 use assorted_debian_utils::{
     archive::Codename,
+    package::PackageName,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use async_trait::async_trait;
-use log::debug;
+use log::{debug, warn};
 
 use crate::{
     AsyncCommand, Downloads,
@@ -90,19 +91,24 @@ impl AsyncCommand for NMUList<'_> {
                     continue;
                 }
 
-                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
+                let Ok(source) = PackageName::try_from(source) else {
+                    warn!("Not a valid package name: {}", source);
+                    continue;
+                };
+
+                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
                     println!("# Skipping {source} due to FTBFS bugs");
                     continue;
                 }
 
-                let mut source_specifier = SourceSpecifier::new(source);
+                let mut source_specifier = SourceSpecifier::new(&source);
                 if let Some(ref version) = version {
                     source_specifier.with_version(version);
                 }
                 source_specifier.with_suite(self.options.binnmu_options.suite);
                 if let Some(architectures) = &self.options.binnmu_options.architecture {
-                    if !source_packages.is_ma_same(source) {
+                    if !source_packages.is_ma_same(source.as_ref()) {
                         source_specifier.with_architectures(architectures);
                     }
                 }

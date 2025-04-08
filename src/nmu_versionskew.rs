@@ -230,7 +230,7 @@ impl AsyncCommand for NMUVersionSkew<'_> {
 
         let mut wb_commands = Vec::new();
         for (source, version, architectures) in sources {
-            let mut source = SourceSpecifier::new(source.as_ref());
+            let mut source = SourceSpecifier::new(&source);
             source.with_suite(self.options.suite);
             source.with_archive_architectures(architectures.as_ref());
             let version_without_binnmu = version.clone().without_binnmu_version();

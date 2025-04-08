@@ -9,6 +9,7 @@ use std::{
 use anyhow::Result;
 use assorted_debian_utils::{
     archive::Codename,
+    package::PackageName,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
 use async_trait::async_trait;
@@ -84,7 +85,10 @@ impl AsyncCommand for NMUTransition<'_> {
                     continue;
                 }
 
-                let source = split_line[0];
+                let Ok(source) = PackageName::try_from(split_line[0]) else {
+                    warn!("Invalid package name: {}", split_line[0]);
+                    continue;
+                };
                 let version = split_line[version_index];
                 let Some(version) = version.strip_prefix('(').and_then(|v| v.strip_suffix(')'))
                 else {
@@ -92,13 +96,13 @@ impl AsyncCommand for NMUTransition<'_> {
                     continue;
                 };
 
-                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source) {
+                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
                     println!("# Skipping {source} due to FTBFS bugs");
                     continue;
                 }
 
-                let mut source = SourceSpecifier::new(source);
+                let mut source = SourceSpecifier::new(&source);
                 let Ok(version) = version.try_into() else {
                     warn!("Unable to parse version: {:?} / {:?}", source, version);
                     continue;

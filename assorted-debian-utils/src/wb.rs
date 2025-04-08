@@ -18,6 +18,7 @@ use thiserror::Error;
 use crate::{
     architectures::{Architecture, ParseError},
     archive::{Suite, SuiteOrCodename},
+    package::PackageName,
     version::PackageVersion,
 };
 
@@ -128,7 +129,7 @@ impl FromStr for WBArchitecture {
 /// Specifier for a source with version, architecture and suite
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceSpecifier<'a> {
-    source: &'a str,
+    source: &'a PackageName,
     version: Option<&'a PackageVersion>,
     architectures: Vec<WBArchitecture>,
     suite: Option<SuiteOrCodename>,
@@ -136,7 +137,7 @@ pub struct SourceSpecifier<'a> {
 
 impl<'a> SourceSpecifier<'a> {
     /// Create a new source specifier for the given source package name.
-    pub fn new(source: &'a str) -> Self {
+    pub fn new(source: &'a PackageName) -> Self {
         Self {
             source,
             version: None,
@@ -449,10 +450,9 @@ mod test {
     use super::{
         BinNMU, BuildPriority, DepWait, Fail, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
-    use crate::architectures::Architecture;
-    use crate::archive::{Suite, SuiteOrCodename};
+    use crate::{architectures::Architecture, archive::SuiteOrCodename, package::PackageName};
 
-    const TESTING: SuiteOrCodename = SuiteOrCodename::Suite(Suite::Testing(None));
+    const TESTING: SuiteOrCodename = SuiteOrCodename::TESTING;
 
     #[test]
     fn arch_from_str() {
@@ -477,15 +477,17 @@ mod test {
 
     #[test]
     fn binnmu() {
+        let source = PackageName::try_from("zathura").unwrap();
+
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
                 .with_nmu_version(3)
                 .build()
@@ -494,7 +496,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new("zathura").with_version(&"2.3.4".try_into().unwrap()),
+                SourceSpecifier::new(&source).with_version(&"2.3.4".try_into().unwrap()),
                 "Rebuild on buildd"
             )
             .unwrap()
@@ -504,7 +506,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new("zathura").with_architectures(&[
+                SourceSpecifier::new(&source).with_architectures(&[
                     WBArchitecture::Any,
                     WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
@@ -517,7 +519,7 @@ mod test {
         );
         assert_eq!(
             BinNMU::new(
-                SourceSpecifier::new("zathura").with_suite(TESTING),
+                SourceSpecifier::new(&source).with_suite(TESTING),
                 "Rebuild on buildd"
             )
             .unwrap()
@@ -526,7 +528,7 @@ mod test {
             "nmu zathura . ANY . testing . -m \"Rebuild on buildd\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
                 .with_extra_depends("libgirara-dev")
                 .build()
@@ -534,7 +536,7 @@ mod test {
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\" --extra-depends \"libgirara-dev\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
                 .with_dependency_wait("libgirara-dev")
                 .build()
@@ -542,7 +544,7 @@ mod test {
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\"\ndw zathura . ANY . unstable . -m \"libgirara-dev\""
         );
         assert_eq!(
-            BinNMU::new(&SourceSpecifier::new("zathura"), "Rebuild on buildd")
+            BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
                 .with_build_priority(-10)
                 .build()
@@ -553,7 +555,8 @@ mod test {
 
     #[test]
     fn nmu_builder() {
-        let source = SourceSpecifier::new("zathura");
+        let source = PackageName::try_from("zathura").unwrap();
+        let source = SourceSpecifier::new(&source);
         let mut builder = BinNMU::new(&source, "Rebuild on buildd").unwrap();
         builder.with_nmu_version(3);
         assert_eq!(
@@ -570,8 +573,10 @@ mod test {
 
     #[test]
     fn bp() {
+        let source = PackageName::try_from("zathura").unwrap();
+
         assert_eq!(
-            BuildPriority::new(&SourceSpecifier::new("zathura"), 10)
+            BuildPriority::new(&SourceSpecifier::new(&source), 10)
                 .unwrap()
                 .build()
                 .to_string(),
@@ -579,7 +584,7 @@ mod test {
         );
         assert_eq!(
             BuildPriority::new(
-                SourceSpecifier::new("zathura").with_version(&"2.3.4".try_into().unwrap()),
+                SourceSpecifier::new(&source).with_version(&"2.3.4".try_into().unwrap()),
                 10
             )
             .unwrap()
@@ -589,7 +594,7 @@ mod test {
         );
         assert_eq!(
             BuildPriority::new(
-                SourceSpecifier::new("zathura").with_architectures(&[
+                SourceSpecifier::new(&source).with_architectures(&[
                     WBArchitecture::Any,
                     WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
@@ -601,7 +606,7 @@ mod test {
             "bp 10 zathura . ANY -i386 . unstable"
         );
         assert_eq!(
-            BuildPriority::new(SourceSpecifier::new("zathura").with_suite(TESTING), 10)
+            BuildPriority::new(SourceSpecifier::new(&source).with_suite(TESTING), 10)
                 .unwrap()
                 .build()
                 .to_string(),
@@ -611,8 +616,10 @@ mod test {
 
     #[test]
     fn dw() {
+        let source = PackageName::try_from("zathura").unwrap();
+
         assert_eq!(
-            DepWait::new(&SourceSpecifier::new("zathura"), "libgirara-dev")
+            DepWait::new(&SourceSpecifier::new(&source), "libgirara-dev")
                 .unwrap()
                 .build()
                 .to_string(),
@@ -620,7 +627,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new("zathura").with_version(&"2.3.4".try_into().unwrap()),
+                SourceSpecifier::new(&source).with_version(&"2.3.4".try_into().unwrap()),
                 "libgirara-dev"
             )
             .unwrap()
@@ -630,7 +637,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new("zathura").with_architectures(&[
+                SourceSpecifier::new(&source).with_architectures(&[
                     WBArchitecture::Any,
                     WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
@@ -643,7 +650,7 @@ mod test {
         );
         assert_eq!(
             DepWait::new(
-                SourceSpecifier::new("zathura").with_suite(TESTING),
+                SourceSpecifier::new(&source).with_suite(TESTING),
                 "libgirara-dev"
             )
             .unwrap()
@@ -655,8 +662,10 @@ mod test {
 
     #[test]
     fn fail() {
+        let source = PackageName::try_from("zathura").unwrap();
+
         assert_eq!(
-            Fail::new(&SourceSpecifier::new("zathura"), "#1234")
+            Fail::new(&SourceSpecifier::new(&source), "#1234")
                 .unwrap()
                 .build()
                 .to_string(),

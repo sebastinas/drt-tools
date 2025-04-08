@@ -143,7 +143,7 @@ impl<'a> ProcessExcuses<'a> {
             return None;
         }
 
-        let mut source_specifier = SourceSpecifier::new(item.source.as_ref());
+        let mut source_specifier = SourceSpecifier::new(&item.source);
         source_specifier.with_version(item.new_version.as_ref().unwrap());
         if !source_packages.is_ma_same(item.source.as_ref()) {
             source_specifier.with_architectures(&archs);

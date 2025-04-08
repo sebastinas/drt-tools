@@ -401,7 +401,7 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
-            let mut source = SourceSpecifier::new(outdated_package.source.as_ref());
+            let mut source = SourceSpecifier::new(&outdated_package.source);
             source.with_version(&outdated_package.version);
             source.with_suite(outdated_package.suite.into());
             source.with_architectures(&[outdated_package.architecture]);

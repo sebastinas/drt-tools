@@ -114,7 +114,7 @@ impl<'a> BinNMUBuildinfo<'a> {
             return Err(anyhow!("skipping due to FTBFS bugs"));
         }
 
-        let mut source = SourceSpecifier::new(source_package);
+        let mut source = SourceSpecifier::new(&buildinfo.source);
         let version = buildinfo.version.without_binnmu_version();
         source
             .with_version(&version)
