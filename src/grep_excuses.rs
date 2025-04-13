@@ -7,6 +7,7 @@ use anyhow::Result;
 use assorted_debian_utils::{
     autoremovals::{self, AutoRemoval},
     excuses::{self, ExcusesItem},
+    package::PackageName,
     version::PackageVersion,
 };
 use chrono::Utc;
@@ -97,9 +98,11 @@ impl Command for GrepExcuses<'_> {
             autoremovals::from_reader(self.cache.get_cache_bufreader("autoremovals.yaml")?)?;
 
         for maintainer_package in &self.options.maintainer_package {
-            // first print the autoremoval
-            if let Some(autoremoval) = autoremovals.get(maintainer_package.as_str()) {
-                print_autoremoval(autoremoval);
+            if let Ok(package) = PackageName::try_from(maintainer_package.as_str()) {
+                // first print the autoremoval
+                if let Some(autoremoval) = autoremovals.get(&package) {
+                    print_autoremoval(autoremoval);
+                }
             }
 
             // then print the excuses

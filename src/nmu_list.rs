@@ -85,12 +85,15 @@ impl AsyncCommand for NMUList<'_> {
 
                 let (source, version) = source
                     .split_once('_')
-                    .map(|(source, version)| (source, PackageVersion::try_from(version).ok()))
-                    .unwrap_or_else(|| (source, source_packages.version(source).cloned()));
+                    .map(|(source, version)| (source, Some(version)))
+                    .unwrap_or_else(|| (source, None));
                 let Ok(source) = PackageName::try_from(source) else {
                     warn!("Not a valid package name: {}", source);
                     continue;
                 };
+                let version = version
+                    .map(|version| PackageVersion::try_from(version).ok())
+                    .unwrap_or_else(|| source_packages.version(&source).cloned());
 
                 if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
