@@ -10,7 +10,7 @@ use std::{borrow::Borrow, fmt::Display};
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::utils::TryFromStrVisitor;
+use crate::{utils::TryFromStrVisitor, version::PackageVersion};
 
 fn check_package_name(package: &str) -> Result<(), PackageError> {
     // package names must be at least 2 characters long
@@ -97,6 +97,27 @@ impl<'de> Deserialize<'de> for PackageName {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a package name"))
+    }
+}
+
+/// A package together with its version
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct VersionedPackage {
+    /// The package name
+    pub package: PackageName,
+    /// The package version
+    pub version: PackageVersion,
+}
+
+impl AsRef<PackageName> for VersionedPackage {
+    fn as_ref(&self) -> &PackageName {
+        &self.package
+    }
+}
+
+impl AsRef<PackageVersion> for VersionedPackage {
+    fn as_ref(&self) -> &PackageVersion {
+        &self.version
     }
 }
 
