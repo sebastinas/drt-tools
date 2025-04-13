@@ -16,9 +16,9 @@ use crate::utils::TryFromStrVisitor;
 #[derive(Clone, Copy, Debug, Error)]
 pub enum PackageError {
     #[error("package name too short")]
-    /// Package name is too shoort
+    /// Package name is too short
     InvalidNameLength,
-    #[error("invalid package name")]
+    #[error("package name contains invalid character")]
     /// Package name is invalid
     InvalidName,
 }

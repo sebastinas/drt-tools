@@ -6,8 +6,11 @@
 //! This crate consists of the following modules:
 //! * [architectures]: Helpers to handle Debian architectures
 //! * [archive]: Helpers for various features of the Debian archive
+//! * [autoremovals]: Helpers to handle autoremovals
 //! * [buildinfo]: Helpers to handle `.buildinfo` files
 //! * [excuses]: Helpers to handle `excuses.yaml` for testing migration
+//! * [package]: Helpers to handle package names
+//! * [release]: Helpers to handle `Release` files
 //! * [version]: Helpers to handle package versions
 //! * [wb]: Helpers to generate commands for wanna-build
 
