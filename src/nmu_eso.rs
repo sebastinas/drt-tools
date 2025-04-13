@@ -12,7 +12,7 @@ use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Codename, Extension, Suite, SuiteOrCodename, WithExtension},
-    package::PackageName,
+    package::{PackageName, VersionedPackage},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
@@ -50,21 +50,18 @@ struct BinaryPackage {
 
 #[derive(PartialEq, Eq, Hash)]
 struct OutdatedPackage {
-    source: PackageName,
-    version: PackageVersion,
+    source: VersionedPackage,
     suite: Suite,
-    outdated_dependency: PackageName,
-    outdated_version: PackageVersion,
+    outdated_dependency: VersionedPackage,
     architecture: WBArchitecture,
 }
 
 #[derive(PartialEq, Eq)]
 struct CombinedOutdatedPackage {
-    source: PackageName,
-    version: PackageVersion,
+    source: VersionedPackage,
     suite: Suite,
     architecture: WBArchitecture,
-    outdated_dependencies: Vec<(PackageName, PackageVersion)>,
+    outdated_dependencies: Vec<VersionedPackage>,
 }
 
 impl PartialOrd for CombinedOutdatedPackage {
@@ -75,11 +72,11 @@ impl PartialOrd for CombinedOutdatedPackage {
 
 impl Ord for CombinedOutdatedPackage {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (&self.source, &self.version).cmp(&(&other.source, &other.version))
+        self.source.cmp(&other.source)
     }
 }
 
-fn split_dependency(dependency: &str) -> Option<(PackageName, PackageVersion)> {
+fn split_dependency(dependency: &str) -> Option<VersionedPackage> {
     // this should never fail unless the archive is broken
     dependency.split_once(' ').and_then(|(source, version)| {
         let version = version
@@ -88,7 +85,10 @@ fn split_dependency(dependency: &str) -> Option<(PackageName, PackageVersion)> {
             .and_then(|version| PackageVersion::try_from(version).ok());
         let source = PackageName::try_from(source);
         match (source, version) {
-            (Ok(source), Some(version)) => Some((source, version)),
+            (Ok(source), Some(version)) => Some(VersionedPackage {
+                package: source,
+                version,
+            }),
             _ => None,
         }
     })
@@ -120,9 +120,8 @@ impl<'a> BinaryPackageParser<'a> {
 }
 
 struct OutdatedSourcePackage {
-    source: PackageName,
-    version: PackageVersion,
-    built_using: HashSet<(PackageName, PackageVersion)>,
+    source: VersionedPackage,
+    built_using: HashSet<VersionedPackage>,
     architecture: WBArchitecture,
 }
 
@@ -163,16 +162,16 @@ impl Iterator for BinaryPackageParser<'_> {
                     }
                     split
                 })
-                .filter(|(source, version)| {
-                    if let Some(max_version) = self.sources.version(source.as_ref()) {
-                        version < max_version
+                .filter(|source| {
+                    if let Some(max_version) = self.sources.version(source.package.as_ref()) {
+                        source.version < *max_version
                     } else {
                         // This can happen when considering packages with
                         // Static-Built-Using, but never with Built-Using. Let's
                         // rebuild those packages in any case.
                         trace!(
                             "Package '{}' refers to non-existing source package '{}'.",
-                            binary_package.package.package, source
+                            binary_package.package.package, source.package
                         );
                         true
                     }
@@ -194,8 +193,10 @@ impl Iterator for BinaryPackageParser<'_> {
                 WBArchitecture::Architecture(binary_package.architecture)
             };
             return Some(OutdatedSourcePackage {
-                source: source_package.clone(),
-                version: version.without_binnmu_version(),
+                source: VersionedPackage {
+                    package: source_package.clone(),
+                    version: version.without_binnmu_version(),
+                },
                 built_using,
                 architecture,
             });
@@ -260,49 +261,47 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             for path in self.cache.get_package_paths(suite, false)? {
                 for OutdatedSourcePackage {
                     source,
-                    version,
                     built_using: dependencies,
                     architecture,
                 } in BinaryPackageParser::new(field, &source_packages, path)?
                 {
-                    packages.extend(dependencies.into_iter().map(
-                        |(outdated_dependency, outdated_version)| OutdatedPackage {
+                    packages.extend(dependencies.into_iter().map(|outdated_dependency| {
+                        OutdatedPackage {
                             source: source.clone(),
-                            version: version.clone(),
                             suite: converted_suite,
                             outdated_dependency,
-                            outdated_version,
                             architecture,
-                        },
-                    ));
+                        }
+                    }));
                 }
             }
         }
 
         let mut result = HashMap::<
             (PackageName, Suite, WBArchitecture),
-            HashSet<(PackageVersion, PackageName, PackageVersion)>,
+            HashSet<(PackageVersion, VersionedPackage)>,
         >::new();
         for outdated_package in packages {
             // skip some packages that make no sense to binNMU
-            if source_skip_binnmu(outdated_package.source.as_ref()) {
+            if source_skip_binnmu(outdated_package.source.package.as_ref()) {
                 debug!(
                     "Skipping {}: signed or d-i package",
-                    outdated_package.source
+                    outdated_package.source.package
                 );
                 continue;
             }
 
             // check if package FTBFS
-            if let Some(bugs) = ftbfs_bugs.bugs_for_source(outdated_package.source.as_ref()) {
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(outdated_package.source.package.as_ref())
+            {
                 println!(
                     "# Skipping {} due to FTBFS bugs ...",
-                    outdated_package.source
+                    outdated_package.source.package
                 );
                 for bug in bugs {
                     debug!(
                         "Skipping {}: #{} - {}: {}",
-                        outdated_package.source, bug.id, bug.severity, bug.title
+                        outdated_package.source.package, bug.id, bug.severity, bug.title
                     );
                 }
                 continue;
@@ -310,15 +309,14 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
 
             result
                 .entry((
-                    outdated_package.source,
+                    outdated_package.source.package,
                     outdated_package.suite,
                     outdated_package.architecture,
                 ))
                 .or_default()
                 .insert((
-                    outdated_package.version,
+                    outdated_package.source.version,
                     outdated_package.outdated_dependency,
-                    outdated_package.outdated_version,
                 ));
         }
 
@@ -327,19 +325,21 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             .filter_map(|((source, suite, architecture), outdated_dependencies)| {
                 let max_version = outdated_dependencies
                     .iter()
-                    .map(|(version, _, _)| version)
+                    .map(|(version, _)| version)
                     .max()
                     .cloned()?;
                 Some(CombinedOutdatedPackage {
-                    source,
-                    version: max_version.clone(),
+                    source: VersionedPackage {
+                        package: source,
+                        version: max_version.clone(),
+                    },
                     suite,
                     architecture,
                     outdated_dependencies: outdated_dependencies
                         .into_iter()
-                        .filter_map(|(version, outdated_dependency, outdated_version)| {
+                        .filter_map(|(version, outdated_dependency)| {
                             if version == max_version {
-                                Some((outdated_dependency, outdated_version))
+                                Some(outdated_dependency)
                             } else {
                                 None
                             }
@@ -401,8 +401,8 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
-            let mut source = SourceSpecifier::new(&outdated_package.source);
-            source.with_version(&outdated_package.version);
+            let mut source = SourceSpecifier::new(&outdated_package.source.package);
+            source.with_version(&outdated_package.source.version);
             source.with_suite(outdated_package.suite.into());
             source.with_architectures(&[outdated_package.architecture]);
 
@@ -412,7 +412,7 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
                 outdated_package
                     .outdated_dependencies
                     .into_iter()
-                    .map(|(source, version)| format!("{source}/{version}"))
+                    .map(|source| format!("{}/{}", source.package, source.version))
                     .join(", ")
             );
             let mut binnmu = BinNMU::new(&source, &message)?;
@@ -452,10 +452,7 @@ mod test {
         assert!(split_dependency("( =)").is_none());
 
         let dependency = split_dependency("rustc (= 1.70.0+dfsg1-5)").unwrap();
-        assert_eq!(dependency.0, "rustc");
-        assert_eq!(
-            dependency.1,
-            PackageVersion::try_from("1.70.0+dfsg1-5").unwrap()
-        );
+        assert_eq!(dependency.package, "rustc");
+        assert_eq!(dependency.version, "1.70.0+dfsg1-5");
     }
 }
