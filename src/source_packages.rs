@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
+    borrow::Borrow,
     collections::HashMap,
     fmt::{self, Display},
+    hash::Hash,
     path::Path,
 };
 
@@ -218,7 +220,11 @@ impl SourcePackages {
     /// Check if a source package builds an MA: same binary package
     ///
     /// Returns false if the source package does not exist.
-    pub fn is_ma_same(&self, source: &str) -> bool {
+    pub fn is_ma_same<Q>(&self, source: &Q) -> bool
+    where
+        Q: ?Sized + Hash + Eq,
+        PackageName: Borrow<Q>,
+    {
         self.0
             .get(source)
             .map(|source_package| source_package.ma_same)
@@ -226,7 +232,11 @@ impl SourcePackages {
     }
 
     /// Get the maximal version of a source package
-    pub fn version(&self, source: &str) -> Option<&PackageVersion> {
+    pub fn version<Q>(&self, source: &Q) -> Option<&PackageVersion>
+    where
+        Q: ?Sized + Hash + Eq,
+        PackageName: Borrow<Q>,
+    {
         self.0
             .get(source)
             .map(|source_package| &source_package.version)

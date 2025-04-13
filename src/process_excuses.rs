@@ -145,7 +145,7 @@ impl<'a> ProcessExcuses<'a> {
 
         let mut source_specifier = SourceSpecifier::new(&item.source);
         source_specifier.with_version(item.new_version.as_ref().unwrap());
-        if !source_packages.is_ma_same(item.source.as_ref()) {
+        if !source_packages.is_ma_same(&item.source) {
             source_specifier.with_architectures(&archs);
         }
         if let Ok(command) = BinNMU::new(&source_specifier, "Rebuild on buildd") {

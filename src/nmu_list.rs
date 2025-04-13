@@ -104,7 +104,7 @@ impl AsyncCommand for NMUList<'_> {
                 }
                 source_specifier.with_suite(self.options.binnmu_options.suite);
                 if let Some(architectures) = &self.options.binnmu_options.architecture {
-                    if !source_packages.is_ma_same(source.as_ref()) {
+                    if !source_packages.is_ma_same(&source) {
                         source_specifier.with_architectures(architectures);
                     }
                 }

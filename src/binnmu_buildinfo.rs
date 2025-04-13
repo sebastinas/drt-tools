@@ -119,7 +119,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         source
             .with_version(&version)
             .with_suite(self.options.binnmu_options.suite);
-        if !source_packages.is_ma_same(source_package) {
+        if !source_packages.is_ma_same(&buildinfo.source) {
             // binNMU only on the architecture if no MA: same binary packages
             source.with_archive_architectures(&architectures);
         }

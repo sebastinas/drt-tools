@@ -163,7 +163,7 @@ impl Iterator for BinaryPackageParser<'_> {
                     split
                 })
                 .filter(|source| {
-                    if let Some(max_version) = self.sources.version(source.package.as_ref()) {
+                    if let Some(max_version) = self.sources.version(&source.package) {
                         source.version < *max_version
                     } else {
                         // This can happen when considering packages with
@@ -187,7 +187,7 @@ impl Iterator for BinaryPackageParser<'_> {
             }
 
             // if the package builds any MA: same packages, schedule binNMUs with ANY
-            let architecture = if self.sources.is_ma_same(source_package.as_ref()) {
+            let architecture = if self.sources.is_ma_same(source_package) {
                 WBArchitecture::Any
             } else {
                 WBArchitecture::Architecture(binary_package.architecture)
