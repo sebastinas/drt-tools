@@ -242,6 +242,22 @@ impl PartialEq for PackageVersion {
 
 impl Eq for PackageVersion {}
 
+impl PartialEq<&str> for PackageVersion {
+    fn eq(&self, other: &&str) -> bool {
+        self.partial_cmp(other) == Some(Ordering::Equal)
+    }
+}
+
+impl PartialOrd<&str> for PackageVersion {
+    fn partial_cmp(&self, other: &&str) -> Option<Ordering> {
+        let rhs = Self::try_from(*other);
+        match rhs {
+            Err(_) => None,
+            Ok(rhs) => self.partial_cmp(&rhs),
+        }
+    }
+}
+
 impl TryFrom<&str> for PackageVersion {
     type Error = ParseError;
 

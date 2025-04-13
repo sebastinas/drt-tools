@@ -87,10 +87,6 @@ impl AsyncCommand for NMUList<'_> {
                     .split_once('_')
                     .map(|(source, version)| (source, PackageVersion::try_from(version).ok()))
                     .unwrap_or_else(|| (source, source_packages.version(source).cloned()));
-                if source.is_empty() {
-                    continue;
-                }
-
                 let Ok(source) = PackageName::try_from(source) else {
                     warn!("Not a valid package name: {}", source);
                     continue;

@@ -12,6 +12,24 @@ use thiserror::Error;
 
 use crate::utils::TryFromStrVisitor;
 
+fn check_package_name(package: &str) -> Result<(), PackageError> {
+    // package names must be at least 2 characters long
+    if package.len() < 2 {
+        return Err(PackageError::InvalidNameLength);
+    }
+
+    if !package.chars().enumerate().all(|(i, c)| {
+        if c.is_ascii_lowercase() || c.is_ascii_digit() {
+            return true;
+        }
+        i > 0 && ".+-".contains(c)
+    }) {
+        return Err(PackageError::InvalidName);
+    }
+
+    Ok(())
+}
+
 /// Package errors
 #[derive(Clone, Copy, Debug, Error)]
 pub enum PackageError {
@@ -31,21 +49,15 @@ impl TryFrom<&str> for PackageName {
     type Error = PackageError;
 
     fn try_from(package: &str) -> Result<Self, Self::Error> {
-        // package names must be at least 2 characters long
-        if package.len() < 2 {
-            return Err(PackageError::InvalidNameLength);
-        }
+        check_package_name(package).map(|_| Self(package.to_owned()))
+    }
+}
 
-        if !package.chars().enumerate().all(|(i, c)| {
-            if c.is_ascii_lowercase() || c.is_ascii_digit() {
-                return true;
-            }
-            i > 0 && ".+-".contains(c)
-        }) {
-            return Err(PackageError::InvalidName);
-        }
+impl TryFrom<String> for PackageName {
+    type Error = PackageError;
 
-        Ok(Self(package.to_owned()))
+    fn try_from(package: String) -> Result<Self, Self::Error> {
+        check_package_name(&package).map(|_| Self(package))
     }
 }
 
