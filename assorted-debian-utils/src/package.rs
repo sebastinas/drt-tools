@@ -90,7 +90,7 @@ impl<'de> Deserialize<'de> for PackageName {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a package name"))
+        deserializer.deserialize_str(TryFromStrVisitor::new("a package name"))
     }
 }
 

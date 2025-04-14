@@ -184,7 +184,7 @@ impl<'de> Deserialize<'de> for Suite {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a suite name"))
+        deserializer.deserialize_str(TryFromStrVisitor::new("a suite name"))
     }
 }
 
@@ -310,7 +310,7 @@ impl<'de> Deserialize<'de> for Codename {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a codename"))
+        deserializer.deserialize_str(TryFromStrVisitor::new("a codename"))
     }
 }
 
@@ -458,7 +458,7 @@ impl<'de> Deserialize<'de> for SuiteOrCodename {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(TryFromStrVisitor::<Self>::new("a suite or a codename"))
+        deserializer.deserialize_str(TryFromStrVisitor::new("a suite or a codename"))
     }
 }
 
