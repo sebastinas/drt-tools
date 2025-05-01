@@ -22,7 +22,7 @@ fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S%.f"))
+    deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S%.f%:z"))
 }
 
 /// Deserialize a version or '-' as `PackageVersion` or `None`
