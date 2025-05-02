@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 (2025-05-02)
+
+* Bump edition to 2024
+* Internal refactoring
+
 ## 0.2.28 (2025-02-20)
 
 * `nmu-list`: Download all required Package files.

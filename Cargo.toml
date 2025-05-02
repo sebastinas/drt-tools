@@ -1,7 +1,7 @@
 [package]
 name = "drt-tools"
 description = "Tools for Debian Release Team work"
-version = "0.2.28"
+version = "0.3.0"
 authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 repository = "https://github.com/sebastinas/drt-tools"
 license = "GPL-3.0-or-later"
@@ -41,7 +41,7 @@ xdg = "2.4"
 xz2 = { version = "0.1", default-features = false }
 
 [build-dependencies]
-assorted-debian-utils = { version = "0.7.6", path = "assorted-debian-utils" }
+assorted-debian-utils = { version = "0.8", path = "assorted-debian-utils" }
 clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.4"
 clap_mangen = "0.2"
