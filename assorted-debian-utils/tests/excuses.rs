@@ -3,8 +3,8 @@ use std::{fs::File, io::BufReader, path::PathBuf};
 use assorted_debian_utils::excuses;
 
 #[test]
-fn parse_excuses_2005_05_01() {
-    parse_excuses("excuses-2024-11-30.yaml");
+fn parse_excuses_2025_05_01() {
+    parse_excuses("excuses-2025-05-01.yaml");
 }
 
 fn parse_excuses(data_file: &str) {

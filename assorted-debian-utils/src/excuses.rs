@@ -253,7 +253,7 @@ mod test {
 
     #[test]
     fn deserialize() {
-        let data = r##"generated-date: 2022-07-02 20:09:06.890414
+        let data = r##"generated-date: 2022-07-02 20:09:06.890414+00:00
 sources:
 - excuses:
   - 'Migration status for -kalarmcal (4:21.12.3-2 to -): Will attempt migration (Any
