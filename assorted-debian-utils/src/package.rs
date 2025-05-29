@@ -18,16 +18,15 @@ fn check_package_name(package: &str) -> Result<(), PackageError> {
         return Err(PackageError::InvalidNameLength);
     }
 
-    if !package.chars().enumerate().all(|(i, c)| {
-        if c.is_ascii_lowercase() || c.is_ascii_digit() {
-            return true;
-        }
-        i > 0 && ".+-".contains(c)
-    }) {
-        return Err(PackageError::InvalidName);
+    if !package
+        .chars()
+        .enumerate()
+        .all(|(i, c)| c.is_ascii_lowercase() || c.is_ascii_digit() || (i > 0 && ".+-".contains(c)))
+    {
+        Err(PackageError::InvalidName)
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
 
 /// Package errors
