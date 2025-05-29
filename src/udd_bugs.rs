@@ -8,6 +8,7 @@ use std::{
 };
 
 use anyhow::Result;
+use assorted_debian_utils::package::PackageName;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -51,7 +52,7 @@ impl Display for Severity {
 #[derive(Clone, Debug, Deserialize)]
 pub struct UDDBug {
     pub id: u32,
-    pub source: String,
+    pub source: PackageName,
     pub severity: Severity,
     pub title: String,
 }
@@ -59,7 +60,7 @@ pub struct UDDBug {
 #[derive(Default)]
 pub struct UDDBugs {
     bugs: Vec<UDDBug>,
-    source_index: HashMap<String, Vec<usize>>,
+    source_index: HashMap<PackageName, Vec<usize>>,
 }
 
 impl UDDBugs {
@@ -80,7 +81,7 @@ impl UDDBugs {
         udd_bugs
     }
 
-    pub fn bugs_for_source(&self, source: &str) -> Option<Vec<&UDDBug>> {
+    pub fn bugs_for_source(&self, source: &PackageName) -> Option<Vec<&UDDBug>> {
         self.source_index
             .get(source)
             .map(|indices| indices.iter().map(|idx| &self.bugs[*idx]).collect())
@@ -144,10 +145,16 @@ mod test {
     fn read_bugs() {
         let bugs = load_bugs_from_reader(TEST_DATA.as_bytes()).unwrap();
 
-        assert!(bugs.bugs_for_source("dmtcp").is_some());
-        assert!(bugs.bugs_for_source("zathura").is_none());
+        assert!(bugs.bugs_for_source(&"dmtcp".try_into().unwrap()).is_some());
+        assert!(
+            bugs.bugs_for_source(&"zathura".try_into().unwrap())
+                .is_none()
+        );
 
-        for bug in bugs.bugs_for_source("mutextrace").unwrap() {
+        for bug in bugs
+            .bugs_for_source(&"mutextrace".try_into().unwrap())
+            .unwrap()
+        {
             assert!(bug.severity >= Severity::Serious);
             // assert!(bug.severity.is_rc());
         }

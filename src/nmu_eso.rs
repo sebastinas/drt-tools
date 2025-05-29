@@ -292,8 +292,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             }
 
             // check if package FTBFS
-            if let Some(bugs) = ftbfs_bugs.bugs_for_source(outdated_package.source.package.as_ref())
-            {
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&outdated_package.source.package) {
                 println!(
                     "# Skipping {} due to FTBFS bugs ...",
                     outdated_package.source.package

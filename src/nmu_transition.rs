@@ -96,7 +96,7 @@ impl AsyncCommand for NMUTransition<'_> {
                     continue;
                 };
 
-                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
+                if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
                     println!("# Skipping {source} due to FTBFS bugs");
                     continue;

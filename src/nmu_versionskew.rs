@@ -182,7 +182,7 @@ impl<'a> NMUVersionSkew<'a> {
             }
 
             // check if package FTBFS
-            if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
+            if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
                 println!("# Skipping {source} due to FTBFS bugs ...");
                 for bug in bugs {
                     debug!(

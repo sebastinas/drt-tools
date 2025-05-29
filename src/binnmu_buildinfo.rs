@@ -91,10 +91,7 @@ impl<'a> BinNMUBuildinfo<'a> {
             None => return Err(anyhow!("removed from the archive")),
         }
 
-        if ftbfs_bugs
-            .bugs_for_source(buildinfo.source.as_ref())
-            .is_some()
-        {
+        if ftbfs_bugs.bugs_for_source(&buildinfo.source).is_some() {
             return Err(anyhow!("skipping due to FTBFS bugs"));
         }
 

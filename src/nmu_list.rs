@@ -95,7 +95,7 @@ impl AsyncCommand for NMUList<'_> {
                     .map(|version| PackageVersion::try_from(version).ok())
                     .unwrap_or_else(|| source_packages.version(&source).cloned());
 
-                if let Some(bugs) = ftbfs_bugs.bugs_for_source(source.as_ref()) {
+                if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
                     debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
                     println!("# Skipping {source} due to FTBFS bugs");
                     continue;
