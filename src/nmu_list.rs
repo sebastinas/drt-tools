@@ -8,7 +8,6 @@ use std::{
 
 use anyhow::Result;
 use assorted_debian_utils::{
-    archive::Codename,
     package::PackageName,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
@@ -21,7 +20,7 @@ use crate::{
     cli::{BaseOptions, NMUListOptions},
     config::{self, CacheEntries},
     source_packages::SourcePackages,
-    udd_bugs::{UDDBugs, load_bugs_from_reader},
+    udd_bugs::UDDBugs,
     utils::execute_wb_commands,
 };
 
@@ -43,13 +42,6 @@ impl<'a> NMUList<'a> {
             options,
         }
     }
-
-    fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
-        load_bugs_from_reader(
-            self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
-        )
-    }
 }
 
 #[async_trait]
@@ -61,9 +53,9 @@ impl AsyncCommand for NMUList<'_> {
                 .get_package_paths(self.options.binnmu_options.suite, false)?,
         )?;
         let ftbfs_bugs = if self.base_options.force_processing {
-            UDDBugs::new(vec![])
+            UDDBugs::default()
         } else {
-            self.load_bugs(self.options.binnmu_options.suite.into())?
+            UDDBugs::load_for_codename(self.cache, self.options.binnmu_options.suite)?
         };
 
         let mut wb_commands = Vec::new();

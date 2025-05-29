@@ -11,7 +11,7 @@ use std::{
 use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, Extension, Suite, SuiteOrCodename, WithExtension},
+    archive::{Extension, Suite, SuiteOrCodename, WithExtension},
     package::{PackageName, VersionedPackage},
     rfc822_like,
     version::PackageVersion,
@@ -30,7 +30,7 @@ use crate::{
         Cache, CacheEntries, default_progress_style, default_progress_template, source_skip_binnmu,
     },
     source_packages::{self, SourcePackages},
-    udd_bugs::{UDDBugs, load_bugs_from_reader},
+    udd_bugs::UDDBugs,
     utils::execute_wb_commands,
 };
 
@@ -227,13 +227,6 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         }
     }
 
-    fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
-        load_bugs_from_reader(
-            self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
-        )
-    }
-
     /// Load source packages from multiple suites with the highest version
     fn load_sources_for_suites(&self, suites: &[SuiteOrCodename]) -> Result<SourcePackages> {
         let paths: Result<Vec<_>> = suites
@@ -253,7 +246,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         field: Field,
         suite: SuiteOrCodename,
     ) -> Result<Vec<CombinedOutdatedPackage>> {
-        let ftbfs_bugs = self.load_bugs(suite.into())?;
+        let ftbfs_bugs = UDDBugs::load_for_codename(self.cache, suite)?;
         let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
         let mut packages = HashSet::new();
         for suite in self.expand_suite_for_binaries() {

@@ -8,8 +8,13 @@ use std::{
 };
 
 use anyhow::Result;
-use assorted_debian_utils::package::PackageName;
+use assorted_debian_utils::{
+    archive::{Codename, SuiteOrCodename},
+    package::PackageName,
+};
 use serde::Deserialize;
+
+use crate::config::Cache;
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
@@ -64,7 +69,12 @@ pub struct UDDBugs {
 }
 
 impl UDDBugs {
-    pub fn new(bugs: Vec<UDDBug>) -> Self {
+    pub fn load_for_codename(cache: &Cache, suite: SuiteOrCodename) -> Result<Self> {
+        let codename = Codename::from(suite);
+        load_bugs_from_reader(cache.get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?)
+    }
+
+    fn new(bugs: Vec<UDDBug>) -> Self {
         let mut udd_bugs = Self {
             bugs,
             ..Default::default()
@@ -88,7 +98,7 @@ impl UDDBugs {
     }
 }
 
-pub fn load_bugs_from_reader(reader: impl Read) -> Result<UDDBugs> {
+fn load_bugs_from_reader(reader: impl Read) -> Result<UDDBugs> {
     serde_yaml::from_reader(reader)
         .map_err(Into::into)
         .map(UDDBugs::new)

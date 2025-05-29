@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, MultiArch, SuiteOrCodename},
+    archive::{MultiArch, SuiteOrCodename},
     package::PackageName,
     rfc822_like,
     version::PackageVersion,
@@ -30,7 +30,7 @@ use crate::{
         Cache, CacheEntries, default_progress_style, default_progress_template, source_skip_binnmu,
     },
     source_packages,
-    udd_bugs::{UDDBugs, load_bugs_from_reader},
+    udd_bugs::UDDBugs,
     utils::execute_wb_commands,
 };
 
@@ -113,19 +113,11 @@ impl<'a> NMUVersionSkew<'a> {
         }
     }
 
-    fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
-        load_bugs_from_reader(
-            self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
-        )
-    }
-
     fn load_version_skew(
         &self,
         suite: SuiteOrCodename,
     ) -> Result<Vec<(PackageName, PackageVersion, Vec<Architecture>)>> {
-        let ftbfs_bugs = self
-            .load_bugs(suite.into())
+        let ftbfs_bugs = UDDBugs::load_for_codename(self.cache, suite)
             .with_context(|| format!("Failed to load bugs for {suite}"))?;
         let mut packages: HashMap<PackageName, HashSet<(Architecture, PackageVersion)>> =
             HashMap::new();

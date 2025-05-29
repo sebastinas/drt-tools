@@ -8,7 +8,6 @@ use std::{
 
 use anyhow::Result;
 use assorted_debian_utils::{
-    archive::Codename,
     package::PackageName,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
 };
@@ -19,7 +18,7 @@ use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, NMUListOptions},
     config::{self, CacheEntries},
-    udd_bugs::{UDDBugs, load_bugs_from_reader},
+    udd_bugs::UDDBugs,
     utils::execute_wb_commands,
 };
 
@@ -41,23 +40,15 @@ impl<'a> NMUTransition<'a> {
             options,
         }
     }
-
-    fn load_bugs(&self, codename: Codename) -> Result<UDDBugs> {
-        load_bugs_from_reader(
-            self.cache
-                .get_cache_bufreader(format!("udd-ftbfs-bugs-{codename}.yaml"))?,
-        )
-    }
 }
 
 #[async_trait]
 impl AsyncCommand for NMUTransition<'_> {
     async fn run(&self) -> Result<()> {
-        let codename: Codename = self.options.binnmu_options.suite.into();
         let ftbfs_bugs = if self.base_options.force_processing {
-            UDDBugs::new(vec![])
+            UDDBugs::default()
         } else {
-            self.load_bugs(codename)?
+            UDDBugs::load_for_codename(self.cache, self.options.binnmu_options.suite)?
         };
 
         let mut wb_commands = Vec::new();

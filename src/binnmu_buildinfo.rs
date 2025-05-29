@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use assorted_debian_utils::{
     architectures::Architecture,
-    archive::{Codename, SuiteOrCodename},
+    archive::SuiteOrCodename,
     buildinfo::{self, Buildinfo},
     package::PackageName,
     rfc822_like,
@@ -26,7 +26,7 @@ use crate::{
     cli::{BaseOptions, BinNMUBuildinfoOptions},
     config::{Cache, CacheEntries, default_progress_style, default_progress_template},
     source_packages::{BinaryPackage, SourcePackages},
-    udd_bugs::{UDDBugs, load_bugs_from_reader},
+    udd_bugs::UDDBugs,
     utils::execute_wb_commands,
 };
 
@@ -152,13 +152,6 @@ impl<'a> BinNMUBuildinfo<'a> {
         }
         Ok(ret)
     }
-
-    fn load_bugs(&self) -> Result<UDDBugs> {
-        load_bugs_from_reader(self.cache.get_cache_bufreader(format!(
-            "udd-ftbfs-bugs-{}.yaml",
-            Codename::from(self.options.binnmu_options.suite)
-        ))?)
-    }
 }
 
 #[async_trait]
@@ -190,9 +183,9 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
         )?;
 
         let ftbfs_bugs = if self.base_options.force_processing {
-            UDDBugs::new(vec![])
+            UDDBugs::default()
         } else {
-            self.load_bugs()?
+            UDDBugs::load_for_codename(self.cache, self.options.binnmu_options.suite)?
         };
 
         let mut wb_commands = HashSet::new();
