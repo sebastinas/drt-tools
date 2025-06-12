@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{MultiArch, SuiteOrCodename},
-    package::PackageName,
+    package::{PackageName, VersionedPackage},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommandBuilder},
@@ -67,7 +67,7 @@ impl BinaryPackageParser {
 }
 
 impl Iterator for BinaryPackageParser {
-    type Item = (PackageName, Architecture, PackageVersion);
+    type Item = (PackageName, Architecture, PackageVersion, u32);
 
     fn next(&mut self) -> Option<Self::Item> {
         for binary_package in self.iterator.by_ref() {
@@ -80,11 +80,16 @@ impl Iterator for BinaryPackageParser {
                 continue;
             }
 
-            let (source_package, _) = binary_package.package.name_and_version();
+            let (source_package, version) = binary_package.package.name_and_version();
             return Some((
-                source_package.clone(),
+                source_package,
                 binary_package.architecture,
-                binary_package.package.version,
+                version,
+                binary_package
+                    .package
+                    .version
+                    .binnmu_version()
+                    .unwrap_or_default(),
             ));
         }
 
@@ -116,60 +121,63 @@ impl<'a> NMUVersionSkew<'a> {
     fn load_version_skew(
         &self,
         suite: SuiteOrCodename,
-    ) -> Result<Vec<(PackageName, PackageVersion, Vec<Architecture>)>> {
+    ) -> Result<Vec<(VersionedPackage, u32, Vec<Architecture>)>> {
         let ftbfs_bugs = UDDBugs::load_for_codename(self.cache, suite)
             .with_context(|| format!("Failed to load bugs for {suite}"))?;
-        let mut packages: HashMap<PackageName, HashSet<(Architecture, PackageVersion)>> =
+        let mut packages: HashMap<PackageName, HashSet<(Architecture, PackageVersion, u32)>> =
             HashMap::new();
         for path in self.cache.get_package_paths(suite, false)? {
-            for (source, architecture, version) in BinaryPackageParser::new(path)? {
+            for (source, architecture, source_version, binnmu_version) in
+                BinaryPackageParser::new(path)?
+            {
                 // skip some packages that make no sense to binNMU
                 if source_skip_binnmu(source.as_ref()) {
                     continue;
                 }
 
                 if let Some(info) = packages.get_mut(&source) {
-                    info.insert((architecture, version));
+                    info.insert((architecture, source_version, binnmu_version));
                 } else {
                     packages.insert(source, {
                         let mut hs = HashSet::new();
-                        hs.insert((architecture, version));
+                        hs.insert((architecture, source_version, binnmu_version));
                         hs
                     });
                 }
             }
         }
 
-        let mut sources_architectures =
-            Vec::<(PackageName, PackageVersion, Vec<Architecture>)>::default();
+        let mut sources_architectures = vec![];
         for (source, source_info) in packages.into_iter().sorted_by_key(|value| value.0.clone()) {
-            let mut max_version_per_architecture: HashMap<Architecture, PackageVersion> =
+            let mut max_version_per_architecture: HashMap<Architecture, (PackageVersion, u32)> =
                 HashMap::default();
-            for (architecture, version) in &source_info {
+            for (architecture, source_version, binnmu_version) in &source_info {
                 if let Some(max_version) = max_version_per_architecture.get_mut(architecture) {
-                    if version > max_version {
-                        *max_version = version.clone();
+                    let combined_version = (source_version.clone(), *binnmu_version);
+                    if combined_version > *max_version {
+                        *max_version = combined_version;
                     }
                 } else {
-                    max_version_per_architecture.insert(*architecture, version.clone());
+                    max_version_per_architecture
+                        .insert(*architecture, (source_version.clone(), *binnmu_version));
                 }
-            }
-
-            let all_versions: HashSet<_> = max_version_per_architecture.values().cloned().collect();
-            if all_versions.len() == 1 {
-                debug!("Skipping {}: package is in sync", source);
-                continue;
             }
 
             let all_versions_without_binnmu: HashSet<_> = max_version_per_architecture
                 .values()
-                .map(|v| (*v).clone().without_binnmu_version())
+                .map(|(v, _)| v.clone())
                 .collect();
             if all_versions_without_binnmu.len() != 1 {
                 debug!(
                     "Skipping {}: package is out-of-date on some architecture",
                     source
                 );
+                continue;
+            }
+
+            let all_versions: HashSet<_> = max_version_per_architecture.values().cloned().collect();
+            if all_versions.len() == 1 {
+                debug!("Skipping {}: package is in sync", source);
                 continue;
             }
 
@@ -196,7 +204,10 @@ impl<'a> NMUVersionSkew<'a> {
                 );
                 continue;
             };
-            debug!("Max {} version: {}", source, max_version);
+            debug!(
+                "{}: max version: {} binNMU version: {}",
+                source, max_version.0, max_version.1
+            );
 
             let architectures = max_version_per_architecture
                 .iter()
@@ -208,7 +219,14 @@ impl<'a> NMUVersionSkew<'a> {
                     }
                 })
                 .collect();
-            sources_architectures.push((source, max_version, architectures));
+            sources_architectures.push((
+                VersionedPackage {
+                    package: source,
+                    version: max_version.0,
+                },
+                max_version.1,
+                architectures,
+            ));
         }
 
         Ok(sources_architectures)
@@ -221,19 +239,14 @@ impl AsyncCommand for NMUVersionSkew<'_> {
         let sources = self.load_version_skew(self.options.suite)?;
 
         let mut wb_commands = Vec::new();
-        for (source, version, architectures) in sources {
-            let mut source = SourceSpecifier::new(&source);
+        for (source_package, binnmu_version, architectures) in sources {
+            let mut source = SourceSpecifier::new(&source_package.package);
             source.with_suite(self.options.suite);
             source.with_archive_architectures(architectures.as_ref());
-            let version_without_binnmu = version.clone().without_binnmu_version();
-            source.with_version(&version_without_binnmu);
+            source.with_version(&source_package.version);
 
             let mut binnmu = BinNMU::new(&source, "Rebuild to sync binNMU versions")?;
             binnmu.with_build_priority(self.options.build_priority);
-            let Some(binnmu_version) = version.binnmu_version() else {
-                error!("Skipping {}: package version has no binNMU.", source);
-                continue;
-            };
             binnmu.with_nmu_version(binnmu_version);
 
             wb_commands.push(binnmu.build());

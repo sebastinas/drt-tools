@@ -248,9 +248,11 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
     ) -> Result<Vec<CombinedOutdatedPackage>> {
         let ftbfs_bugs = UDDBugs::load_for_codename(self.cache, suite)?;
         let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
+
+        // collect outdated binary packages
         let mut packages = HashSet::new();
         for suite in self.expand_suite_for_binaries() {
-            let converted_suite: Suite = suite.into();
+            let converted_suite = suite.into();
             for path in self.cache.get_package_paths(suite, false)? {
                 for OutdatedSourcePackage {
                     source,
@@ -258,6 +260,15 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
                     architecture,
                 } in BinaryPackageParser::new(field, &source_packages, path)?
                 {
+                    // skip some packages that make no sense to binNMU
+                    if source_skip_binnmu(source.package.as_ref()) {
+                        debug!(
+                            "Skipping {}: signed or d-i package or otherwise not binNMU-able",
+                            source.package
+                        );
+                        continue;
+                    }
+
                     packages.extend(dependencies.into_iter().map(|outdated_dependency| {
                         OutdatedPackage {
                             source: source.clone(),
@@ -275,15 +286,6 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             HashSet<(PackageVersion, VersionedPackage)>,
         >::new();
         for outdated_package in packages {
-            // skip some packages that make no sense to binNMU
-            if source_skip_binnmu(outdated_package.source.package.as_ref()) {
-                debug!(
-                    "Skipping {}: signed or d-i package",
-                    outdated_package.source.package
-                );
-                continue;
-            }
-
             // check if package FTBFS
             if let Some(bugs) = ftbfs_bugs.bugs_for_source(&outdated_package.source.package) {
                 println!(

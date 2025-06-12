@@ -93,6 +93,7 @@ pub struct BinaryPackage {
 }
 
 impl BinaryPackage {
+    /// Obtain the package name and the source version (without binNMU version)
     pub fn name_and_version(&self) -> (PackageName, PackageVersion) {
         if let Some(source_package) = &self.source {
             (
@@ -259,4 +260,44 @@ where
     pb.set_message(format!("Processing {}", path.display()));
     // collect all sources
     Ok(binary_packages.into_iter().progress_with(pb))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn binary_package() {
+        let package = rfc822_like::from_str::<BinaryPackage>(
+            "Package: binutils-m68hc1x
+Source: binutils-m68hc1x (1:3.5.3)
+Version: 1:2.44+3.5.3+b1
+Installed-Size: 15325
+Maintainer: Vincent Smeets <Vincent.VSmeets@gmail.com>
+Architecture: amd64
+Depends: libc6 (>= 2.38), libzstd1 (>= 1.5.5), zlib1g (>= 1:1.2.0), binutils-common
+Description: GNU binary utilities for Motorola's 68HC11/12 targets
+Multi-Arch: foreign
+Homepage: https://www.gnu.org/software/binutils/
+Built-Using: binutils (= 2.44-3)
+Description-md5: 7947f55c1400fe3dbfc4924951d4a7ad
+Tag: admin::hardware, devel::machinecode, hardware::embedded,
+ interface::commandline, role::program, scope::utility, suite::gnu
+Section: devel
+Priority: optional
+Filename: pool/main/b/binutils-m68hc1x/binutils-m68hc1x_2.44+3.5.3+b1_amd64.deb
+Size: 1921316
+MD5sum: a7f0e3faac69e6c9eace48ce1379b15a
+SHA256: 741c4058fc3cc23d697f6e4194e7fc8aef2d6d6628184e333316194c80bdbf17",
+        )
+        .unwrap();
+
+        assert_eq!(
+            package.name_and_version(),
+            (
+                "binutils-m68hc1x".try_into().unwrap(),
+                "1:3.5.3".try_into().unwrap()
+            )
+        );
+    }
 }
