@@ -19,7 +19,6 @@ use assorted_debian_utils::{
 };
 use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
-use itertools::Itertools;
 use log::{debug, error};
 use serde::Deserialize;
 
@@ -148,7 +147,7 @@ impl<'a> NMUVersionSkew<'a> {
         }
 
         let mut sources_architectures = vec![];
-        for (source, source_info) in packages.into_iter().sorted_by_key(|value| value.0.clone()) {
+        for (source, source_info) in packages.into_iter() {
             let mut max_version_per_architecture: HashMap<Architecture, (PackageVersion, u32)> =
                 HashMap::default();
             for (architecture, source_version, binnmu_version) in &source_info {
@@ -163,9 +162,10 @@ impl<'a> NMUVersionSkew<'a> {
                 }
             }
 
+            // check if the same source version is built on architectures
             let all_versions_without_binnmu: HashSet<_> = max_version_per_architecture
                 .values()
-                .map(|(v, _)| v.clone())
+                .map(|(v, _)| v)
                 .collect();
             if all_versions_without_binnmu.len() != 1 {
                 debug!(
@@ -175,6 +175,7 @@ impl<'a> NMUVersionSkew<'a> {
                 continue;
             }
 
+            // check if the binNMU versions diverge
             let all_versions: HashSet<_> = max_version_per_architecture.values().cloned().collect();
             if all_versions.len() == 1 {
                 debug!("Skipping {}: package is in sync", source);
@@ -229,6 +230,7 @@ impl<'a> NMUVersionSkew<'a> {
             ));
         }
 
+        sources_architectures.sort_by_key(|(source, _, _)| source.clone());
         Ok(sources_architectures)
     }
 }
