@@ -163,18 +163,17 @@ impl Iterator for BinaryPackageParser<'_> {
                     split
                 })
                 .filter(|source| {
-                    if let Some(max_version) = self.sources.version(&source.package) {
-                        source.version < *max_version
-                    } else {
-                        // This can happen when considering packages with
-                        // Static-Built-Using, but never with Built-Using. Let's
-                        // rebuild those packages in any case.
-                        trace!(
-                            "Package '{}' refers to non-existing source package '{}'.",
-                            binary_package.package.package, source.package
-                        );
-                        true
-                    }
+                    self.sources
+                        .version(&source.package)
+                        .map(|current_version| source.version < *current_version)
+                        .unwrap_or_else(|| {
+                            // This can happen with Static-Built-Using, but never with Built-Using.
+                            trace!(
+                                "Package '{}' refers to non-existing source package '{}'.",
+                                binary_package.package.package, source.package
+                            );
+                            true
+                        })
                 })
                 .collect();
             // all packages in Built-Using are up to date
