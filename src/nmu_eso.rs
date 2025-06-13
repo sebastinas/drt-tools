@@ -278,10 +278,7 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             }
         }
 
-        let mut result = HashMap::<
-            (PackageName, Suite, WBArchitecture),
-            HashSet<(PackageVersion, VersionedPackage)>,
-        >::new();
+        let mut result = HashMap::<_, HashSet<(PackageVersion, VersionedPackage)>>::new();
         for outdated_package in packages {
             // check if package FTBFS
             if let Some(bugs) = ftbfs_bugs.bugs_for_source(&outdated_package.source.package) {
