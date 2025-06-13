@@ -13,7 +13,7 @@ use assorted_debian_utils::{
     architectures::Architecture,
     archive::SuiteOrCodename,
     buildinfo::{self, Buildinfo},
-    package::PackageName,
+    package::{PackageName, VersionedPackage},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBCommand, WBCommandBuilder},
@@ -49,7 +49,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         }
     }
 
-    fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<(PackageName, PackageVersion)>> {
+    fn parse_packages(path: impl AsRef<Path>) -> Result<HashSet<VersionedPackage>> {
         // read Package file
         let binary_packages: Vec<BinaryPackage> = rfc822_like::from_file(path.as_ref())
             .with_context(|| {
@@ -62,7 +62,7 @@ impl<'a> BinNMUBuildinfo<'a> {
         Ok(binary_packages
             .into_iter()
             .progress_with(pb)
-            .map(|binary_package| binary_package.name_and_version())
+            .map(|binary_package| binary_package.source_package())
             .collect())
     }
 
@@ -163,7 +163,11 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
             .cache
             .get_package_paths(SuiteOrCodename::UNSTABLE, true)?
         {
-            for (source, version) in Self::parse_packages(path)? {
+            for VersionedPackage {
+                package: source,
+                version,
+            } in Self::parse_packages(path)?
+            {
                 match source_versions.get_mut(&source) {
                     Some(old_ver) => {
                         if version > *old_ver {

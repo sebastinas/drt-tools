@@ -11,7 +11,10 @@ use std::{
 
 use anyhow::Result;
 use assorted_debian_utils::{
-    archive::MultiArch, package::PackageName, rfc822_like, version::PackageVersion,
+    archive::MultiArch,
+    package::{PackageName, VersionedPackage},
+    rfc822_like,
+    version::PackageVersion,
 };
 use indicatif::{ProgressBar, ProgressIterator};
 use serde::{
@@ -94,21 +97,21 @@ pub struct BinaryPackage {
 
 impl BinaryPackage {
     /// Obtain the package name and the source version (without binNMU version)
-    pub fn name_and_version(&self) -> (PackageName, PackageVersion) {
+    pub fn source_package(&self) -> VersionedPackage {
         if let Some(source_package) = &self.source {
-            (
-                source_package.source.clone(),
-                source_package
+            VersionedPackage {
+                package: source_package.source.clone(),
+                version: source_package
                     .version
                     .clone()
                     .unwrap_or_else(|| self.version.clone_without_binnmu_version()),
-            )
+            }
         } else {
             // no Source set, so Source == Package
-            (
-                self.package.clone(),
-                self.version.clone_without_binnmu_version(),
-            )
+            VersionedPackage {
+                package: self.package.clone(),
+                version: self.version.clone_without_binnmu_version(),
+            }
         }
     }
 }
@@ -140,7 +143,10 @@ impl SourcePackages {
         let mut all_sources = HashMap::<PackageName, SourcePackageInfo>::new();
         for path in paths {
             for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
-                let (source, version) = binary_package.name_and_version();
+                let VersionedPackage {
+                    package: source,
+                    version,
+                } = binary_package.source_package();
 
                 if let Some(data) = all_sources.get_mut(&source) {
                     // store only highest version
@@ -196,7 +202,10 @@ impl SourcePackages {
 
         for path in paths {
             for binary_package in parse_packages::<BinaryPackage>(path.as_ref())? {
-                let (source, version) = binary_package.name_and_version();
+                let VersionedPackage {
+                    package: source,
+                    version,
+                } = binary_package.source_package();
 
                 if let Some(data) = all_sources.get_mut(&source) {
                     // store only highest version
@@ -293,11 +302,11 @@ SHA256: 741c4058fc3cc23d697f6e4194e7fc8aef2d6d6628184e333316194c80bdbf17",
         .unwrap();
 
         assert_eq!(
-            package.name_and_version(),
-            (
-                "binutils-m68hc1x".try_into().unwrap(),
-                "1:3.5.3".try_into().unwrap()
-            )
+            package.source_package(),
+            VersionedPackage {
+                package: "binutils-m68hc1x".try_into().unwrap(),
+                version: "1:3.5.3".try_into().unwrap()
+            }
         );
     }
 }

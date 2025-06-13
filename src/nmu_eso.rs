@@ -143,7 +143,7 @@ impl Iterator for BinaryPackageParser<'_> {
                 continue;
             };
 
-            let (source_package, version) = binary_package.package.name_and_version();
+            let source_package = binary_package.package.source_package();
 
             // remove trailing spaces found in X-Cargo-Built-Using
             let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
@@ -181,22 +181,19 @@ impl Iterator for BinaryPackageParser<'_> {
             if built_using.is_empty() {
                 trace!(
                     "Skipping {}: all dependencies in {} are up-to-date.",
-                    source_package, self.field
+                    source_package.package, self.field
                 );
                 continue;
             }
 
             // if the package builds any MA: same packages, schedule binNMUs with ANY
-            let architecture = if self.sources.is_ma_same(&source_package) {
+            let architecture = if self.sources.is_ma_same(&source_package.package) {
                 WBArchitecture::Any
             } else {
                 WBArchitecture::Architecture(binary_package.architecture)
             };
             return Some(OutdatedSourcePackage {
-                source: VersionedPackage {
-                    package: source_package.clone(),
-                    version: version.without_binnmu_version(),
-                },
+                source: source_package,
                 built_using,
                 architecture,
             });

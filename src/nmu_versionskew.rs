@@ -79,7 +79,10 @@ impl Iterator for BinaryPackageParser {
                 continue;
             }
 
-            let (source_package, version) = binary_package.package.name_and_version();
+            let VersionedPackage {
+                package: source_package,
+                version,
+            } = binary_package.package.source_package();
             return Some((
                 source_package,
                 binary_package.architecture,
