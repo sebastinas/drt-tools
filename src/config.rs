@@ -260,7 +260,7 @@ pub(crate) struct Cache {
 impl Cache {
     pub async fn new(force_download: bool, archive_mirror: &str) -> Result<Self> {
         let mut cache = Self {
-            base_directory: BaseDirectories::with_prefix("Debian-RT-tools")?,
+            base_directory: BaseDirectories::with_prefix("Debian-RT-tools"),
             downloader: Downloader::new(force_download),
             archive_mirror: archive_mirror.into(),
             unstable: empty_release(),
