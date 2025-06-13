@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     iter::FusedIterator,
     path::Path,
@@ -65,13 +66,13 @@ struct CombinedOutdatedPackage {
 }
 
 impl PartialOrd for CombinedOutdatedPackage {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for CombinedOutdatedPackage {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.source.cmp(&other.source)
     }
 }
