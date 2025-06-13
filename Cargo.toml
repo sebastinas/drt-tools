@@ -31,7 +31,7 @@ reqwest = { version = "0.12", features = ["stream"] }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 stderrlog = "0.6"
-thiserror = { version = "2" }
+thiserror = "2"
 tokio = { version = "1.21", default-features = false, features = [
     "macros",
     "rt-multi-thread",
