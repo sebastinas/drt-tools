@@ -195,10 +195,11 @@ impl AsyncCommand for BinNMUBuildinfo<'_> {
         let mut wb_commands = HashSet::new();
         // iterate over all buildinfo files
         for filename in &self.options.inputs {
-            wb_commands.extend(
+            if let Ok(commands) =
                 self.process_path(filename, &source_packages, &source_versions, &ftbfs_bugs)
-                    .unwrap_or_default(),
-            );
+            {
+                wb_commands.extend(commands);
+            }
         }
 
         execute_wb_commands(wb_commands, self.base_options).await
