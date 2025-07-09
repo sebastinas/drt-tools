@@ -114,9 +114,7 @@ impl Downloader {
         if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
             // this will only trigger if always_download is not set and the server reports that the
             // file was not modified
-            debug!(
-                "Skipping {url}: always_download is not set and the file was not modified"
-            );
+            debug!("Skipping {url}: always_download is not set and the file was not modified");
             return Ok(None);
         }
 

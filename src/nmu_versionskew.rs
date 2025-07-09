@@ -171,9 +171,7 @@ impl<'a> NMUVersionSkew<'a> {
                 .map(|(v, _)| v)
                 .collect();
             if all_versions_without_binnmu.len() != 1 {
-                debug!(
-                    "Skipping {source}: package is out-of-date on some architecture"
-                );
+                debug!("Skipping {source}: package is out-of-date on some architecture");
                 continue;
             }
 
@@ -201,9 +199,7 @@ impl<'a> NMUVersionSkew<'a> {
                 .max()
                 .map(|v| (*v).clone())
             else {
-                error!(
-                    "Skipping {source}: package has no binaries in the archive"
-                );
+                error!("Skipping {source}: package has no binaries in the archive");
                 continue;
             };
             debug!(
