@@ -93,7 +93,7 @@ impl Downloader {
         path: &Path,
         mp: MultiProgress,
     ) -> Result<Option<(Response, ProgressBar)>> {
-        debug!("Starting download of {} to {:?}", url, path);
+        debug!("Starting download of {url} to {path:?}");
         let res = self.client.get(url);
         let res = if self.always_download {
             res
@@ -115,8 +115,7 @@ impl Downloader {
             // this will only trigger if always_download is not set and the server reports that the
             // file was not modified
             debug!(
-                "Skipping {}: always_download is not set and the file was not modified",
-                url
+                "Skipping {url}: always_download is not set and the file was not modified"
             );
             return Ok(None);
         }
@@ -198,7 +197,7 @@ impl Downloader {
         fs::rename(&tmp_file, path).with_context(|| {
             format!("Failed to move temporary file '{tmp_file:?}' to '{path:?}'")
         })?;
-        debug!("Download of {} to {:?} done", url, path);
+        debug!("Download of {url} to {path:?} done");
         Ok(CacheState::FreshFiles)
     }
 }

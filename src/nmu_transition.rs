@@ -83,19 +83,19 @@ impl AsyncCommand for NMUTransition<'_> {
                 let version = split_line[version_index];
                 let Some(version) = version.strip_prefix('(').and_then(|v| v.strip_suffix(')'))
                 else {
-                    warn!("Unable to parse version: {:?} / {:?}", source, version);
+                    warn!("Unable to parse version: {source:?} / {version:?}");
                     continue;
                 };
 
                 if let Some(bugs) = ftbfs_bugs.bugs_for_source(&source) {
-                    debug!("Skipping {} due to FTBFS bugs: {:?}", source, bugs);
+                    debug!("Skipping {source} due to FTBFS bugs: {bugs:?}");
                     println!("# Skipping {source} due to FTBFS bugs");
                     continue;
                 }
 
                 let mut source = SourceSpecifier::new(&source);
                 let Ok(version) = version.try_into() else {
-                    warn!("Unable to parse version: {:?} / {:?}", source, version);
+                    warn!("Unable to parse version: {source:?} / {version:?}");
                     continue;
                 };
                 source

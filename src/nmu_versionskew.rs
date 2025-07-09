@@ -172,8 +172,7 @@ impl<'a> NMUVersionSkew<'a> {
                 .collect();
             if all_versions_without_binnmu.len() != 1 {
                 debug!(
-                    "Skipping {}: package is out-of-date on some architecture",
-                    source
+                    "Skipping {source}: package is out-of-date on some architecture"
                 );
                 continue;
             }
@@ -181,7 +180,7 @@ impl<'a> NMUVersionSkew<'a> {
             // check if the binNMU versions diverge
             let all_versions: HashSet<_> = max_version_per_architecture.values().cloned().collect();
             if all_versions.len() == 1 {
-                debug!("Skipping {}: package is in sync", source);
+                debug!("Skipping {source}: package is in sync");
                 continue;
             }
 
@@ -203,8 +202,7 @@ impl<'a> NMUVersionSkew<'a> {
                 .map(|v| (*v).clone())
             else {
                 error!(
-                    "Skipping {}: package has no binaries in the archive",
-                    source
+                    "Skipping {source}: package has no binaries in the archive"
                 );
                 continue;
             };

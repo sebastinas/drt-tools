@@ -102,7 +102,7 @@ impl<'a> ProcessExcuses<'a> {
             if info.verdict == Verdict::Pass {
                 true
             } else {
-                trace!("no binnmu possible: verdict not passing: {:?}", info);
+                trace!("no binnmu possible: verdict not passing: {info:?}");
                 false
             }
         })
@@ -139,7 +139,7 @@ impl<'a> ProcessExcuses<'a> {
                 "{}: considered candidate, but no architecture with missing build",
                 item.source
             );
-            trace!("{:?}", item);
+            trace!("{item:?}");
             return None;
         }
 
@@ -304,7 +304,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .filter(|action| match action {
                 Action::BinNMU(command) => {
                     if scheduled_binnmus.contains(command) {
-                        info!("{}: skipping, already scheduled", command);
+                        info!("{command}: skipping, already scheduled");
                         false
                     } else {
                         if !self.base_options.dry_run {
