@@ -1,4 +1,4 @@
-// Copyright 2022 Sebastian Ramacher
+// Copyright 2022-2025 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Helpers to handle `autoremovals.yaml`
@@ -18,7 +18,7 @@ fn deserialize_datetime<'de, D>(deserializer: D) -> std::result::Result<DateTime
 where
     D: serde::Deserializer<'de>,
 {
-    deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S"))
+    deserializer.deserialize_str(DateTimeVisitor("%Y-%m-%d %H:%M:%S%:z"))
 }
 
 /// All autoremovals
@@ -73,7 +73,7 @@ mplayer:
   bugs:
   - '1005899'
   dependencies_only: false
-  last_checked: 2022-04-10 17:55:40
+  last_checked: 2022-04-10 17:55:40+00:00
   rdeps:
   - devede
   - diffoscope
@@ -84,7 +84,7 @@ mplayer:
   - reprotest
   - vdr-plugin-mp3
   - videotrans
-  removal_date: 2022-05-01 19:42:01
+  removal_date: 2022-05-01 19:42:01+00:00
   source: mplayer
   version: 2:1.4+ds1-3
 mplayer-blue:
@@ -94,8 +94,8 @@ mplayer-blue:
   bugs_dependencies:
   - '1005899'
   dependencies_only: true
-  last_checked: 2022-04-10 17:55:40
-  removal_date: 2022-05-01 19:42:01
+  last_checked: 2022-04-10 17:55:40+00:00
+  removal_date: 2022-05-01 19:42:01+00:00
   source: mplayer-blue
   version: 1.13-2
 ";
