@@ -1,11 +1,15 @@
 # Changelog
 
+## 0.8.1 (2025-07-28)
+
+* `autoremovals`: Update to new datetime format.
+
 ## 0.8.0 (2025-05-02)
 
 * Bump edition to 2024.
-* wb: add `Info` command
-* package: Add `PackageName` and `VersionedPackage`
-* Use `PackageName` and `VersionedPackage` where possible
+* wb: add `Info` command.
+* package: Add `PackageName` and `VersionedPackage`.
+* Use `PackageName` and `VersionedPackage` where possible.
 
 ## 0.7.6 (2025-01-25)
 
