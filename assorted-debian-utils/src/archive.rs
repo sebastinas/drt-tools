@@ -196,11 +196,11 @@ pub enum Codename {
     /// The unstable suite
     Sid,
     /// The testing suite
-    Trixie(Option<Extension>),
+    Forky(Option<Extension>),
     /// The stable suite
-    Bookworm(Option<Extension>),
+    Trixie(Option<Extension>),
     /// The oldstable suite
-    Bullseye(Option<Extension>),
+    Bookworm(Option<Extension>),
     /// The experimental suite
     RCBuggy,
 }
@@ -211,7 +211,7 @@ impl WithExtension for Codename {
             Self::Sid | Self::RCBuggy => *self,
             Self::Trixie(_) => Self::Trixie(Some(extension)),
             Self::Bookworm(_) => Self::Bookworm(Some(extension)),
-            Self::Bullseye(_) => Self::Bullseye(Some(extension)),
+            Self::Forky(_) => Self::Forky(Some(extension)),
         }
     }
 
@@ -220,7 +220,7 @@ impl WithExtension for Codename {
             Self::Sid | Self::RCBuggy => *self,
             Self::Trixie(_) => Self::Trixie(None),
             Self::Bookworm(_) => Self::Bookworm(None),
-            Self::Bullseye(_) => Self::Bullseye(None),
+            Self::Forky(_) => Self::Forky(None),
         }
     }
 }
@@ -231,11 +231,11 @@ impl Display for Codename {
             Self::Sid => write!(f, "sid"),
             Self::Trixie(None) => write!(f, "trixie"),
             Self::Bookworm(None) => write!(f, "bookworm"),
-            Self::Bullseye(None) => write!(f, "bullseye"),
+            Self::Forky(None) => write!(f, "forky"),
             Self::RCBuggy => write!(f, "rc-buggy"),
             Self::Trixie(Some(ext)) => write!(f, "trixie-{ext}"),
             Self::Bookworm(Some(ext)) => write!(f, "bookworm-{ext}"),
-            Self::Bullseye(Some(ext)) => write!(f, "bullseye-{ext}"),
+            Self::Forky(Some(ext)) => write!(f, "forky-{ext}"),
         }
     }
 }
@@ -248,7 +248,7 @@ impl TryFrom<&str> for Codename {
             "sid" => Ok(Self::Sid),
             "trixie" => Ok(Self::Trixie(None)),
             "bookworm" => Ok(Self::Bookworm(None)),
-            "bullseye" => Ok(Self::Bullseye(None)),
+            "forky" => Ok(Self::Forky(None)),
             "rc-buggy" => Ok(Self::RCBuggy),
             _ => {
                 let s = value.split_once('-').ok_or(ParseError::InvalidCodename)?;
@@ -256,7 +256,7 @@ impl TryFrom<&str> for Codename {
                 match s.0 {
                     "trixie" => Ok(Self::Trixie(Some(ext))),
                     "bookworm" => Ok(Self::Bookworm(Some(ext))),
-                    "bullseye" => Ok(Self::Bullseye(Some(ext))),
+                    "forky" => Ok(Self::Forky(Some(ext))),
                     _ => Err(ParseError::InvalidCodename),
                 }
             }
@@ -276,9 +276,9 @@ impl From<Suite> for Codename {
     fn from(suite: Suite) -> Self {
         match suite {
             Suite::Unstable => Self::Sid,
-            Suite::Testing(ext) => Self::Trixie(ext),
-            Suite::Stable(ext) => Self::Bookworm(ext),
-            Suite::OldStable(ext) => Self::Bullseye(ext),
+            Suite::Testing(ext) => Self::Forky(ext),
+            Suite::Stable(ext) => Self::Trixie(ext),
+            Suite::OldStable(ext) => Self::Bookworm(ext),
             Suite::Experimental => Self::RCBuggy,
         }
     }
@@ -288,9 +288,9 @@ impl From<Codename> for Suite {
     fn from(codename: Codename) -> Self {
         match codename {
             Codename::Sid => Self::Unstable,
-            Codename::Trixie(ext) => Self::Testing(ext),
-            Codename::Bookworm(ext) => Self::Stable(ext),
-            Codename::Bullseye(ext) => Self::OldStable(ext),
+            Codename::Forky(ext) => Self::Testing(ext),
+            Codename::Trixie(ext) => Self::Stable(ext),
+            Codename::Bookworm(ext) => Self::OldStable(ext),
             Codename::RCBuggy => Self::Experimental,
         }
     }
@@ -589,13 +589,10 @@ mod test {
     #[test]
     fn codename_from_str() {
         assert_eq!(Codename::try_from("sid").unwrap(), Codename::Sid);
+        assert_eq!(Codename::try_from("forky").unwrap(), Codename::Forky(None));
         assert_eq!(
-            Codename::try_from("bullseye").unwrap(),
-            Codename::Bullseye(None)
-        );
-        assert_eq!(
-            Codename::try_from("bullseye-backports").unwrap(),
-            Codename::Bullseye(Some(Extension::Backports))
+            Codename::try_from("forky-backports").unwrap(),
+            Codename::Forky(Some(Extension::Backports))
         );
     }
 
