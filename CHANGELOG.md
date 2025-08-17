@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 (2025-08-17)
+
+* Work-around missing `stable-proposed-updates` for trixie.
+* Bump ``ndicatif` to 0.18.
+* Bump `xdg` to 0.3.
+
 ## 0.3.0 (2025-05-02)
 
 * Bump edition to 2024
