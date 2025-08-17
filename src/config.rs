@@ -368,7 +368,16 @@ impl Cache {
 
     fn release_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
         vec![DownloadInfo::new(
-            format!("{}/dists/{}/Release", self.archive_mirror, suite).into(),
+            format!(
+                "{}/dists/{}/Release",
+                self.archive_mirror,
+                if suite == Suite::Stable(Some(Extension::ProposedUpdates)) {
+                    "proposed-updates".to_string()
+                } else {
+                    suite.to_string()
+                }
+            )
+            .into(),
             format!("Release_{suite}").into(),
         )]
     }
