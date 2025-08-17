@@ -601,7 +601,7 @@ mod test {
         assert_eq!(Codename::from(Suite::Unstable), Codename::Sid);
         assert_eq!(
             Codename::from(Suite::Stable(Some(Extension::Backports))),
-            Codename::Bookworm(Some(Extension::Backports))
+            Codename::Trixie(Some(Extension::Backports))
         );
     }
 
@@ -609,7 +609,7 @@ mod test {
     fn suite_from_codename() {
         assert_eq!(Suite::from(Codename::Sid), Suite::Unstable);
         assert_eq!(
-            Suite::from(Codename::Bookworm(Some(Extension::Backports))),
+            Suite::from(Codename::Trixie(Some(Extension::Backports))),
             Suite::Stable(Some(Extension::Backports))
         );
     }
@@ -634,7 +634,7 @@ mod test {
         );
         assert_eq!(
             SuiteOrCodename::STABLE_PU,
-            SuiteOrCodename::Codename(Codename::Bookworm(Some(Extension::ProposedUpdates)))
+            SuiteOrCodename::Codename(Codename::Trixie(Some(Extension::ProposedUpdates)))
         );
     }
 
