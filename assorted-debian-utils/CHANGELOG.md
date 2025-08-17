@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.2 (2025-08-17)
+
+* `archive`: `forky` is now the new stable release.
+
 ## 0.8.1 (2025-07-28)
 
 * `autoremovals`: Update to new datetime format.
