@@ -16,6 +16,11 @@ fn parse_release_debian_unstable() {
 }
 
 #[test]
+fn parse_release_debian_forky() {
+    parse_release("Release-debian-forky");
+}
+
+#[test]
 fn parse_release_debian_trixie() {
     parse_release("Release-debian-trixie");
 }
@@ -23,11 +28,6 @@ fn parse_release_debian_trixie() {
 #[test]
 fn parse_release_debian_bookworm() {
     parse_release("Release-debian-bookworm");
-}
-
-#[test]
-fn parse_release_debian_bullseye() {
-    parse_release("Release-debian-bullseye");
 }
 
 fn parse_release(data_file: &str) {
