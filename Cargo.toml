@@ -46,4 +46,4 @@ clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.4"
 clap_mangen = "0.2"
 clap-verbosity-flag = "3"
-thiserror = { version = "2" }
+thiserror = "2"
