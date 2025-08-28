@@ -4,7 +4,6 @@
 //! # Utils used by other modules.
 
 use std::{
-    any::type_name,
     fmt::{Display, Formatter},
     marker::PhantomData,
 };
@@ -33,15 +32,21 @@ impl de::Visitor<'_> for DateTimeVisitor {
 }
 
 /// Helper to parse whitespace separated list of `T`s
-pub(crate) struct WhitespaceListVisitor<T>(PhantomData<T>);
+pub(crate) struct WhitespaceListVisitor<T> {
+    expecting_message: &'static str,
+    phantom: PhantomData<T>,
+}
 
 impl<T> WhitespaceListVisitor<T> {
-    pub(crate) fn new() -> Self {
-        Self(PhantomData)
+    pub(crate) fn new(expecting_message: &'static str) -> Self {
+        Self {
+            expecting_message,
+            phantom: PhantomData,
+        }
     }
 }
 
-impl<T> serde::de::Visitor<'_> for WhitespaceListVisitor<T>
+impl<T> de::Visitor<'_> for WhitespaceListVisitor<T>
 where
     for<'a> T: TryFrom<&'a str>,
     for<'a> <T as TryFrom<&'a str>>::Error: Display,
@@ -49,12 +54,12 @@ where
     type Value = Vec<T>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        write!(formatter, "a list of {}", type_name::<T>())
+        write!(formatter, "a list of {}", self.expecting_message)
     }
 
     fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
     where
-        E: serde::de::Error,
+        E: de::Error,
     {
         s.split_whitespace()
             .map(|a| T::try_from(a).map_err(E::custom))
@@ -77,7 +82,7 @@ impl<T> TryFromStrVisitor<T> {
     }
 }
 
-impl<T> serde::de::Visitor<'_> for TryFromStrVisitor<T>
+impl<T> de::Visitor<'_> for TryFromStrVisitor<T>
 where
     for<'a> T: TryFrom<&'a str>,
     for<'a> <T as TryFrom<&'a str>>::Error: Display,
@@ -90,7 +95,7 @@ where
 
     fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
     where
-        E: serde::de::Error,
+        E: de::Error,
     {
         T::try_from(s).map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &self))
     }

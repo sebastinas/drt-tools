@@ -7,19 +7,13 @@
 
 use std::io::BufRead;
 
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 use crate::{
-    architectures::Architecture, package::PackageName, utils::WhitespaceListVisitor,
+    architectures::{Architecture, deserialize_architectures},
+    package::PackageName,
     version::PackageVersion,
 };
-
-fn deserialize_architecture<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserializer.deserialize_str(WhitespaceListVisitor::<Architecture>::new())
-}
 
 /// A build info
 #[derive(Debug, PartialEq, Eq, Deserialize, Hash)]
@@ -30,7 +24,7 @@ pub struct Buildinfo {
     /// Version of the package
     pub version: PackageVersion,
     /// Architectures of the build
-    #[serde(deserialize_with = "deserialize_architecture")]
+    #[serde(deserialize_with = "deserialize_architectures")]
     pub architecture: Vec<Architecture>,
 }
 

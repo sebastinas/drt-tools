@@ -12,9 +12,10 @@ use std::{
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Deserializer};
 
 pub use crate::ParseError;
+use crate::utils::WhitespaceListVisitor;
 
 /// Debian architectures
 ///
@@ -156,6 +157,16 @@ impl FromStr for Architecture {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::try_from(s)
     }
+}
+
+/// Deserialize a list of architectures into a `Vec<Architecture>`
+pub(crate) fn deserialize_architectures<'de, D>(
+    deserializer: D,
+) -> Result<Vec<Architecture>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_str(WhitespaceListVisitor::new("Architecture"))
 }
 
 #[cfg(test)]

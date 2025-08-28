@@ -1,4 +1,4 @@
-// Copyright 2024 Sebastian Ramacher
+// Copyright 2024-2025 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Helper to handle `Release` files
@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, de};
 
 use crate::{
-    architectures::Architecture,
+    architectures::{Architecture, deserialize_architectures},
     archive::{Codename, Component, Suite},
     utils::{DateTimeVisitor, WhitespaceListVisitor},
 };
@@ -34,20 +34,12 @@ where
     deserialize_datetime(deserializer).map(Some)
 }
 
-/// Deserialize a list of architectures into a `Vec<Architecture>`
-fn deserialize_architectures<'de, D>(deserializer: D) -> Result<Vec<Architecture>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserializer.deserialize_str(WhitespaceListVisitor::<Architecture>::new())
-}
-
 /// Deserialize a list of components into a `Vec<Component>`
 fn deserialize_components<'de, D>(deserializer: D) -> Result<Vec<Component>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_str(WhitespaceListVisitor::<Component>::new())
+    deserializer.deserialize_str(WhitespaceListVisitor::new("Component"))
 }
 
 struct SHA256Visitor;
@@ -64,7 +56,7 @@ impl de::Visitor<'_> for SHA256Visitor {
         E: de::Error,
     {
         let cursor = Cursor::new(s);
-        let mut ret: HashMap<String, FileInfo> = HashMap::default();
+        let mut ret = HashMap::default();
         for line in cursor.lines() {
             let Ok(line) = line else {
                 break;
@@ -76,8 +68,11 @@ impl de::Visitor<'_> for SHA256Visitor {
             }
 
             let file = fields[2];
-            let file_size = fields[1].parse().map_err(E::custom)?;
-            let hash = hex::decode(fields[0]).map_err(E::custom)?;
+            let file_size = fields[1]
+                .parse()
+                .map_err(|_| E::invalid_value(de::Unexpected::Str(fields[1]), &self))?;
+            let hash = hex::decode(fields[0])
+                .map_err(|_| E::invalid_value(de::Unexpected::Str(fields[0]), &self))?;
 
             ret.insert(
                 file.to_string(),
