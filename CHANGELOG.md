@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 (2025-10-24)
+
+* Remove workaround for `stable-proposed-updates`.
+* Bump `assorted-debian-utils` to 0.8.3 to handle `proposed-updates` properly.
+
 ## 0.3.1 (2025-08-17)
 
 * Work-around missing `stable-proposed-updates` for trixie.
