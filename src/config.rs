@@ -326,13 +326,8 @@ impl Cache {
     /// Lookup URL based on information from Release files
     fn lookup_url(&self, suite: Suite, path: &str) -> String {
         format!(
-            "{}/dists/{}/{}",
+            "{}/dists/{suite}/{}",
             self.archive_mirror,
-            if suite == Suite::Stable(Some(Extension::ProposedUpdates)) {
-                "proposed-updates".to_string()
-            } else {
-                suite.to_string()
-            },
             match suite {
                 Suite::Unstable => &self.unstable,
                 Suite::Testing(_) => &self.testing,
@@ -374,16 +369,7 @@ impl Cache {
 
     fn release_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
         vec![DownloadInfo::new(
-            format!(
-                "{}/dists/{}/Release",
-                self.archive_mirror,
-                if suite == Suite::Stable(Some(Extension::ProposedUpdates)) {
-                    "proposed-updates".to_string()
-                } else {
-                    suite.to_string()
-                }
-            )
-            .into(),
+            format!("{}/dists/{suite}/Release", self.archive_mirror,).into(),
             format!("Release_{suite}").into(),
         )]
     }
