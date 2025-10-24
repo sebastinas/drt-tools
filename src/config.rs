@@ -323,10 +323,16 @@ impl Cache {
         Ok(cache)
     }
 
+    /// Lookup URL based on information from Release files
     fn lookup_url(&self, suite: Suite, path: &str) -> String {
         format!(
-            "{}/dists/{suite}/{}",
+            "{}/dists/{}/{}",
             self.archive_mirror,
+            if suite == Suite::Stable(Some(Extension::ProposedUpdates)) {
+                "proposed-updates".to_string()
+            } else {
+                suite.to_string()
+            },
             match suite {
                 Suite::Unstable => &self.unstable,
                 Suite::Testing(_) => &self.testing,
