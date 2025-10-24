@@ -130,6 +130,8 @@ impl Display for Suite {
             Self::OldStable(None) => write!(f, "oldstable"),
             Self::Experimental => write!(f, "experimental"),
             Self::Testing(Some(ext)) => write!(f, "testing-{ext}"),
+            // The Release file from stable-proposed-updates calls the suite proposed-updaptes.
+            Self::Stable(Some(Extension::ProposedUpdates)) => write!(f, "proposed-updates"),
             Self::Stable(Some(ext)) => write!(f, "stable-{ext}"),
             Self::OldStable(Some(ext)) => write!(f, "oldstable-{ext}"),
         }
