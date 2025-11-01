@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 (2025-11-01)
+
+* Handle bugs assigned to multiple packages.
+
 ## 0.3.2 (2025-10-24)
 
 * Remove workaround for `stable-proposed-updates`.
