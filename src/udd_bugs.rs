@@ -184,6 +184,19 @@ mod test {
   affects_experimental: false
   last_modified_full: '2021-11-16 23:03:16 +0000'
   autormdate: ''
+- id: 1114387
+  package: src:slurm-wlm,src:pmix
+  source: pmix,slurm-wlm
+  severity: serious
+  title: 'slurm-wlm: FTBFS: configure: error: unable to locate pmix installation'
+  last_modified: '2025-10-27'
+  status: pending
+  affects_stable: false
+  affects_testing: true
+  affects_unstable: true
+  affects_experimental: false
+  last_modified_full: '2025-10-27 23:43:02 +0000'
+  autormdate: ''
 ";
 
     #[test]
