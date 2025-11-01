@@ -5,6 +5,7 @@ use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
     io::Read,
+    marker::PhantomData,
 };
 
 use anyhow::Result;
@@ -12,7 +13,7 @@ use assorted_debian_utils::{
     archive::{Codename, SuiteOrCodename},
     package::PackageName,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, de};
 
 use crate::config::Cache;
 
@@ -54,10 +55,42 @@ impl Display for Severity {
     }
 }
 
+/// Helper to parse comma-separated list of `T`s
+struct CommaListVisitor<T>(PhantomData<T>);
+
+impl<T> de::Visitor<'_> for CommaListVisitor<T>
+where
+    for<'a> T: TryFrom<&'a str>,
+    for<'a> <T as TryFrom<&'a str>>::Error: Display,
+{
+    type Value = Vec<T>;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        write!(formatter, "a comma-separated list of package names")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        s.split(',')
+            .map(|a| T::try_from(a).map_err(E::custom))
+            .collect()
+    }
+}
+
+fn deserialize_sources<'de, D>(deserializer: D) -> Result<Vec<PackageName>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_str(CommaListVisitor(PhantomData))
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct UDDBug {
     pub id: u32,
-    pub source: PackageName,
+    #[serde(deserialize_with = "deserialize_sources")]
+    pub source: Vec<PackageName>,
     pub severity: Severity,
     pub title: String,
 }
@@ -81,11 +114,13 @@ impl UDDBugs {
         };
 
         for (idx, bug) in udd_bugs.bugs.iter().enumerate() {
-            udd_bugs
-                .source_index
-                .entry(bug.source.clone())
-                .or_default()
-                .push(idx);
+            for source in &bug.source {
+                udd_bugs
+                    .source_index
+                    .entry(source.clone())
+                    .or_default()
+                    .push(idx);
+            }
         }
 
         udd_bugs
