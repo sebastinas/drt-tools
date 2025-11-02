@@ -30,8 +30,6 @@ pub enum Architecture {
     Alpha,
     /// The `amd64` architecture
     Amd64,
-    /// The `arc` architecture
-    Arc,
     /// The `arm64` architecture
     Arm64,
     /// The `armel` architecture
@@ -90,7 +88,6 @@ impl AsRef<str> for Architecture {
             Self::All => "all",
             Self::Alpha => "alpha",
             Self::Amd64 => "amd64",
-            Self::Arc => "arc",
             Self::Arm64 => "arm64",
             Self::Armel => "armel",
             Self::Armhf => "armhf",
@@ -124,7 +121,6 @@ impl TryFrom<&str> for Architecture {
             "all" => Ok(Self::All),
             "alpha" => Ok(Self::Alpha),
             "amd64" => Ok(Self::Amd64),
-            "arc" => Ok(Self::Arc),
             "arm64" => Ok(Self::Arm64),
             "armel" => Ok(Self::Armel),
             "armhf" => Ok(Self::Armhf),
