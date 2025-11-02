@@ -5,7 +5,6 @@ use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
     io::Read,
-    marker::PhantomData,
 };
 
 use anyhow::Result;
@@ -55,15 +54,11 @@ impl Display for Severity {
     }
 }
 
-/// Helper to parse comma-separated list of `T`s
-struct CommaListVisitor<T>(PhantomData<T>);
+/// Helper to parse comma-separated list of package names
+struct CommaListVisitor;
 
-impl<T> de::Visitor<'_> for CommaListVisitor<T>
-where
-    for<'a> T: TryFrom<&'a str>,
-    for<'a> <T as TryFrom<&'a str>>::Error: Display,
-{
-    type Value = Vec<T>;
+impl de::Visitor<'_> for CommaListVisitor {
+    type Value = Vec<PackageName>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
         write!(formatter, "a comma-separated list of package names")
@@ -74,7 +69,7 @@ where
         E: de::Error,
     {
         s.split(',')
-            .map(|a| T::try_from(a).map_err(E::custom))
+            .map(|a| PackageName::try_from(a).map_err(E::custom))
             .collect()
     }
 }
@@ -83,7 +78,7 @@ fn deserialize_sources<'de, D>(deserializer: D) -> Result<Vec<PackageName>, D::E
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_str(CommaListVisitor(PhantomData))
+    deserializer.deserialize_str(CommaListVisitor)
 }
 
 #[derive(Clone, Debug, Deserialize)]
