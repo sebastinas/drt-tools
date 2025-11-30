@@ -404,12 +404,12 @@ where
         Self: LoadUDDBugs,
     {
         let fields = if self.options.field.is_empty() {
-            vec![Field::BuiltUsing]
+            [Field::BuiltUsing].as_ref()
         } else {
-            self.options.field.clone()
+            self.options.field.as_ref()
         };
         let display_field = fields.iter().join("/");
-        let eso_sources = self.load_eso(&fields, self.options.suite)?;
+        let eso_sources = self.load_eso(fields, self.options.suite)?;
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
