@@ -138,50 +138,43 @@ impl Iterator for BinaryPackageParser<'_> {
             }
 
             let source_package = binary_package.package.source_package();
-            let mut built_using_set = HashSet::new();
-            for field in self.fields {
-                // skip packages without Built-Using
-                let Some(built_using) = (match field {
-                    Field::BuiltUsing => &binary_package.built_using,
-                    Field::StaticBuiltUsing => &binary_package.static_built_using,
-                    Field::XCargoBuiltUsing => &binary_package.x_cargo_built_using,
-                }) else {
-                    continue;
-                };
+            let built_using_set: HashSet<_> = self
+                .fields
+                .iter()
+                .filter_map(|field| {
+                    // skip packages without Built-Using
+                    match field {
+                        Field::BuiltUsing => binary_package.built_using.as_ref(),
+                        Field::StaticBuiltUsing => binary_package.static_built_using.as_ref(),
+                        Field::XCargoBuiltUsing => binary_package.x_cargo_built_using.as_ref(),
+                    }
+                })
+                .flat_map(|built_using| {
+                    // remove trailing spaces found in X-Cargo-Built-Using
+                    let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
+                    // remove trailing commas found in X-Cargo-Built-Using
+                    let built_using = built_using.strip_suffix(',').unwrap_or(built_using);
 
-                // remove trailing spaces found in X-Cargo-Built-Using
-                let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
-                // remove trailing commas found in X-Cargo-Built-Using
-                let built_using = built_using.strip_suffix(',').unwrap_or(built_using);
-
-                let built_using: HashSet<_> = built_using
-                    .split(", ")
-                    .filter_map(|dependency| {
-                        let split = split_dependency(dependency);
-                        if split.is_none() {
-                            warn!(
-                                "Package '{}' contains invalid dependency in {}: {}",
-                                binary_package.package.package, field, dependency
-                            );
-                        }
-                        split
-                    })
-                    .filter(|source| {
-                        self.sources
-                            .version(&source.package)
-                            .map(|current_version| source.version < *current_version)
-                            .unwrap_or_else(|| {
-                                // This can happen with Static-Built-Using, but never with Built-Using.
-                                trace!(
-                                    "Package '{}' refers to non-existing source package '{}'.",
-                                    binary_package.package.package, source.package
+                    built_using
+                        .split(", ")
+                        .filter_map(|dependency| {
+                            let split = split_dependency(dependency);
+                            if split.is_none() {
+                                warn!(
+                                    "Package '{}' contains invalid dependency: {}",
+                                    binary_package.package.package, dependency
                                 );
-                                true
-                            })
-                    })
-                    .collect();
-                built_using_set = built_using_set.union(&built_using).cloned().collect();
-            }
+                            }
+                            split
+                        })
+                        .filter(|source| {
+                            self.sources
+                                .version(&source.package)
+                                .map(|current_version| source.version < *current_version)
+                                .unwrap_or(true)
+                        })
+                })
+                .collect();
             // all packages in Built-Using are up to date
             if built_using_set.is_empty() {
                 trace!(
@@ -273,7 +266,7 @@ where
                     source,
                     built_using: dependencies,
                     architecture,
-                } in BinaryPackageParser::new(fields, &source_packages, path)?
+                } in BinaryPackageParser::new(fields, source_packages, path)?
                 {
                     // skip some packages that make no sense to binNMU
                     if source_skip_binnmu(source.package.as_ref()) {
