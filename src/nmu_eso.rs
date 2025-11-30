@@ -257,12 +257,12 @@ where
         &self,
         fields: &[Field],
         suite: SuiteOrCodename,
+        source_packages: &SourcePackages,
     ) -> Result<Vec<CombinedOutdatedPackage>>
     where
         Self: LoadUDDBugs,
     {
         let ftbfs_bugs = self.load_bugs(suite)?;
-        let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
 
         // collect outdated binary packages
         let mut packages = HashSet::new();
@@ -403,13 +403,14 @@ where
     where
         Self: LoadUDDBugs,
     {
+        let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
         let fields = if self.options.field.is_empty() {
             [Field::BuiltUsing].as_ref()
         } else {
             self.options.field.as_ref()
         };
         let display_field = fields.iter().join("/");
-        let eso_sources = self.load_eso(fields, self.options.suite)?;
+        let eso_sources = self.load_eso(fields, self.options.suite, &source_packages)?;
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
@@ -423,12 +424,33 @@ where
                 display_field,
                 outdated_package
                     .outdated_dependencies
-                    .into_iter()
+                    .iter()
                     .map(|source| format!("{}/{}", source.package, source.version))
                     .join(", ")
             );
             let mut binnmu = BinNMU::new(&source, &message)?;
             binnmu.with_build_priority(self.options.build_priority);
+
+            let mut extra_depends = Vec::new();
+            for outdated_dependency in &outdated_package.outdated_dependencies {
+                if let Ok(required_dependency) = REQUIRES_EXTRA_DEPENDS
+                    .binary_search_by(|extra_depends| {
+                        extra_depends
+                            .source
+                            .cmp(outdated_dependency.package.as_ref())
+                    })
+                    .map(|index| &REQUIRES_EXTRA_DEPENDS[index])
+                {
+                    if let Some(version) = source_packages.version(required_dependency.source) {
+                        extra_depends
+                            .push(format!("{} (>= {})", required_dependency.package, version));
+                    }
+                }
+            }
+            let extra_depends = extra_depends.join(", ");
+            if !extra_depends.is_empty() {
+                binnmu.with_extra_depends(&extra_depends);
+            }
 
             wb_commands.push(binnmu.build());
         }
@@ -468,6 +490,22 @@ impl Downloads for NMUOutdatedBuiltUsing<'_, Cache> {
             .collect()
     }
 }
+
+struct RequiresExtraDepends {
+    source: &'static str,
+    package: &'static str,
+}
+
+const REQUIRES_EXTRA_DEPENDS: [RequiresExtraDepends; 2] = [
+    RequiresExtraDepends {
+        source: "glibc",
+        package: "libc-bin",
+    },
+    RequiresExtraDepends {
+        source: "perl",
+        package: "perl-base",
+    },
+];
 
 #[cfg(test)]
 mod test {
