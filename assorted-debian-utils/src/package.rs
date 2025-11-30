@@ -5,7 +5,7 @@
 //!
 //! These helpers includes abstractions to check the validity of Debian packages names.
 
-use std::fmt::Display;
+use std::{borrow::Borrow, fmt::Display};
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -62,6 +62,12 @@ impl TryFrom<String> for PackageName {
 
 impl AsRef<str> for PackageName {
     fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl Borrow<str> for PackageName {
+    fn borrow(&self) -> &str {
         self.0.as_str()
     }
 }

@@ -101,8 +101,8 @@ mplayer-blue:
 ";
         let autoremovals = from_str(data).unwrap();
 
-        assert!(autoremovals.contains_key(&"mplayer".try_into().unwrap()));
-        let mplayer = autoremovals.get(&"mplayer".try_into().unwrap()).unwrap();
+        assert!(autoremovals.contains_key("mplayer"));
+        let mplayer = autoremovals.get("mplayer").unwrap();
         assert_eq!(mplayer.source, "mplayer");
         assert_eq!(mplayer.version.to_string(), "2:1.4+ds1-3");
         assert_eq!(mplayer.bugs, vec!["1005899"]);
@@ -122,10 +122,8 @@ mplayer-blue:
         );
         assert!(!mplayer.dependencies_only);
 
-        assert!(autoremovals.contains_key(&"mplayer-blue".try_into().unwrap()));
-        let mplayer_blue = autoremovals
-            .get(&"mplayer-blue".try_into().unwrap())
-            .unwrap();
+        assert!(autoremovals.contains_key("mplayer-blue"));
+        let mplayer_blue = autoremovals.get("mplayer-blue").unwrap();
         assert_eq!(mplayer_blue.source, "mplayer-blue");
         assert_eq!(mplayer_blue.version.to_string(), "1.13-2");
         assert_eq!(mplayer_blue.bugs.len(), 0);
