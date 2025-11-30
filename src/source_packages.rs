@@ -116,11 +116,21 @@ impl BinaryPackage {
     }
 }
 
+#[derive(Debug, Default, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+enum ExtraSourceOnly {
+    Yes,
+    #[default]
+    No,
+}
+
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 struct SourcePackage {
     package: PackageName,
     version: PackageVersion,
+    #[serde(rename = "Extra-Source-Only", default)]
+    extra_source_only: ExtraSourceOnly,
 }
 
 #[derive(Debug)]
@@ -183,6 +193,11 @@ impl SourcePackages {
         let mut all_sources = HashMap::<PackageName, SourcePackageInfo>::new();
         for path in sources {
             for source_package in parse_packages::<SourcePackage>(path.as_ref())? {
+                if source_package.extra_source_only == ExtraSourceOnly::Yes {
+                    // skip ESO: yes source packages
+                    continue;
+                }
+
                 if let Some(data) = all_sources.get_mut(&source_package.package) {
                     // store only highest version
                     if source_package.version > data.version {
