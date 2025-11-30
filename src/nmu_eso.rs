@@ -489,7 +489,16 @@ struct RequiresExtraDepends {
     package: &'static str,
 }
 
-const REQUIRES_EXTRA_DEPENDS: [RequiresExtraDepends; 2] = [
+// this array needs to be sorted by source
+const REQUIRES_EXTRA_DEPENDS: [RequiresExtraDepends; 4] = [
+    RequiresExtraDepends {
+        source: "binutils",
+        package: "binutils",
+    },
+    RequiresExtraDepends {
+        source: "dpkg",
+        package: "dpkg-dev",
+    },
     RequiresExtraDepends {
         source: "glibc",
         package: "libc-bin",
@@ -910,5 +919,15 @@ Section: misc
         let nmu_eso = NMUOutdatedBuiltUsing::new(&cache, &base_options, options);
         let wb_commands = nmu_eso.generate_wb_commands().unwrap();
         assert_eq!(wb_commands.len(), 1);
+    }
+
+    #[test]
+    fn required_extra_depends_is_sorted() {
+        assert!(
+            REQUIRES_EXTRA_DEPENDS
+                .iter()
+                .map(|red| red.source)
+                .is_sorted()
+        );
     }
 }
