@@ -2,7 +2,7 @@
 
 ## 0.8.3 (2025-10-24)
 
-* `archive`: Print `stable-proposed-updates` as `propsoed-updates` to be consistent with `Release` files.
+* `archive`: Print `stable-proposed-updates` as `proposed-updates` to be consistent with `Release` files.
 
 ## 0.8.2 (2025-08-17)
 
