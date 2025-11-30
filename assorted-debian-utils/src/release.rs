@@ -104,12 +104,13 @@ pub struct FileInfo {
 }
 
 /// Possible values for `Acquire-By-Hash`
-#[derive(Debug, Deserialize, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Copy, Clone, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum AcquireByHash {
     /// Acquire by hash
     Yes,
     /// Do not acquire by hash
+    #[default]
     No,
 }
 
@@ -158,10 +159,7 @@ impl Release {
     pub fn lookup_url(&self, file: &str) -> Option<String> {
         let info = self.files.get(file)?;
 
-        if self
-            .acquire_by_hash
-            .is_some_and(|by_hash| by_hash == AcquireByHash::Yes)
-        {
+        if self.acquire_by_hash == Some(AcquireByHash::Yes) {
             file.rsplit_once('/').map(|(component, _)| {
                 format!("{}/by-hash/SHA256/{}", component, hex::encode(info.hash))
             })
