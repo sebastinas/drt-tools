@@ -239,6 +239,28 @@ fn empty_release() -> release::Release {
     }
 }
 
+pub(crate) trait CachePaths {
+    fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
+    where
+        P: AsRef<Path>;
+
+    fn get_package_path(
+        &self,
+        suite: SuiteOrCodename,
+        architecture: Architecture,
+    ) -> Result<PathBuf> {
+        let suite: Suite = suite.into();
+        self.get_cache_path(format!("Packages_{suite}_{architecture}"))
+    }
+
+    fn get_package_paths(&self, suite: SuiteOrCodename, with_all: bool) -> Result<Vec<PathBuf>>;
+
+    fn get_source_path(&self, suite: SuiteOrCodename) -> Result<PathBuf> {
+        let suite: Suite = suite.into();
+        self.get_cache_path(format!("Sources_{suite}"))
+    }
+}
+
 pub(crate) struct Cache {
     base_directory: BaseDirectories,
     downloader: Downloader,
@@ -427,13 +449,6 @@ impl Cache {
         state
     }
 
-    pub fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(self.base_directory.place_cache_file(path)?)
-    }
-
     pub fn get_cache_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
     where
         P: AsRef<Path>,
@@ -459,20 +474,26 @@ impl Cache {
         )?))
     }
 
-    pub fn get_package_path(
-        &self,
-        suite: SuiteOrCodename,
-        architecture: Architecture,
-    ) -> Result<PathBuf> {
-        let suite: Suite = suite.into();
-        self.get_cache_path(format!("Packages_{suite}_{architecture}"))
+    // Architectures for a suite (including Arch: all)
+    pub fn architectures_for_suite(&self, suite: Suite) -> Vec<Architecture> {
+        match suite {
+            Suite::Unstable | Suite::Experimental => self.unstable.architectures.clone(),
+            Suite::Testing(_) => self.testing.architectures.clone(),
+            Suite::Stable(_) => self.stable.architectures.clone(),
+            Suite::OldStable(_) => self.oldstable.architectures.clone(),
+        }
+    }
+}
+
+impl CachePaths for Cache {
+    fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(self.base_directory.place_cache_file(path)?)
     }
 
-    pub fn get_package_paths(
-        &self,
-        suite: SuiteOrCodename,
-        with_all: bool,
-    ) -> Result<Vec<PathBuf>> {
+    fn get_package_paths(&self, suite: SuiteOrCodename, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
         for architecture in self.architectures_for_suite(suite.into()) {
             if !with_all && architecture == Architecture::All {
@@ -482,21 +503,6 @@ impl Cache {
             all_paths.push(self.get_package_path(suite, architecture)?);
         }
         Ok(all_paths)
-    }
-
-    pub fn get_source_path(&self, suite: SuiteOrCodename) -> Result<PathBuf> {
-        let suite: Suite = suite.into();
-        self.get_cache_path(format!("Sources_{suite}"))
-    }
-
-    // Architectures for a suite (including Arch: all)
-    pub fn architectures_for_suite(&self, suite: Suite) -> Vec<Architecture> {
-        match suite {
-            Suite::Unstable | Suite::Experimental => self.unstable.architectures.clone(),
-            Suite::Testing(_) => self.testing.architectures.clone(),
-            Suite::Stable(_) => self.stable.architectures.clone(),
-            Suite::OldStable(_) => self.oldstable.architectures.clone(),
-        }
     }
 }
 

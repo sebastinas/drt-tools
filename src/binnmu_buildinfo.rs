@@ -24,7 +24,7 @@ use indicatif::{ProgressBar, ProgressIterator};
 use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, BinNMUBuildinfoOptions},
-    config::{Cache, CacheEntries, default_progress_style, default_progress_template},
+    config::{Cache, CacheEntries, CachePaths, default_progress_style, default_progress_template},
     source_packages::{BinaryPackage, SourcePackages},
     udd_bugs::UDDBugs,
     utils::execute_wb_commands,

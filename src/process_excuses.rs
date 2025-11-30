@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, ProcessExcusesOptions},
-    config::{self, CacheEntries, default_progress_template},
+    config::{self, CacheEntries, CachePaths, default_progress_template},
     source_packages::SourcePackages,
     utils::execute_wb_commands,
 };

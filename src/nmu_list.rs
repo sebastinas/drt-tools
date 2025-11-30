@@ -18,7 +18,7 @@ use log::{debug, warn};
 use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, NMUListOptions},
-    config::{self, CacheEntries},
+    config::{self, CacheEntries, CachePaths},
     source_packages::SourcePackages,
     udd_bugs::UDDBugs,
     utils::execute_wb_commands,

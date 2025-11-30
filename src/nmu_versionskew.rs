@@ -26,7 +26,8 @@ use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, NMUVersionSkewOptions},
     config::{
-        Cache, CacheEntries, default_progress_style, default_progress_template, source_skip_binnmu,
+        Cache, CacheEntries, CachePaths, default_progress_style, default_progress_template,
+        source_skip_binnmu,
     },
     source_packages,
     udd_bugs::UDDBugs,

@@ -28,7 +28,8 @@ use crate::{
     AsyncCommand, Downloads,
     cli::{BaseOptions, Field, NMUOutdatedBuiltUsingOptions},
     config::{
-        Cache, CacheEntries, default_progress_style, default_progress_template, source_skip_binnmu,
+        Cache, CacheEntries, CachePaths, default_progress_style, default_progress_template,
+        source_skip_binnmu,
     },
     source_packages::{self, SourcePackages},
     udd_bugs::UDDBugs,
@@ -205,15 +206,25 @@ impl Iterator for BinaryPackageParser<'_> {
 
 impl FusedIterator for BinaryPackageParser<'_> {}
 
-pub(crate) struct NMUOutdatedBuiltUsing<'a> {
-    cache: &'a Cache,
+trait LoadUDDBugs {
+    fn load_bugs(&self, suite: SuiteOrCodename) -> Result<UDDBugs>;
+}
+
+pub(crate) struct NMUOutdatedBuiltUsing<'a, C>
+where
+    C: CachePaths,
+{
+    cache: &'a C,
     base_options: &'a BaseOptions,
     options: NMUOutdatedBuiltUsingOptions,
 }
 
-impl<'a> NMUOutdatedBuiltUsing<'a> {
+impl<'a, C> NMUOutdatedBuiltUsing<'a, C>
+where
+    C: CachePaths,
+{
     pub(crate) fn new(
-        cache: &'a Cache,
+        cache: &'a C,
         base_options: &'a BaseOptions,
         options: NMUOutdatedBuiltUsingOptions,
     ) -> Self {
@@ -238,12 +249,11 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         SourcePackages::new_with_source(&sources?, &paths?)
     }
 
-    fn load_eso(
-        &self,
-        field: Field,
-        suite: SuiteOrCodename,
-    ) -> Result<Vec<CombinedOutdatedPackage>> {
-        let ftbfs_bugs = UDDBugs::load_for_codename(self.cache, suite)?;
+    fn load_eso(&self, field: Field, suite: SuiteOrCodename) -> Result<Vec<CombinedOutdatedPackage>>
+    where
+        Self: LoadUDDBugs,
+    {
+        let ftbfs_bugs = self.load_bugs(suite)?;
         let source_packages = self.load_sources_for_suites(&self.expand_suite_for_sources())?;
 
         // collect outdated binary packages
@@ -381,7 +391,10 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
         }
     }
 
-    fn generate_wb_commands(&self) -> Result<Vec<WBCommand>> {
+    fn generate_wb_commands(&self) -> Result<Vec<WBCommand>>
+    where
+        Self: LoadUDDBugs,
+    {
         let eso_sources = self.load_eso(self.options.field, self.options.suite)?;
 
         let mut wb_commands = Vec::new();
@@ -410,15 +423,21 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
     }
 }
 
+impl LoadUDDBugs for NMUOutdatedBuiltUsing<'_, Cache> {
+    fn load_bugs(&self, suite: SuiteOrCodename) -> Result<UDDBugs> {
+        UDDBugs::load_for_codename(self.cache, suite)
+    }
+}
+
 #[async_trait]
-impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
+impl AsyncCommand for NMUOutdatedBuiltUsing<'_, Cache> {
     async fn run(&self) -> Result<()> {
         let wb_commands = self.generate_wb_commands()?;
         execute_wb_commands(wb_commands, self.base_options).await
     }
 }
 
-impl Downloads for NMUOutdatedBuiltUsing<'_> {
+impl Downloads for NMUOutdatedBuiltUsing<'_, Cache> {
     fn downloads(&self) -> Vec<CacheEntries> {
         vec![CacheEntries::FTBFSBugs(self.options.suite)]
     }
@@ -438,6 +457,11 @@ impl Downloads for NMUOutdatedBuiltUsing<'_> {
 
 #[cfg(test)]
 mod test {
+    use std::{fs::File, io::Write, path::PathBuf};
+
+    use clap_verbosity_flag::Verbosity;
+    use tempdir::TempDir;
+
     use super::*;
 
     #[test]
@@ -447,5 +471,399 @@ mod test {
         let dependency = split_dependency("rustc (= 1.70.0+dfsg1-5)").unwrap();
         assert_eq!(dependency.package, "rustc");
         assert_eq!(dependency.version, "1.70.0+dfsg1-5");
+    }
+
+    struct TestCache {
+        base_dir: PathBuf,
+    }
+
+    impl CachePaths for TestCache {
+        fn get_cache_path<P>(&self, path: P) -> Result<PathBuf>
+        where
+            P: AsRef<Path>,
+        {
+            Ok(self.base_dir.join(path))
+        }
+
+        fn get_package_paths(&self, suite: SuiteOrCodename, _: bool) -> Result<Vec<PathBuf>> {
+            Ok(vec![self.get_package_path(suite, Architecture::Amd64)?])
+        }
+    }
+
+    impl LoadUDDBugs for NMUOutdatedBuiltUsing<'_, TestCache> {
+        fn load_bugs(&self, _: SuiteOrCodename) -> Result<UDDBugs> {
+            Ok(UDDBugs::default())
+        }
+    }
+
+    #[test]
+    fn base() {
+        let base_options = BaseOptions {
+            force_download: false,
+            force_processing: true,
+            dry_run: true,
+            verbose: Verbosity::new(0, 1),
+            buildd: String::new(),
+            mirror: String::new(),
+        };
+        let options = NMUOutdatedBuiltUsingOptions {
+            build_priority: 0,
+            suite: SuiteOrCodename::UNSTABLE,
+            field: Field::BuiltUsing,
+        };
+
+        let temp_dir = TempDir::new("nmu-eso").unwrap();
+        {
+            let mut packages =
+                File::create(temp_dir.path().join("Packages_unstable_amd64")).unwrap();
+            writeln!(
+                packages,
+                r"Package: acmetool
+Source: acmetool (0.2.2-3)
+Version: 0.2.2-3+b1
+Installed-Size: 11859
+Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libc6 (>= 2.34), libcap2 (>= 1:2.10)
+Recommends: dialog
+Description: automatic certificate acquisition tool for Let's Encrypt
+Homepage: https://hlandau.github.io/acmetool
+Built-Using: golang-1.24 (= 1.24.4-1)
+Description-md5: 3e5e145ae880b97f3b6e825daf35ce32
+Section: web
+Priority: optional
+Filename: pool/main/a/acmetool/acmetool_0.2.2-3+b1_amd64.deb
+Size: 3629452
+MD5sum: 10ca3f82368c7d166cbac9ecc6db9117
+SHA256: 8f8dc696ef02e3b9cf571ff15a7a2e5086c0c10e8088f2f11e20c442fac5d446
+"
+            )
+            .unwrap();
+            packages.flush().unwrap();
+
+            let mut sources = File::create(temp_dir.path().join("Sources_unstable")).unwrap();
+            writeln!(
+                sources,
+                r"Package: acmetool
+Binary: acmetool
+Version: 0.2.2-3
+Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
+Uploaders: Peter Colberg <peter@colberg.org>,
+Build-Depends: debhelper-compat (= 13), dh-apache2, dh-golang
+Architecture: any
+Standards-Version: 4.6.2
+Format: 3.0 (quilt)
+Files:
+ 1481ab6356d2e63bf378fe3f96cf5b8e 2697 acmetool_0.2.2-3.dsc
+ 9d21da41c887cb669479b4eb3b1e08b7 121583 acmetool_0.2.2.orig.tar.gz
+ 58040de8ffdf39685ce25f468773990c 10012 acmetool_0.2.2-3.debian.tar.xz
+Vcs-Browser: https://salsa.debian.org/go-team/packages/acmetool
+Vcs-Git: https://salsa.debian.org/go-team/packages/acmetool.git
+Checksums-Sha256:
+ 15a995d1879ac58233a9fbff565451c3883342fe4361ee2046b2ca765f6aeaef 2697 acmetool_0.2.2-3.dsc
+ 5671a4ff00c007dd00883c601c0a64ab9c4dc1ca4fa47e5801b69b015d43dfb3 121583 acmetool_0.2.2.orig.tar.gz
+ cbf53556dbf1cc042e5f3f5633d2b93f49da29210482c563c3286cdc1594e455 10012 acmetool_0.2.2-3.debian.tar.xz
+Homepage: https://hlandau.github.io/acmetool
+Build-Depends-Arch: golang-any, golang-github-coreos-go-systemd-dev, golang-github-gofrs-uuid-dev, golang-github-hlandau-dexlogconfig-dev, golang-github-hlandau-goutils-dev, golang-github-hlandau-xlog-dev, golang-github-jmhodges-clock-dev, golang-github-mitchellh-go-wordwrap-dev, golang-golang-x-net-dev, golang-gopkg-alecthomas-kingpin.v2-dev, golang-gopkg-cheggaaa-pb.v1-dev, golang-gopkg-hlandau-acmeapi.v2-dev, golang-gopkg-hlandau-easyconfig.v1-dev, golang-gopkg-hlandau-service.v2-dev, golang-gopkg-hlandau-svcutils.v1-dev, golang-gopkg-square-go-jose.v1-dev, golang-gopkg-tylerb-graceful.v1-dev, golang-gopkg-yaml.v2-dev | golang-yaml.v2-dev, libcap-dev [linux-any]
+Go-Import-Path: github.com/hlandau/acmetool
+Package-List: 
+ acmetool deb web optional arch=any
+Testsuite: autopkgtest-pkg-go
+Directory: pool/main/a/acmetool
+Priority: optional
+Section: misc
+
+Package: golang-1.24
+Binary: golang-1.24-go, golang-1.24-src, golang-1.24-doc, golang-1.24
+Version: 1.24.4-1
+Maintainer: Debian Go Compiler Team <team+go-compiler@tracker.debian.org>
+Uploaders: Michael Stapelberg <stapelberg@debian.org>, Paul Tagliamonte <paultag@debian.org>, Tianon Gravi <tianon@debian.org>, Michael Hudson-Doyle <mwhudson@debian.org>, Anthony Fok <foka@debian.org>
+Build-Depends: debhelper-compat (= 13), binutils-gold [arm64], golang-1.24-go | golang-1.23-go | golang-1.22-go, netbase
+Architecture: amd64 arm64 armel armhf i386 loong64 mips mips64el mipsel ppc64 ppc64el riscv64 s390x all
+Standards-Version: 4.6.2
+Format: 3.0 (quilt)
+Files:
+ ad3a8c72ddf40d2134bda9c4177a84cf 2877 golang-1.24_1.24.4-1.dsc
+ 38d0b0a73d5b1b174e3a23be17fa10a0 30788576 golang-1.24_1.24.4.orig.tar.gz
+ 07c6573541a198828d75a04250c86946 833 golang-1.24_1.24.4.orig.tar.gz.asc
+ d00ba8b8423714cb16788465514da2a1 42192 golang-1.24_1.24.4-1.debian.tar.xz
+Vcs-Browser: https://salsa.debian.org/go-team/compiler/golang/tree/golang-1.24
+Vcs-Git: https://salsa.debian.org/go-team/compiler/golang.git -b golang-1.24
+Checksums-Sha256:
+ f9991da1d502c1dd278f236f5cb960b7f0113e68cfe3739427aeb58853afbde3 2877 golang-1.24_1.24.4-1.dsc
+ 5a86a83a31f9fa81490b8c5420ac384fd3d95a3e71fba665c7b3f95d1dfef2b4 30788576 golang-1.24_1.24.4.orig.tar.gz
+ bcc618ca95f9da9870907c265f9e12aef2ca6e37612a8d15d37ecbc828c420f6 833 golang-1.24_1.24.4.orig.tar.gz.asc
+ b613c9f5f2a4179ea618854e4310422231f115bab97cc5c18707a720d612da32 42192 golang-1.24_1.24.4-1.debian.tar.xz
+Homepage: https://go.dev/
+Package-List: 
+ golang-1.24 deb golang optional arch=all
+ golang-1.24-doc deb doc optional arch=all
+ golang-1.24-go deb golang optional arch=amd64,arm64,armel,armhf,i386,loong64,mips,mips64el,mipsel,ppc64,ppc64el,riscv64,s390x
+ golang-1.24-src deb golang optional arch=all
+Testsuite: autopkgtest
+Testsuite-Triggers: build-essential
+Extra-Source-Only: yes
+Directory: pool/main/g/golang-1.24
+Priority: optional
+Section: misc
+
+Package: golang-1.24
+Binary: golang-1.24-go, golang-1.24-src, golang-1.24-doc, golang-1.24
+Version: 1.24.9-1
+Maintainer: Debian Go Compiler Team <team+go-compiler@tracker.debian.org>
+Uploaders: Michael Stapelberg <stapelberg@debian.org>, Paul Tagliamonte <paultag@debian.org>, Tianon Gravi <tianon@debian.org>, Michael Hudson-Doyle <mwhudson@debian.org>, Anthony Fok <foka@debian.org>
+Build-Depends: debhelper-compat (= 13), binutils-gold [arm64], golang-1.24-go:native | golang-1.23-go:native | golang-1.22-go:native, netbase
+Architecture: amd64 arm64 armel armhf i386 loong64 mips mips64el mipsel ppc64 ppc64el riscv64 s390x all
+Standards-Version: 4.6.2
+Format: 3.0 (quilt)
+Files:
+ 1892eeaec73cba64c144ed56a4dbe42a 2923 golang-1.24_1.24.9-1.dsc
+ 5c2c3969fddd1b8d320dc06fcf705732 30800154 golang-1.24_1.24.9.orig.tar.gz
+ 96b578fe4cd5c58b53b71743be91641f 833 golang-1.24_1.24.9.orig.tar.gz.asc
+ 99c340f1841007eb4695ebedcb8489e2 44808 golang-1.24_1.24.9-1.debian.tar.xz
+Vcs-Browser: https://salsa.debian.org/go-team/compiler/golang/tree/golang-1.24
+Vcs-Git: https://salsa.debian.org/go-team/compiler/golang.git -b golang-1.24
+Checksums-Sha256:
+ 067677ffb7c04162ae5412ccaac2a31d6e60716386f55652fb1c8a18c8e121d0 2923 golang-1.24_1.24.9-1.dsc
+ c72f81ba54fe00efe7f3e7499d400979246881b13b775e9a9bb85541c11be695 30800154 golang-1.24_1.24.9.orig.tar.gz
+ 23fbe2d3a664451d901aa3681889ec3603c5a65b1dfd8655119e08d592433904 833 golang-1.24_1.24.9.orig.tar.gz.asc
+ d21ee50c57bb1a759568d26662bc310249e643261ea00fc979362d903bdc10bd 44808 golang-1.24_1.24.9-1.debian.tar.xz
+Homepage: https://go.dev/
+Package-List: 
+ golang-1.24 deb golang optional arch=all
+ golang-1.24-doc deb doc optional arch=all
+ golang-1.24-go deb golang optional arch=amd64,arm64,armel,armhf,i386,loong64,mips,mips64el,mipsel,ppc64,ppc64el,riscv64,s390x
+ golang-1.24-src deb golang optional arch=all
+Testsuite: autopkgtest
+Testsuite-Triggers: build-essential
+Directory: pool/main/g/golang-1.24
+Priority: optional
+Section: misc
+"
+            ).unwrap();
+            sources.flush().unwrap();
+        }
+
+        let cache = TestCache {
+            base_dir: temp_dir.path().into(),
+        };
+
+        let nmu_eso = NMUOutdatedBuiltUsing::new(&cache, &base_options, options);
+        let wb_commands = nmu_eso.generate_wb_commands().unwrap();
+        assert_eq!(wb_commands.len(), 1);
+    }
+
+    #[test]
+    fn only_eso() {
+        let base_options = BaseOptions {
+            force_download: false,
+            force_processing: true,
+            dry_run: true,
+            verbose: Verbosity::new(0, 1),
+            buildd: String::new(),
+            mirror: String::new(),
+        };
+        let options = NMUOutdatedBuiltUsingOptions {
+            build_priority: 0,
+            suite: SuiteOrCodename::UNSTABLE,
+            field: Field::BuiltUsing,
+        };
+
+        let temp_dir = TempDir::new("nmu-eso").unwrap();
+        {
+            let mut packages =
+                File::create(temp_dir.path().join("Packages_unstable_amd64")).unwrap();
+            writeln!(
+                packages,
+                r"Package: acmetool
+Source: acmetool (0.2.2-3)
+Version: 0.2.2-3+b1
+Installed-Size: 11859
+Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libc6 (>= 2.34), libcap2 (>= 1:2.10)
+Recommends: dialog
+Description: automatic certificate acquisition tool for Let's Encrypt
+Homepage: https://hlandau.github.io/acmetool
+Built-Using: golang-1.24 (= 1.24.4-1)
+Description-md5: 3e5e145ae880b97f3b6e825daf35ce32
+Section: web
+Priority: optional
+Filename: pool/main/a/acmetool/acmetool_0.2.2-3+b1_amd64.deb
+Size: 3629452
+MD5sum: 10ca3f82368c7d166cbac9ecc6db9117
+SHA256: 8f8dc696ef02e3b9cf571ff15a7a2e5086c0c10e8088f2f11e20c442fac5d446
+"
+            )
+            .unwrap();
+            packages.flush().unwrap();
+
+            let mut sources = File::create(temp_dir.path().join("Sources_unstable")).unwrap();
+            writeln!(
+                sources,
+                r"Package: acmetool
+Binary: acmetool
+Version: 0.2.2-3
+Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
+Uploaders: Peter Colberg <peter@colberg.org>,
+Build-Depends: debhelper-compat (= 13), dh-apache2, dh-golang
+Architecture: any
+Standards-Version: 4.6.2
+Format: 3.0 (quilt)
+Files:
+ 1481ab6356d2e63bf378fe3f96cf5b8e 2697 acmetool_0.2.2-3.dsc
+ 9d21da41c887cb669479b4eb3b1e08b7 121583 acmetool_0.2.2.orig.tar.gz
+ 58040de8ffdf39685ce25f468773990c 10012 acmetool_0.2.2-3.debian.tar.xz
+Vcs-Browser: https://salsa.debian.org/go-team/packages/acmetool
+Vcs-Git: https://salsa.debian.org/go-team/packages/acmetool.git
+Checksums-Sha256:
+ 15a995d1879ac58233a9fbff565451c3883342fe4361ee2046b2ca765f6aeaef 2697 acmetool_0.2.2-3.dsc
+ 5671a4ff00c007dd00883c601c0a64ab9c4dc1ca4fa47e5801b69b015d43dfb3 121583 acmetool_0.2.2.orig.tar.gz
+ cbf53556dbf1cc042e5f3f5633d2b93f49da29210482c563c3286cdc1594e455 10012 acmetool_0.2.2-3.debian.tar.xz
+Homepage: https://hlandau.github.io/acmetool
+Build-Depends-Arch: golang-any, golang-github-coreos-go-systemd-dev, golang-github-gofrs-uuid-dev, golang-github-hlandau-dexlogconfig-dev, golang-github-hlandau-goutils-dev, golang-github-hlandau-xlog-dev, golang-github-jmhodges-clock-dev, golang-github-mitchellh-go-wordwrap-dev, golang-golang-x-net-dev, golang-gopkg-alecthomas-kingpin.v2-dev, golang-gopkg-cheggaaa-pb.v1-dev, golang-gopkg-hlandau-acmeapi.v2-dev, golang-gopkg-hlandau-easyconfig.v1-dev, golang-gopkg-hlandau-service.v2-dev, golang-gopkg-hlandau-svcutils.v1-dev, golang-gopkg-square-go-jose.v1-dev, golang-gopkg-tylerb-graceful.v1-dev, golang-gopkg-yaml.v2-dev | golang-yaml.v2-dev, libcap-dev [linux-any]
+Go-Import-Path: github.com/hlandau/acmetool
+Package-List: 
+ acmetool deb web optional arch=any
+Testsuite: autopkgtest-pkg-go
+Directory: pool/main/a/acmetool
+Priority: optional
+Section: misc
+
+Package: golang-1.24
+Binary: golang-1.24-go, golang-1.24-src, golang-1.24-doc, golang-1.24
+Version: 1.24.4-1
+Maintainer: Debian Go Compiler Team <team+go-compiler@tracker.debian.org>
+Uploaders: Michael Stapelberg <stapelberg@debian.org>, Paul Tagliamonte <paultag@debian.org>, Tianon Gravi <tianon@debian.org>, Michael Hudson-Doyle <mwhudson@debian.org>, Anthony Fok <foka@debian.org>
+Build-Depends: debhelper-compat (= 13), binutils-gold [arm64], golang-1.24-go | golang-1.23-go | golang-1.22-go, netbase
+Architecture: amd64 arm64 armel armhf i386 loong64 mips mips64el mipsel ppc64 ppc64el riscv64 s390x all
+Standards-Version: 4.6.2
+Format: 3.0 (quilt)
+Files:
+ ad3a8c72ddf40d2134bda9c4177a84cf 2877 golang-1.24_1.24.4-1.dsc
+ 38d0b0a73d5b1b174e3a23be17fa10a0 30788576 golang-1.24_1.24.4.orig.tar.gz
+ 07c6573541a198828d75a04250c86946 833 golang-1.24_1.24.4.orig.tar.gz.asc
+ d00ba8b8423714cb16788465514da2a1 42192 golang-1.24_1.24.4-1.debian.tar.xz
+Vcs-Browser: https://salsa.debian.org/go-team/compiler/golang/tree/golang-1.24
+Vcs-Git: https://salsa.debian.org/go-team/compiler/golang.git -b golang-1.24
+Checksums-Sha256:
+ f9991da1d502c1dd278f236f5cb960b7f0113e68cfe3739427aeb58853afbde3 2877 golang-1.24_1.24.4-1.dsc
+ 5a86a83a31f9fa81490b8c5420ac384fd3d95a3e71fba665c7b3f95d1dfef2b4 30788576 golang-1.24_1.24.4.orig.tar.gz
+ bcc618ca95f9da9870907c265f9e12aef2ca6e37612a8d15d37ecbc828c420f6 833 golang-1.24_1.24.4.orig.tar.gz.asc
+ b613c9f5f2a4179ea618854e4310422231f115bab97cc5c18707a720d612da32 42192 golang-1.24_1.24.4-1.debian.tar.xz
+Homepage: https://go.dev/
+Package-List: 
+ golang-1.24 deb golang optional arch=all
+ golang-1.24-doc deb doc optional arch=all
+ golang-1.24-go deb golang optional arch=amd64,arm64,armel,armhf,i386,loong64,mips,mips64el,mipsel,ppc64,ppc64el,riscv64,s390x
+ golang-1.24-src deb golang optional arch=all
+Testsuite: autopkgtest
+Testsuite-Triggers: build-essential
+Extra-Source-Only: yes
+Directory: pool/main/g/golang-1.24
+Priority: optional
+Section: misc
+"
+            ).unwrap();
+            sources.flush().unwrap();
+        }
+
+        let cache = TestCache {
+            base_dir: temp_dir.path().into(),
+        };
+
+        let nmu_eso = NMUOutdatedBuiltUsing::new(&cache, &base_options, options);
+        let wb_commands = nmu_eso.generate_wb_commands().unwrap();
+        assert_eq!(wb_commands.len(), 1);
+    }
+
+    #[test]
+    fn non_existing_source() {
+        let base_options = BaseOptions {
+            force_download: false,
+            force_processing: true,
+            dry_run: true,
+            verbose: Verbosity::new(0, 1),
+            buildd: String::new(),
+            mirror: String::new(),
+        };
+        let options = NMUOutdatedBuiltUsingOptions {
+            build_priority: 0,
+            suite: SuiteOrCodename::UNSTABLE,
+            field: Field::BuiltUsing,
+        };
+
+        let temp_dir = TempDir::new("nmu-eso").unwrap();
+        {
+            let mut packages =
+                File::create(temp_dir.path().join("Packages_unstable_amd64")).unwrap();
+            writeln!(
+                packages,
+                r"Package: acmetool
+Source: acmetool (0.2.2-3)
+Version: 0.2.2-3+b1
+Installed-Size: 11859
+Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libc6 (>= 2.34), libcap2 (>= 1:2.10)
+Recommends: dialog
+Description: automatic certificate acquisition tool for Let's Encrypt
+Homepage: https://hlandau.github.io/acmetool
+Built-Using: golang-1.24 (= 1.24.4-1)
+Description-md5: 3e5e145ae880b97f3b6e825daf35ce32
+Section: web
+Priority: optional
+Filename: pool/main/a/acmetool/acmetool_0.2.2-3+b1_amd64.deb
+Size: 3629452
+MD5sum: 10ca3f82368c7d166cbac9ecc6db9117
+SHA256: 8f8dc696ef02e3b9cf571ff15a7a2e5086c0c10e8088f2f11e20c442fac5d446
+"
+            )
+            .unwrap();
+            packages.flush().unwrap();
+
+            let mut sources = File::create(temp_dir.path().join("Sources_unstable")).unwrap();
+            writeln!(
+                sources,
+                r"Package: acmetool
+Binary: acmetool
+Version: 0.2.2-3
+Maintainer: Debian Go Packaging Team <pkg-go-maintainers@lists.alioth.debian.org>
+Uploaders: Peter Colberg <peter@colberg.org>,
+Build-Depends: debhelper-compat (= 13), dh-apache2, dh-golang
+Architecture: any
+Standards-Version: 4.6.2
+Format: 3.0 (quilt)
+Files:
+ 1481ab6356d2e63bf378fe3f96cf5b8e 2697 acmetool_0.2.2-3.dsc
+ 9d21da41c887cb669479b4eb3b1e08b7 121583 acmetool_0.2.2.orig.tar.gz
+ 58040de8ffdf39685ce25f468773990c 10012 acmetool_0.2.2-3.debian.tar.xz
+Vcs-Browser: https://salsa.debian.org/go-team/packages/acmetool
+Vcs-Git: https://salsa.debian.org/go-team/packages/acmetool.git
+Checksums-Sha256:
+ 15a995d1879ac58233a9fbff565451c3883342fe4361ee2046b2ca765f6aeaef 2697 acmetool_0.2.2-3.dsc
+ 5671a4ff00c007dd00883c601c0a64ab9c4dc1ca4fa47e5801b69b015d43dfb3 121583 acmetool_0.2.2.orig.tar.gz
+ cbf53556dbf1cc042e5f3f5633d2b93f49da29210482c563c3286cdc1594e455 10012 acmetool_0.2.2-3.debian.tar.xz
+Homepage: https://hlandau.github.io/acmetool
+Build-Depends-Arch: golang-any, golang-github-coreos-go-systemd-dev, golang-github-gofrs-uuid-dev, golang-github-hlandau-dexlogconfig-dev, golang-github-hlandau-goutils-dev, golang-github-hlandau-xlog-dev, golang-github-jmhodges-clock-dev, golang-github-mitchellh-go-wordwrap-dev, golang-golang-x-net-dev, golang-gopkg-alecthomas-kingpin.v2-dev, golang-gopkg-cheggaaa-pb.v1-dev, golang-gopkg-hlandau-acmeapi.v2-dev, golang-gopkg-hlandau-easyconfig.v1-dev, golang-gopkg-hlandau-service.v2-dev, golang-gopkg-hlandau-svcutils.v1-dev, golang-gopkg-square-go-jose.v1-dev, golang-gopkg-tylerb-graceful.v1-dev, golang-gopkg-yaml.v2-dev | golang-yaml.v2-dev, libcap-dev [linux-any]
+Go-Import-Path: github.com/hlandau/acmetool
+Package-List: 
+ acmetool deb web optional arch=any
+Testsuite: autopkgtest-pkg-go
+Directory: pool/main/a/acmetool
+Priority: optional
+Section: misc
+"
+            ).unwrap();
+            sources.flush().unwrap();
+        }
+
+        let cache = TestCache {
+            base_dir: temp_dir.path().into(),
+        };
+
+        let nmu_eso = NMUOutdatedBuiltUsing::new(&cache, &base_options, options);
+        let wb_commands = nmu_eso.generate_wb_commands().unwrap();
+        assert_eq!(wb_commands.len(), 1);
     }
 }
