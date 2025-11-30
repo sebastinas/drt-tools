@@ -155,9 +155,10 @@ pub struct NMUOutdatedBuiltUsingOptions {
     /// Select the binary package field to check for outdated information
     ///
     /// By default, the `Built-Using` field is checked. Other supported values
-    /// are `Static-Built-Using` and `X-Cargo-Built-Using`.
-    #[clap(long, default_value_t = Field::BuiltUsing)]
-    pub field: Field,
+    /// are `Static-Built-Using` and `X-Cargo-Built-Using`. This option can be
+    /// specfied multiple times to check several fields at the same time.
+    #[clap(long)]
+    pub field: Vec<Field>,
 }
 
 #[derive(Debug, Parser)]

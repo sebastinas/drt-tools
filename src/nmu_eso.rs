@@ -97,13 +97,13 @@ fn split_dependency(dependency: &str) -> Option<VersionedPackage> {
 }
 
 struct BinaryPackageParser<'a> {
-    field: Field,
+    fields: &'a [Field],
     iterator: ProgressBarIter<IntoIter<BinaryPackage>>,
     sources: &'a SourcePackages,
 }
 
 impl<'a> BinaryPackageParser<'a> {
-    fn new<P>(field: Field, sources: &'a SourcePackages, path: P) -> Result<Self>
+    fn new<P>(fields: &'a [Field], sources: &'a SourcePackages, path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -114,7 +114,7 @@ impl<'a> BinaryPackageParser<'a> {
         pb.set_message(format!("Processing {}", path.as_ref().display()));
         // collect all sources with arch dependent binaries having Built-Using set and their Built-Using fields refer to ESO sources
         Ok(Self {
-            field,
+            fields,
             iterator: binary_packages.into_iter().progress_with(pb),
             sources,
         })
@@ -136,53 +136,57 @@ impl Iterator for BinaryPackageParser<'_> {
             if binary_package.architecture == Architecture::All {
                 continue;
             }
-            // skip packages without Built-Using
-            let Some(ref built_using) = (match self.field {
-                Field::BuiltUsing => binary_package.built_using,
-                Field::StaticBuiltUsing => binary_package.static_built_using,
-                Field::XCargoBuiltUsing => binary_package.x_cargo_built_using,
-            }) else {
-                continue;
-            };
 
             let source_package = binary_package.package.source_package();
+            let mut built_using_set = HashSet::new();
+            for field in self.fields {
+                // skip packages without Built-Using
+                let Some(built_using) = (match field {
+                    Field::BuiltUsing => &binary_package.built_using,
+                    Field::StaticBuiltUsing => &binary_package.static_built_using,
+                    Field::XCargoBuiltUsing => &binary_package.x_cargo_built_using,
+                }) else {
+                    continue;
+                };
 
-            // remove trailing spaces found in X-Cargo-Built-Using
-            let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
-            // remove trailing commas found in X-Cargo-Built-Using
-            let built_using = built_using.strip_suffix(',').unwrap_or(built_using);
+                // remove trailing spaces found in X-Cargo-Built-Using
+                let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
+                // remove trailing commas found in X-Cargo-Built-Using
+                let built_using = built_using.strip_suffix(',').unwrap_or(built_using);
 
-            let built_using: HashSet<_> = built_using
-                .split(", ")
-                .filter_map(|dependency| {
-                    let split = split_dependency(dependency);
-                    if split.is_none() {
-                        warn!(
-                            "Package '{}' contains invalid dependency in {}: {}",
-                            binary_package.package.package, self.field, dependency
-                        );
-                    }
-                    split
-                })
-                .filter(|source| {
-                    self.sources
-                        .version(&source.package)
-                        .map(|current_version| source.version < *current_version)
-                        .unwrap_or_else(|| {
-                            // This can happen with Static-Built-Using, but never with Built-Using.
-                            trace!(
-                                "Package '{}' refers to non-existing source package '{}'.",
-                                binary_package.package.package, source.package
+                let built_using: HashSet<_> = built_using
+                    .split(", ")
+                    .filter_map(|dependency| {
+                        let split = split_dependency(dependency);
+                        if split.is_none() {
+                            warn!(
+                                "Package '{}' contains invalid dependency in {}: {}",
+                                binary_package.package.package, field, dependency
                             );
-                            true
-                        })
-                })
-                .collect();
+                        }
+                        split
+                    })
+                    .filter(|source| {
+                        self.sources
+                            .version(&source.package)
+                            .map(|current_version| source.version < *current_version)
+                            .unwrap_or_else(|| {
+                                // This can happen with Static-Built-Using, but never with Built-Using.
+                                trace!(
+                                    "Package '{}' refers to non-existing source package '{}'.",
+                                    binary_package.package.package, source.package
+                                );
+                                true
+                            })
+                    })
+                    .collect();
+                built_using_set = built_using_set.union(&built_using).cloned().collect();
+            }
             // all packages in Built-Using are up to date
-            if built_using.is_empty() {
+            if built_using_set.is_empty() {
                 trace!(
-                    "Skipping {}: all dependencies in {} are up-to-date.",
-                    source_package.package, self.field
+                    "Skipping {}: all dependencies are up-to-date.",
+                    source_package.package
                 );
                 continue;
             }
@@ -195,7 +199,7 @@ impl Iterator for BinaryPackageParser<'_> {
             };
             return Some(OutdatedSourcePackage {
                 source: source_package,
-                built_using,
+                built_using: built_using_set,
                 architecture,
             });
         }
@@ -249,7 +253,11 @@ where
         SourcePackages::new_with_source(&sources?, &paths?)
     }
 
-    fn load_eso(&self, field: Field, suite: SuiteOrCodename) -> Result<Vec<CombinedOutdatedPackage>>
+    fn load_eso(
+        &self,
+        fields: &[Field],
+        suite: SuiteOrCodename,
+    ) -> Result<Vec<CombinedOutdatedPackage>>
     where
         Self: LoadUDDBugs,
     {
@@ -265,7 +273,7 @@ where
                     source,
                     built_using: dependencies,
                     architecture,
-                } in BinaryPackageParser::new(field, &source_packages, path)?
+                } in BinaryPackageParser::new(fields, &source_packages, path)?
                 {
                     // skip some packages that make no sense to binNMU
                     if source_skip_binnmu(source.package.as_ref()) {
@@ -395,7 +403,13 @@ where
     where
         Self: LoadUDDBugs,
     {
-        let eso_sources = self.load_eso(self.options.field, self.options.suite)?;
+        let fields = if self.options.field.is_empty() {
+            vec![Field::BuiltUsing]
+        } else {
+            self.options.field.clone()
+        };
+        let display_field = fields.iter().join("/");
+        let eso_sources = self.load_eso(&fields, self.options.suite)?;
 
         let mut wb_commands = Vec::new();
         for outdated_package in eso_sources {
@@ -406,7 +420,7 @@ where
 
             let message = format!(
                 "Rebuild for outdated {} ({})",
-                self.options.field,
+                display_field,
                 outdated_package
                     .outdated_dependencies
                     .into_iter()
@@ -509,7 +523,7 @@ mod test {
         let options = NMUOutdatedBuiltUsingOptions {
             build_priority: 0,
             suite: SuiteOrCodename::UNSTABLE,
-            field: Field::BuiltUsing,
+            field: vec![Field::BuiltUsing],
         };
 
         let temp_dir = TempDir::new("nmu-eso").unwrap();
@@ -666,7 +680,7 @@ Section: misc
         let options = NMUOutdatedBuiltUsingOptions {
             build_priority: 0,
             suite: SuiteOrCodename::UNSTABLE,
-            field: Field::BuiltUsing,
+            field: vec![Field::BuiltUsing],
         };
 
         let temp_dir = TempDir::new("nmu-eso").unwrap();
@@ -790,7 +804,7 @@ Section: misc
         let options = NMUOutdatedBuiltUsingOptions {
             build_priority: 0,
             suite: SuiteOrCodename::UNSTABLE,
-            field: Field::BuiltUsing,
+            field: vec![Field::BuiltUsing],
         };
 
         let temp_dir = TempDir::new("nmu-eso").unwrap();
