@@ -16,7 +16,7 @@ use assorted_debian_utils::{
     package::{PackageName, VersionedPackage},
     rfc822_like,
     version::PackageVersion,
-    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommandBuilder},
+    wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
 };
 use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
@@ -380,11 +380,8 @@ impl<'a> NMUOutdatedBuiltUsing<'a> {
             }
         }
     }
-}
 
-#[async_trait]
-impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
-    async fn run(&self) -> Result<()> {
+    fn generate_wb_commands(&self) -> Result<Vec<WBCommand>> {
         let eso_sources = self.load_eso(self.options.field, self.options.suite)?;
 
         let mut wb_commands = Vec::new();
@@ -409,6 +406,14 @@ impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
             wb_commands.push(binnmu.build());
         }
 
+        Ok(wb_commands)
+    }
+}
+
+#[async_trait]
+impl AsyncCommand for NMUOutdatedBuiltUsing<'_> {
+    async fn run(&self) -> Result<()> {
+        let wb_commands = self.generate_wb_commands()?;
         execute_wb_commands(wb_commands, self.base_options).await
     }
 }
