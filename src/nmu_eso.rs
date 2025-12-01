@@ -514,7 +514,7 @@ mod test {
     use std::{fs::File, io::Write, path::PathBuf};
 
     use clap_verbosity_flag::Verbosity;
-    use tempdir::TempDir;
+    use tempfile::tempdir;
 
     use super::*;
 
@@ -566,7 +566,7 @@ mod test {
             field: vec![Field::BuiltUsing],
         };
 
-        let temp_dir = TempDir::new("nmu-eso").unwrap();
+        let temp_dir = tempdir().unwrap();
         {
             let mut packages =
                 File::create(temp_dir.path().join("Packages_unstable_amd64")).unwrap();
@@ -723,7 +723,7 @@ Section: misc
             field: vec![Field::BuiltUsing],
         };
 
-        let temp_dir = TempDir::new("nmu-eso").unwrap();
+        let temp_dir = tempdir().unwrap();
         {
             let mut packages =
                 File::create(temp_dir.path().join("Packages_unstable_amd64")).unwrap();
@@ -847,7 +847,7 @@ Section: misc
             field: vec![Field::BuiltUsing],
         };
 
-        let temp_dir = TempDir::new("nmu-eso").unwrap();
+        let temp_dir = tempdir().unwrap();
         {
             let mut packages =
                 File::create(temp_dir.path().join("Packages_unstable_amd64")).unwrap();

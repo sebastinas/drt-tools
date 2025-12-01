@@ -49,4 +49,4 @@ clap-verbosity-flag = "3"
 thiserror = "2"
 
 [dev-dependencies]
-tempdir = "0.3"
+tempfile = "3"
