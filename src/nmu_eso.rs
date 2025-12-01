@@ -581,7 +581,6 @@ Architecture: amd64
 Depends: libc6 (>= 2.34), libcap2 (>= 1:2.10)
 Recommends: dialog
 Description: automatic certificate acquisition tool for Let's Encrypt
-Homepage: https://hlandau.github.io/acmetool
 Built-Using: golang-1.24 (= 1.24.4-1)
 Description-md5: 3e5e145ae880b97f3b6e825daf35ce32
 Section: web
@@ -611,13 +610,10 @@ Files:
  1481ab6356d2e63bf378fe3f96cf5b8e 2697 acmetool_0.2.2-3.dsc
  9d21da41c887cb669479b4eb3b1e08b7 121583 acmetool_0.2.2.orig.tar.gz
  58040de8ffdf39685ce25f468773990c 10012 acmetool_0.2.2-3.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/packages/acmetool
-Vcs-Git: https://salsa.debian.org/go-team/packages/acmetool.git
 Checksums-Sha256:
  15a995d1879ac58233a9fbff565451c3883342fe4361ee2046b2ca765f6aeaef 2697 acmetool_0.2.2-3.dsc
  5671a4ff00c007dd00883c601c0a64ab9c4dc1ca4fa47e5801b69b015d43dfb3 121583 acmetool_0.2.2.orig.tar.gz
  cbf53556dbf1cc042e5f3f5633d2b93f49da29210482c563c3286cdc1594e455 10012 acmetool_0.2.2-3.debian.tar.xz
-Homepage: https://hlandau.github.io/acmetool
 Build-Depends-Arch: golang-any, golang-github-coreos-go-systemd-dev, golang-github-gofrs-uuid-dev, golang-github-hlandau-dexlogconfig-dev, golang-github-hlandau-goutils-dev, golang-github-hlandau-xlog-dev, golang-github-jmhodges-clock-dev, golang-github-mitchellh-go-wordwrap-dev, golang-golang-x-net-dev, golang-gopkg-alecthomas-kingpin.v2-dev, golang-gopkg-cheggaaa-pb.v1-dev, golang-gopkg-hlandau-acmeapi.v2-dev, golang-gopkg-hlandau-easyconfig.v1-dev, golang-gopkg-hlandau-service.v2-dev, golang-gopkg-hlandau-svcutils.v1-dev, golang-gopkg-square-go-jose.v1-dev, golang-gopkg-tylerb-graceful.v1-dev, golang-gopkg-yaml.v2-dev | golang-yaml.v2-dev, libcap-dev [linux-any]
 Go-Import-Path: github.com/hlandau/acmetool
 Package-List: 
@@ -641,14 +637,11 @@ Files:
  38d0b0a73d5b1b174e3a23be17fa10a0 30788576 golang-1.24_1.24.4.orig.tar.gz
  07c6573541a198828d75a04250c86946 833 golang-1.24_1.24.4.orig.tar.gz.asc
  d00ba8b8423714cb16788465514da2a1 42192 golang-1.24_1.24.4-1.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/compiler/golang/tree/golang-1.24
-Vcs-Git: https://salsa.debian.org/go-team/compiler/golang.git -b golang-1.24
 Checksums-Sha256:
  f9991da1d502c1dd278f236f5cb960b7f0113e68cfe3739427aeb58853afbde3 2877 golang-1.24_1.24.4-1.dsc
  5a86a83a31f9fa81490b8c5420ac384fd3d95a3e71fba665c7b3f95d1dfef2b4 30788576 golang-1.24_1.24.4.orig.tar.gz
  bcc618ca95f9da9870907c265f9e12aef2ca6e37612a8d15d37ecbc828c420f6 833 golang-1.24_1.24.4.orig.tar.gz.asc
  b613c9f5f2a4179ea618854e4310422231f115bab97cc5c18707a720d612da32 42192 golang-1.24_1.24.4-1.debian.tar.xz
-Homepage: https://go.dev/
 Package-List: 
  golang-1.24 deb golang optional arch=all
  golang-1.24-doc deb doc optional arch=all
@@ -675,14 +668,11 @@ Files:
  5c2c3969fddd1b8d320dc06fcf705732 30800154 golang-1.24_1.24.9.orig.tar.gz
  96b578fe4cd5c58b53b71743be91641f 833 golang-1.24_1.24.9.orig.tar.gz.asc
  99c340f1841007eb4695ebedcb8489e2 44808 golang-1.24_1.24.9-1.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/compiler/golang/tree/golang-1.24
-Vcs-Git: https://salsa.debian.org/go-team/compiler/golang.git -b golang-1.24
 Checksums-Sha256:
  067677ffb7c04162ae5412ccaac2a31d6e60716386f55652fb1c8a18c8e121d0 2923 golang-1.24_1.24.9-1.dsc
  c72f81ba54fe00efe7f3e7499d400979246881b13b775e9a9bb85541c11be695 30800154 golang-1.24_1.24.9.orig.tar.gz
  23fbe2d3a664451d901aa3681889ec3603c5a65b1dfd8655119e08d592433904 833 golang-1.24_1.24.9.orig.tar.gz.asc
  d21ee50c57bb1a759568d26662bc310249e643261ea00fc979362d903bdc10bd 44808 golang-1.24_1.24.9-1.debian.tar.xz
-Homepage: https://go.dev/
 Package-List: 
  golang-1.24 deb golang optional arch=all
  golang-1.24-doc deb doc optional arch=all
@@ -738,7 +728,6 @@ Architecture: amd64
 Depends: libc6 (>= 2.34), libcap2 (>= 1:2.10)
 Recommends: dialog
 Description: automatic certificate acquisition tool for Let's Encrypt
-Homepage: https://hlandau.github.io/acmetool
 Built-Using: golang-1.24 (= 1.24.4-1)
 Description-md5: 3e5e145ae880b97f3b6e825daf35ce32
 Section: web
@@ -768,13 +757,10 @@ Files:
  1481ab6356d2e63bf378fe3f96cf5b8e 2697 acmetool_0.2.2-3.dsc
  9d21da41c887cb669479b4eb3b1e08b7 121583 acmetool_0.2.2.orig.tar.gz
  58040de8ffdf39685ce25f468773990c 10012 acmetool_0.2.2-3.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/packages/acmetool
-Vcs-Git: https://salsa.debian.org/go-team/packages/acmetool.git
 Checksums-Sha256:
  15a995d1879ac58233a9fbff565451c3883342fe4361ee2046b2ca765f6aeaef 2697 acmetool_0.2.2-3.dsc
  5671a4ff00c007dd00883c601c0a64ab9c4dc1ca4fa47e5801b69b015d43dfb3 121583 acmetool_0.2.2.orig.tar.gz
  cbf53556dbf1cc042e5f3f5633d2b93f49da29210482c563c3286cdc1594e455 10012 acmetool_0.2.2-3.debian.tar.xz
-Homepage: https://hlandau.github.io/acmetool
 Build-Depends-Arch: golang-any, golang-github-coreos-go-systemd-dev, golang-github-gofrs-uuid-dev, golang-github-hlandau-dexlogconfig-dev, golang-github-hlandau-goutils-dev, golang-github-hlandau-xlog-dev, golang-github-jmhodges-clock-dev, golang-github-mitchellh-go-wordwrap-dev, golang-golang-x-net-dev, golang-gopkg-alecthomas-kingpin.v2-dev, golang-gopkg-cheggaaa-pb.v1-dev, golang-gopkg-hlandau-acmeapi.v2-dev, golang-gopkg-hlandau-easyconfig.v1-dev, golang-gopkg-hlandau-service.v2-dev, golang-gopkg-hlandau-svcutils.v1-dev, golang-gopkg-square-go-jose.v1-dev, golang-gopkg-tylerb-graceful.v1-dev, golang-gopkg-yaml.v2-dev | golang-yaml.v2-dev, libcap-dev [linux-any]
 Go-Import-Path: github.com/hlandau/acmetool
 Package-List: 
@@ -798,14 +784,11 @@ Files:
  38d0b0a73d5b1b174e3a23be17fa10a0 30788576 golang-1.24_1.24.4.orig.tar.gz
  07c6573541a198828d75a04250c86946 833 golang-1.24_1.24.4.orig.tar.gz.asc
  d00ba8b8423714cb16788465514da2a1 42192 golang-1.24_1.24.4-1.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/compiler/golang/tree/golang-1.24
-Vcs-Git: https://salsa.debian.org/go-team/compiler/golang.git -b golang-1.24
 Checksums-Sha256:
  f9991da1d502c1dd278f236f5cb960b7f0113e68cfe3739427aeb58853afbde3 2877 golang-1.24_1.24.4-1.dsc
  5a86a83a31f9fa81490b8c5420ac384fd3d95a3e71fba665c7b3f95d1dfef2b4 30788576 golang-1.24_1.24.4.orig.tar.gz
  bcc618ca95f9da9870907c265f9e12aef2ca6e37612a8d15d37ecbc828c420f6 833 golang-1.24_1.24.4.orig.tar.gz.asc
  b613c9f5f2a4179ea618854e4310422231f115bab97cc5c18707a720d612da32 42192 golang-1.24_1.24.4-1.debian.tar.xz
-Homepage: https://go.dev/
 Package-List: 
  golang-1.24 deb golang optional arch=all
  golang-1.24-doc deb doc optional arch=all
@@ -862,7 +845,6 @@ Architecture: amd64
 Depends: libc6 (>= 2.34), libcap2 (>= 1:2.10)
 Recommends: dialog
 Description: automatic certificate acquisition tool for Let's Encrypt
-Homepage: https://hlandau.github.io/acmetool
 Built-Using: golang-1.24 (= 1.24.4-1)
 Description-md5: 3e5e145ae880b97f3b6e825daf35ce32
 Section: web
@@ -892,13 +874,10 @@ Files:
  1481ab6356d2e63bf378fe3f96cf5b8e 2697 acmetool_0.2.2-3.dsc
  9d21da41c887cb669479b4eb3b1e08b7 121583 acmetool_0.2.2.orig.tar.gz
  58040de8ffdf39685ce25f468773990c 10012 acmetool_0.2.2-3.debian.tar.xz
-Vcs-Browser: https://salsa.debian.org/go-team/packages/acmetool
-Vcs-Git: https://salsa.debian.org/go-team/packages/acmetool.git
 Checksums-Sha256:
  15a995d1879ac58233a9fbff565451c3883342fe4361ee2046b2ca765f6aeaef 2697 acmetool_0.2.2-3.dsc
  5671a4ff00c007dd00883c601c0a64ab9c4dc1ca4fa47e5801b69b015d43dfb3 121583 acmetool_0.2.2.orig.tar.gz
  cbf53556dbf1cc042e5f3f5633d2b93f49da29210482c563c3286cdc1594e455 10012 acmetool_0.2.2-3.debian.tar.xz
-Homepage: https://hlandau.github.io/acmetool
 Build-Depends-Arch: golang-any, golang-github-coreos-go-systemd-dev, golang-github-gofrs-uuid-dev, golang-github-hlandau-dexlogconfig-dev, golang-github-hlandau-goutils-dev, golang-github-hlandau-xlog-dev, golang-github-jmhodges-clock-dev, golang-github-mitchellh-go-wordwrap-dev, golang-golang-x-net-dev, golang-gopkg-alecthomas-kingpin.v2-dev, golang-gopkg-cheggaaa-pb.v1-dev, golang-gopkg-hlandau-acmeapi.v2-dev, golang-gopkg-hlandau-easyconfig.v1-dev, golang-gopkg-hlandau-service.v2-dev, golang-gopkg-hlandau-svcutils.v1-dev, golang-gopkg-square-go-jose.v1-dev, golang-gopkg-tylerb-graceful.v1-dev, golang-gopkg-yaml.v2-dev | golang-yaml.v2-dev, libcap-dev [linux-any]
 Go-Import-Path: github.com/hlandau/acmetool
 Package-List: 
