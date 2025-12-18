@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5 (2025-12-18)
+
+* `nmu-eso`: Switch to `tempfile` for tests.
+
 ## 0.3.4 (2025-12-18)
 
 * `nmu-eso`: Also rebuild if highest source version is ESO.
