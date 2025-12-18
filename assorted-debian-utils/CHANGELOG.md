@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.4 (2025-12-18)
+
+* `architectures`: Remove `arc` from architectures.
+* `package`: Implement `Borrow<str>` for `PackageName`.
+
 ## 0.8.3 (2025-10-24)
 
 * `archive`: Print `stable-proposed-updates` as `proposed-updates` to be consistent with `Release` files.
