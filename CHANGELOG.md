@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4 (2025-12-18)
+
+* `nmu-eso`: Also rebuild if highest source version is ESO.
+* `nmu-eso`: Allow `--field` to be specified multiple times.
+* `nmu-eso`: Add `--extra-depends` for rebuilds because of outdated `Static-Using` on `glibc`.
+
 ## 0.3.3 (2025-11-01)
 
 * Handle bugs assigned to multiple packages.
