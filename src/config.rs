@@ -370,7 +370,7 @@ impl Cache {
 
     fn packages_urls(&self, suite: Suite) -> Vec<DownloadInfo> {
         self.architectures_for_suite(suite)
-            .into_iter()
+            .iter()
             .map(|architecture| DownloadInfo {
                 url: self
                     .lookup_url(suite, &format!("main/binary-{architecture}/Packages.xz"))
@@ -475,12 +475,12 @@ impl Cache {
     }*/
 
     // Architectures for a suite (including Arch: all)
-    pub fn architectures_for_suite(&self, suite: Suite) -> Vec<Architecture> {
+    pub fn architectures_for_suite(&self, suite: Suite) -> &[Architecture] {
         match suite {
-            Suite::Unstable | Suite::Experimental => self.unstable.architectures.clone(),
-            Suite::Testing(_) => self.testing.architectures.clone(),
-            Suite::Stable(_) => self.stable.architectures.clone(),
-            Suite::OldStable(_) => self.oldstable.architectures.clone(),
+            Suite::Unstable | Suite::Experimental => &self.unstable.architectures,
+            Suite::Testing(_) => &self.testing.architectures,
+            Suite::Stable(_) => &self.stable.architectures,
+            Suite::OldStable(_) => &self.oldstable.architectures,
         }
     }
 }
@@ -496,11 +496,11 @@ impl CachePaths for Cache {
     fn get_package_paths(&self, suite: SuiteOrCodename, with_all: bool) -> Result<Vec<PathBuf>> {
         let mut all_paths = vec![];
         for architecture in self.architectures_for_suite(suite.into()) {
-            if !with_all && architecture == Architecture::All {
+            if !with_all && *architecture == Architecture::All {
                 continue;
             }
 
-            all_paths.push(self.get_package_path(suite, architecture)?);
+            all_paths.push(self.get_package_path(suite, *architecture)?);
         }
         Ok(all_paths)
     }
