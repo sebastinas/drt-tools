@@ -209,7 +209,7 @@ fn excuses_urls() -> Vec<DownloadInfo> {
 }
 
 fn ftbfs_bugs_urls(codename: Codename) -> Vec<DownloadInfo> {
-    vec![DownloadInfo::new (
+    vec![DownloadInfo::new(
         format!("https://udd.debian.org/bugs/?release={codename}&ftbfs=only&merged=ign&done=ign&rc=1&sortby=id&sorto=asc&format=yaml").into(),
         format!("udd-ftbfs-bugs-{codename}.yaml").into()
     )]
