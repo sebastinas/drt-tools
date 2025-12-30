@@ -5,7 +5,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     fs::{self, File},
-    io::{BufReader, BufWriter, Write},
+    io::{BufReader, Write},
     path::{Path, PathBuf},
 };
 
@@ -456,7 +456,7 @@ impl Cache {
         Ok(BufReader::new(File::open(self.get_cache_path(path)?)?))
     }
 
-    pub fn get_data_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
+    /*pub fn get_data_bufreader<P>(&self, path: P) -> Result<BufReader<File>>
     where
         P: AsRef<Path>,
     {
@@ -472,7 +472,7 @@ impl Cache {
         Ok(BufWriter::new(File::create(
             self.base_directory.place_data_file(path)?,
         )?))
-    }
+    }*/
 
     // Architectures for a suite (including Arch: all)
     pub fn architectures_for_suite(&self, suite: Suite) -> Vec<Architecture> {

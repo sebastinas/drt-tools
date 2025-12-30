@@ -13,7 +13,6 @@ use assorted_debian_utils::{
 use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressIterator};
 use log::{debug, error, info, trace, warn};
-use serde::{Deserialize, Serialize};
 
 use crate::{
     AsyncCommand, Downloads,
@@ -22,23 +21,6 @@ use crate::{
     source_packages::SourcePackages,
     utils::execute_wb_commands,
 };
-
-const SCHEDULED_BINNMUS: &str = "scheduled-binnmus.yaml";
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct ScheduledBinNMUs {
-    binnmus: Vec<WBCommand>,
-}
-
-impl ScheduledBinNMUs {
-    fn contains(&self, command: &WBCommand) -> bool {
-        self.binnmus.contains(command)
-    }
-
-    fn store(&mut self, command: &WBCommand) {
-        self.binnmus.push(command.clone());
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum Action {
@@ -260,22 +242,6 @@ impl<'a> ProcessExcuses<'a> {
 
         true
     }
-
-    fn load_scheduled_binnmus(&self) -> ScheduledBinNMUs {
-        if let Ok(reader) = self.cache.get_data_bufreader(SCHEDULED_BINNMUS) {
-            serde_yaml::from_reader(reader).unwrap_or_default()
-        } else {
-            ScheduledBinNMUs::default()
-        }
-    }
-
-    fn store_scheduled_binnmus(&self, scheduled_binnmus: &ScheduledBinNMUs) -> Result<()> {
-        serde_yaml::to_writer(
-            self.cache.get_data_bufwriter(SCHEDULED_BINNMUS)?,
-            scheduled_binnmus,
-        )
-        .map_err(Into::into)
-    }
 }
 
 #[async_trait]
@@ -289,9 +255,6 @@ impl AsyncCommand for ProcessExcuses<'_> {
         // parse excuses
         let excuses = excuses::from_reader(self.cache.get_cache_bufreader("excuses.yaml")?)?;
 
-        // load already scheduled binNMUs from cache
-        let mut scheduled_binnmus = self.load_scheduled_binnmus();
-
         // now process the excuses
         let pb = ProgressBar::new(excuses.sources.len() as u64);
         pb.set_style(config::default_progress_style().template(default_progress_template())?);
@@ -301,20 +264,6 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .iter()
             .progress_with(pb)
             .filter_map(|item| self.build_action(item, &source_packages))
-            .filter(|action| match action {
-                Action::BinNMU(command) => {
-                    if scheduled_binnmus.contains(command) {
-                        info!("{command}: skipping, already scheduled");
-                        false
-                    } else {
-                        if !self.base_options.dry_run {
-                            scheduled_binnmus.store(command);
-                        }
-                        true
-                    }
-                }
-                Action::Unblock(_) => true,
-            })
             .collect();
 
         println!("# Unblocks");
@@ -330,10 +279,7 @@ impl AsyncCommand for ProcessExcuses<'_> {
             .collect();
 
         println!("# Rebuild on buildds for testing migration");
-        execute_wb_commands(binnmus, self.base_options).await?;
-
-        // store scheduled binNMUs in cache
-        self.store_scheduled_binnmus(&scheduled_binnmus)
+        execute_wb_commands(binnmus, self.base_options).await
     }
 }
 
