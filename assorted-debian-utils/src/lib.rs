@@ -64,4 +64,7 @@ pub enum ParseError {
     #[error("invalid package: {0}")]
     /// Given string is not a valid package
     InvalidPackage(#[from] package::PackageError),
+    #[error("invalid priority")]
+    /// Given string is not a valid priority
+    InvalidPriority,
 }

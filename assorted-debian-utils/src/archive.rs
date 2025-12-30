@@ -572,6 +572,63 @@ impl FromStr for Component {
     }
 }
 
+/// Allowed values of the priority field
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Priority {
+    /// Priority required
+    Required,
+    /// Priority imporant
+    Important,
+    /// Priority standard
+    Standard,
+    /// Priority optional
+    Optional,
+    /// Priority extra
+    Extra,
+}
+
+impl AsRef<str> for Priority {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Required => "required",
+            Self::Important => "important",
+            Self::Standard => "standard",
+            Self::Optional => "optional",
+            Self::Extra => "extra",
+        }
+    }
+}
+
+impl Display for Priority {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
+}
+
+impl TryFrom<&str> for Priority {
+    type Error = ParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "required" => Ok(Self::Required),
+            "important" => Ok(Self::Important),
+            "standard" => Ok(Self::Standard),
+            "optional" => Ok(Self::Optional),
+            "extra" => Ok(Self::Extra),
+            _ => Err(ParseError::InvalidPriority),
+        }
+    }
+}
+
+impl FromStr for Priority {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::hash::DefaultHasher;
