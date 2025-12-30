@@ -78,23 +78,23 @@ impl<'a> ProcessExcuses<'a> {
                 return false;
             }
         }
-        if let Some(a) = &policy_info.age {
-            if !self.options.ignore_age
-                && a.current_age < min(a.age_requirement / 2, a.age_requirement - 1)
-            {
-                // too young
-                trace!(
-                    "no binnmu possible: too young: {} days (required: {} days)",
-                    a.current_age, a.age_requirement
-                );
-                return false;
-            }
+        if let Some(a) = &policy_info.age
+            && !self.options.ignore_age
+            && a.current_age < min(a.age_requirement / 2, a.age_requirement - 1)
+        {
+            // too young
+            trace!(
+                "no binnmu possible: too young: {} days (required: {} days)",
+                a.current_age, a.age_requirement
+            );
+            return false;
         }
-        if let Some(autopkgtests) = &policy_info.autopkgtest {
-            if !self.options.ignore_autopkgtests && autopkgtests.verdict != Verdict::Pass {
-                trace!("no binnmu possible: autopkgtests are not passing/are pending");
-                return false;
-            }
+        if let Some(autopkgtests) = &policy_info.autopkgtest
+            && !self.options.ignore_autopkgtests
+            && autopkgtests.verdict != Verdict::Pass
+        {
+            trace!("no binnmu possible: autopkgtests are not passing/are pending");
+            return false;
         }
 
         // if the others do not pass, would not migrate even if binNMUed
@@ -122,15 +122,15 @@ impl<'a> ProcessExcuses<'a> {
         // find architectures with maintainer built binaries
         let mut archs = vec![];
         for (arch, signer) in &policy_info.builtonbuildd.as_ref().unwrap().signed_by {
-            if let Some(signer) = signer {
-                if !signer.ends_with("@buildd.debian.org") {
-                    if arch == &Architecture::All {
-                        // cannot binNMU arch: all
-                        debug!("{}: cannot binNMU arch: all", item.source);
-                        return None;
-                    }
-                    archs.push(WBArchitecture::Architecture(*arch));
+            if let Some(signer) = signer
+                && !signer.ends_with("@buildd.debian.org")
+            {
+                if arch == &Architecture::All {
+                    // cannot binNMU arch: all
+                    debug!("{}: cannot binNMU arch: all", item.source);
+                    return None;
                 }
+                archs.push(WBArchitecture::Architecture(*arch));
             }
         }
         if archs.is_empty() {

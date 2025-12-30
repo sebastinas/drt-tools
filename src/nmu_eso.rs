@@ -433,11 +433,9 @@ where
                             .cmp(outdated_dependency.package.as_ref())
                     })
                     .map(|index| &REQUIRES_EXTRA_DEPENDS[index])
+                    && let Some(version) = source_packages.version(required_dependency.source)
                 {
-                    if let Some(version) = source_packages.version(required_dependency.source) {
-                        extra_depends
-                            .push(format!("{} (>= {})", required_dependency.package, version));
-                    }
+                    extra_depends.push(format!("{} (>= {})", required_dependency.package, version));
                 }
             }
             let extra_depends = extra_depends.join(", ");

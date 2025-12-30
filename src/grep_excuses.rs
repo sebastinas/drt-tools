@@ -111,11 +111,11 @@ impl Command for GrepExcuses<'_> {
                     print_excuse(excuse);
                     continue;
                 }
-                if let Some(maintainer) = &excuse.maintainer {
-                    if maintainer == maintainer_package {
-                        print_excuse(excuse);
-                        continue;
-                    }
+                if let Some(maintainer) = &excuse.maintainer
+                    && maintainer == maintainer_package
+                {
+                    print_excuse(excuse);
+                    continue;
                 }
             }
         }

@@ -143,14 +143,13 @@ impl PackageVersion {
         }
 
         // Debian revision may consist of alphanumeric characters and ., +, ~
-        if let Some(rev) = debian_revision {
-            if rev.is_empty()
+        if let Some(rev) = debian_revision
+            && (rev.is_empty()
                 || rev
                     .chars()
-                    .any(|c| !c.is_alphanumeric() && !".+~".contains(c))
-            {
-                return Err(VersionError::InvalidDebianRevision);
-            }
+                    .any(|c| !c.is_alphanumeric() && !".+~".contains(c)))
+        {
+            return Err(VersionError::InvalidDebianRevision);
         }
 
         Ok(Self {
