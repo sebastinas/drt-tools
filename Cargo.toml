@@ -2,16 +2,22 @@
 name = "drt-tools"
 description = "Tools for Debian Release Team work"
 version = "0.3.5"
-authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
-repository = "https://github.com/sebastinas/drt-tools"
+authors.workspace = true
+repostitory.workspace = true
 license = "GPL-3.0-or-later"
-edition = "2024"
-rust-version = "1.90"
+edition.workspace = true
+rust-version.workspace = true
 readme = "README.md"
 keywords = ["debian"]
 
 [workspace]
 members = ["assorted-debian-utils"]
+
+[workspace.package]
+authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
+repository = "https://github.com/sebastinas/drt-tools"
+edition = "2024"
+rust-version = "1.90"
 
 [workspace.dependencies]
 chrono = { version = "0.4", default-features = false }
@@ -24,21 +30,21 @@ thiserror = "2"
 anyhow = "1"
 assorted-debian-utils = { version = "0.8.4", path = "assorted-debian-utils" }
 async-trait = { version = "0.1", default-features = false }
-chrono = { workspace = true }
+chrono.workspace = true
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
 clap-verbosity-flag = "3"
 flate2 = { version = "1", default-features = false, features = ["zlib"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 httpdate = "1"
 indicatif = "0.18"
-itertools = { workspace = true }
+itertools.workspace = true
 log = "0.4"
 openssh = { version = "0.11", features = ["native-mux"] }
 reqwest = { version = "0.13", features = ["stream"] }
 serde = { workspace = true, features = ["default"] }
-serde_yaml = { workspace = true }
+serde_yaml.workspace = true
 stderrlog = "0.6"
-thiserror = { workspace = true }
+thiserror.workspace = true
 tokio = { version = "1.21", default-features = false, features = [
     "macros",
     "rt-multi-thread",
@@ -53,7 +59,7 @@ clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.4"
 clap_mangen = "0.2"
 clap-verbosity-flag = "3"
-thiserror = "2"
+thiserror.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
