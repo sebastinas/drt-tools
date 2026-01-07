@@ -342,6 +342,14 @@ impl TryFrom<&str> for PackageRelationship {
     }
 }
 
+impl FromStr for PackageRelationship {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
+    }
+}
+
 impl<'de> Deserialize<'de> for PackageRelationship {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

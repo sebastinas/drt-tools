@@ -13,7 +13,7 @@ use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Extension, Suite, SuiteOrCodename, WithExtension},
-    package::{PackageName, VersionedPackage},
+    package::{PackageRelationship, Relationship, VersionRelationship, VersionedPackage},
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
@@ -22,7 +22,7 @@ use async_trait::async_trait;
 use indicatif::{ProgressBar, ProgressBarIter, ProgressIterator};
 use itertools::Itertools;
 use log::{debug, trace, warn};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, de};
 
 use crate::{
     AsyncCommand, Downloads,
@@ -36,18 +36,66 @@ use crate::{
     utils::execute_wb_commands,
 };
 
+// this is a workaround for bookworm; after the release of bookworm it can be dropped
+fn deserialize_package_relationships<'de, D>(
+    deserializer: D,
+) -> Result<Vec<PackageRelationship>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor {}
+
+    impl de::Visitor<'_> for Visitor {
+        type Value = Vec<PackageRelationship>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(formatter, "a package relantionship")
+        }
+
+        fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            // remove trailing spaces found in X-Cargo-Built-Using
+            let s = s.strip_suffix(' ').unwrap_or(s);
+            // remove trailing commas found in X-Cargo-Built-Using
+            let s = s.strip_suffix(',').unwrap_or(s);
+            s.split(',')
+                .map(|r| {
+                    PackageRelationship::try_from(r.trim())
+                        .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(r), &self))
+                })
+                .collect()
+        }
+    }
+
+    deserializer.deserialize_str(Visitor {})
+}
+
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 struct BinaryPackage {
     #[serde(flatten)]
     package: source_packages::BinaryPackage,
     architecture: Architecture,
-    #[serde(rename = "Built-Using")]
-    built_using: Option<String>,
-    #[serde(rename = "Static-Built-Using")]
-    static_built_using: Option<String>,
-    #[serde(rename = "X-Cargo-Built-Using")]
-    x_cargo_built_using: Option<String>,
+    #[serde(
+        rename = "Built-Using",
+        default,
+        deserialize_with = "deserialize_package_relationships"
+    )]
+    built_using: Vec<PackageRelationship>,
+    #[serde(
+        rename = "Static-Built-Using",
+        default,
+        deserialize_with = "deserialize_package_relationships"
+    )]
+    static_built_using: Vec<PackageRelationship>,
+    #[serde(
+        rename = "X-Cargo-Built-Using",
+        default,
+        deserialize_with = "deserialize_package_relationships"
+    )]
+    x_cargo_built_using: Vec<PackageRelationship>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -76,24 +124,6 @@ impl Ord for CombinedOutdatedPackage {
     fn cmp(&self, other: &Self) -> Ordering {
         self.source.cmp(&other.source)
     }
-}
-
-fn split_dependency(dependency: &str) -> Option<VersionedPackage> {
-    // this should never fail unless the archive is broken
-    dependency.split_once(' ').and_then(|(source, version)| {
-        let version = version
-            .strip_suffix(')')
-            .and_then(|version| version.strip_prefix("(= "))
-            .and_then(|version| PackageVersion::try_from(version).ok());
-        let source = PackageName::try_from(source);
-        match (source, version) {
-            (Ok(source), Some(version)) => Some(VersionedPackage {
-                package: source,
-                version,
-            }),
-            _ => None,
-        }
-    })
 }
 
 struct BinaryPackageParser<'a> {
@@ -143,29 +173,47 @@ impl Iterator for BinaryPackageParser<'_> {
                 .iter()
                 .filter_map(|field| {
                     // skip packages without Built-Using
-                    match field {
-                        Field::BuiltUsing => binary_package.built_using.as_ref(),
-                        Field::StaticBuiltUsing => binary_package.static_built_using.as_ref(),
-                        Field::XCargoBuiltUsing => binary_package.x_cargo_built_using.as_ref(),
+                    let built_using = match field {
+                        Field::BuiltUsing => &binary_package.built_using,
+                        Field::StaticBuiltUsing => &binary_package.static_built_using,
+                        Field::XCargoBuiltUsing => &binary_package.x_cargo_built_using,
+                    };
+                    if built_using.is_empty() {
+                        None
+                    } else {
+                        Some(built_using)
                     }
                 })
                 .flat_map(|built_using| {
-                    // remove trailing spaces found in X-Cargo-Built-Using
-                    let built_using = built_using.strip_suffix(' ').unwrap_or(built_using);
-                    // remove trailing commas found in X-Cargo-Built-Using
-                    let built_using = built_using.strip_suffix(',').unwrap_or(built_using);
-
                     built_using
-                        .split(", ")
+                        .iter()
                         .filter_map(|dependency| {
-                            let split = split_dependency(dependency);
-                            if split.is_none() {
-                                warn!(
-                                    "Package '{}' contains invalid dependency: {}",
-                                    binary_package.package.package, dependency
-                                );
+                            let PackageRelationship {
+                                package,
+                                version_relation,
+                                architecture_restrictions,
+                                build_profiles,
+                            } = dependency;
+                            match (version_relation, architecture_restrictions, build_profiles) {
+                                (
+                                    Some(VersionRelationship {
+                                        version,
+                                        relation: Relationship::Equal,
+                                    }),
+                                    None,
+                                    None,
+                                ) => Some(VersionedPackage {
+                                    package: package.clone(),
+                                    version: version.clone(),
+                                }),
+                                _ => {
+                                    warn!(
+                                        "Package '{}' contains invalid dependency: {}",
+                                        binary_package.package.package, dependency
+                                    );
+                                    None
+                                }
                             }
-                            split
                         })
                         .filter(|source| {
                             self.sources
@@ -515,15 +563,6 @@ mod test {
     use tempfile::tempdir;
 
     use super::*;
-
-    #[test]
-    fn dependencies() {
-        assert!(split_dependency("( =)").is_none());
-
-        let dependency = split_dependency("rustc (= 1.70.0+dfsg1-5)").unwrap();
-        assert_eq!(dependency.package, "rustc");
-        assert_eq!(dependency.version, "1.70.0+dfsg1-5");
-    }
 
     struct TestCache {
         base_dir: PathBuf,
