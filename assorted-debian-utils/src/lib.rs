@@ -67,4 +67,7 @@ pub enum ParseError {
     #[error("invalid priority")]
     /// Given string is not a valid priority
     InvalidPriority,
+    #[error("invalid relationship")]
+    /// Given string is not a valid relationship
+    InvalidRelationship,
 }
