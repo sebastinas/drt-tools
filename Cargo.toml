@@ -14,13 +14,17 @@ keywords = ["debian"]
 members = ["assorted-debian-utils"]
 
 [workspace.dependencies]
+chrono = { version = "0.4", default-features = false }
 itertools = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+thiserror = "2"
 
 [dependencies]
 anyhow = "1"
 assorted-debian-utils = { version = "0.8.4", path = "assorted-debian-utils" }
 async-trait = { version = "0.1", default-features = false }
-chrono = { version = "0.4", default-features = false }
+chrono = { workspace = true }
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
 clap-verbosity-flag = "3"
 flate2 = { version = "1", default-features = false, features = ["zlib"] }
@@ -31,10 +35,10 @@ itertools = { workspace = true }
 log = "0.4"
 openssh = { version = "0.11", features = ["native-mux"] }
 reqwest = { version = "0.13", features = ["stream"] }
-serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
+serde = { workspace = true, features = ["default"] }
+serde_yaml = { workspace = true }
 stderrlog = "0.6"
-thiserror = "2"
+thiserror = { workspace = true }
 tokio = { version = "1.21", default-features = false, features = [
     "macros",
     "rt-multi-thread",
