@@ -3,7 +3,9 @@
 
 use std::{fmt, path::PathBuf, str::FromStr};
 
-use assorted_debian_utils::{archive::SuiteOrCodename, wb::WBArchitecture};
+use assorted_debian_utils::{
+    archive::SuiteOrCodename, package::PackageRelationship, wb::WBArchitecture,
+};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -52,12 +54,12 @@ pub struct BinNMUsOptions {
     ///
     /// If specified, the builds will wait until the given dependency relation is satisfied.
     #[clap(long = "dw")]
-    pub dep_wait: Option<String>,
+    pub dep_wait: Option<Vec<PackageRelationship>>,
     /// Extra dependencies
     ///
     /// If specified, the given dependency will be installed during the build.
     #[clap(long)]
-    pub extra_depends: Option<String>,
+    pub extra_depends: Option<Vec<PackageRelationship>>,
     /// Suite for binNMUs.
     #[clap(short, long, default_value = "unstable")]
     pub suite: SuiteOrCodename,

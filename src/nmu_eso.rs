@@ -13,7 +13,9 @@ use anyhow::Result;
 use assorted_debian_utils::{
     architectures::Architecture,
     archive::{Extension, Suite, SuiteOrCodename, WithExtension},
-    package::{PackageRelationship, Relationship, VersionRelationship, VersionedPackage},
+    package::{
+        PackageName, PackageRelationship, Relationship, VersionRelationship, VersionedPackage,
+    },
     rfc822_like,
     version::PackageVersion,
     wb::{BinNMU, SourceSpecifier, WBArchitecture, WBCommand, WBCommandBuilder},
@@ -483,10 +485,17 @@ where
                     .map(|index| &REQUIRES_EXTRA_DEPENDS[index])
                     && let Some(version) = source_packages.version(required_dependency.source)
                 {
-                    extra_depends.push(format!("{} (>= {})", required_dependency.package, version));
+                    extra_depends.push(PackageRelationship {
+                        package: PackageName::try_from(required_dependency.package).unwrap(),
+                        version_relation: Some(VersionRelationship {
+                            relation: Relationship::GreaterEqual,
+                            version: version.clone(),
+                        }),
+                        architecture_restrictions: None,
+                        build_profiles: None,
+                    });
                 }
             }
-            let extra_depends = extra_depends.join(", ");
             if !extra_depends.is_empty() {
                 binnmu.with_extra_depends(&extra_depends);
             }

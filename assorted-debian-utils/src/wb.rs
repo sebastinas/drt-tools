@@ -12,13 +12,14 @@ use std::{
     str::FromStr,
 };
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
     architectures::{Architecture, ParseError},
     archive::{Suite, SuiteOrCodename},
-    package::PackageName,
+    package::{PackageName, PackageRelationship},
     version::PackageVersion,
 };
 
@@ -200,9 +201,9 @@ pub struct BinNMU<'a> {
     source: &'a SourceSpecifier<'a>,
     message: &'a str,
     nmu_version: Option<u32>,
-    extra_depends: Option<&'a str>,
+    extra_depends: Option<&'a [PackageRelationship]>,
     priority: Option<i32>,
-    dep_wait: Option<&'a str>,
+    dep_wait: Option<&'a [PackageRelationship]>,
 }
 
 impl<'a> BinNMU<'a> {
@@ -236,7 +237,7 @@ impl<'a> BinNMU<'a> {
     }
 
     /// Specify extra dependencies.
-    pub fn with_extra_depends(&mut self, extra_depends: &'a str) -> &mut Self {
+    pub fn with_extra_depends(&mut self, extra_depends: &'a [PackageRelationship]) -> &mut Self {
         self.extra_depends = Some(extra_depends);
         self
     }
@@ -252,7 +253,7 @@ impl<'a> BinNMU<'a> {
     }
 
     /// Specify dependency-wait. If not set, no dependency-wait will be set.
-    pub fn with_dependency_wait(&mut self, dw: &'a str) -> &mut Self {
+    pub fn with_dependency_wait(&mut self, dw: &'a [PackageRelationship]) -> &mut Self {
         self.dep_wait = Some(dw);
         self
     }
@@ -266,7 +267,11 @@ impl Display for BinNMU<'_> {
         }
         write!(f, "{} . -m \"{}\"", self.source, self.message)?;
         if let Some(extra_depends) = self.extra_depends {
-            write!(f, " --extra-depends \"{extra_depends}\"")?;
+            write!(
+                f,
+                " --extra-depends \"{}\"",
+                extra_depends.iter().join(", ")
+            )?;
         }
         if let Some(dep_wait) = self.dep_wait {
             write!(
@@ -302,12 +307,15 @@ impl WBCommandBuilder for BinNMU<'_> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DepWait<'a> {
     source: &'a SourceSpecifier<'a>,
-    message: &'a str,
+    message: &'a [PackageRelationship],
 }
 
 impl<'a> DepWait<'a> {
     /// Create a new `dw` command for the given `source`.
-    pub fn new(source: &'a SourceSpecifier<'a>, message: &'a str) -> Result<Self, Error> {
+    pub fn new(
+        source: &'a SourceSpecifier<'a>,
+        message: &'a [PackageRelationship],
+    ) -> Result<Self, Error> {
         for arch in &source.architectures {
             match arch {
                 // unable to dw with source, -source
@@ -325,7 +333,12 @@ impl<'a> DepWait<'a> {
 
 impl Display for DepWait<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "dw {} . -m \"{}\"", self.source, self.message)
+        write!(
+            f,
+            "dw {} . -m \"{}\"",
+            self.source,
+            self.message.iter().join(", ")
+        )
     }
 }
 
@@ -450,7 +463,11 @@ mod test {
     use super::{
         BinNMU, BuildPriority, DepWait, Fail, SourceSpecifier, WBArchitecture, WBCommandBuilder,
     };
-    use crate::{architectures::Architecture, archive::SuiteOrCodename, package::PackageName};
+    use crate::{
+        architectures::Architecture,
+        archive::SuiteOrCodename,
+        package::{PackageName, PackageRelationship},
+    };
 
     #[test]
     fn arch_from_str() {
@@ -528,15 +545,15 @@ mod test {
         assert_eq!(
             BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
-                .with_extra_depends("libgirara-dev")
+                .with_extra_depends(&["libgirara-dev (>= 1.0)".try_into().unwrap()])
                 .build()
                 .to_string(),
-            "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\" --extra-depends \"libgirara-dev\""
+            "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\" --extra-depends \"libgirara-dev (>= 1.0)\""
         );
         assert_eq!(
             BinNMU::new(&SourceSpecifier::new(&source), "Rebuild on buildd")
                 .unwrap()
-                .with_dependency_wait("libgirara-dev")
+                .with_dependency_wait(&["libgirara-dev".try_into().unwrap()])
                 .build()
                 .to_string(),
             "nmu zathura . ANY . unstable . -m \"Rebuild on buildd\"\ndw zathura . ANY . unstable . -m \"libgirara-dev\""
@@ -618,9 +635,10 @@ mod test {
     #[test]
     fn dw() {
         let source = PackageName::try_from("zathura").unwrap();
+        let dependencies = [PackageRelationship::try_from("libgirara-dev").unwrap()];
 
         assert_eq!(
-            DepWait::new(&SourceSpecifier::new(&source), "libgirara-dev")
+            DepWait::new(&SourceSpecifier::new(&source), &dependencies)
                 .unwrap()
                 .build()
                 .to_string(),
@@ -629,7 +647,7 @@ mod test {
         assert_eq!(
             DepWait::new(
                 SourceSpecifier::new(&source).with_version(&"2.3.4".try_into().unwrap()),
-                "libgirara-dev"
+                &dependencies
             )
             .unwrap()
             .build()
@@ -642,7 +660,7 @@ mod test {
                     WBArchitecture::Any,
                     WBArchitecture::ExcludeArchitecture(Architecture::I386)
                 ]),
-                "libgirara-dev"
+                &dependencies
             )
             .unwrap()
             .build()
@@ -652,7 +670,7 @@ mod test {
         assert_eq!(
             DepWait::new(
                 SourceSpecifier::new(&source).with_suite(SuiteOrCodename::TESTING),
-                "libgirara-dev"
+                &dependencies
             )
             .unwrap()
             .build()

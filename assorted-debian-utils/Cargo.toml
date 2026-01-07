@@ -22,3 +22,4 @@ smallvec = { version = "1", default-features = false, features = [
     "serde",
     "union",
 ] }
+itertools = { workspace = true }
