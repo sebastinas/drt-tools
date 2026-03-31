@@ -57,7 +57,7 @@ xz2 = { version = "0.1", default-features = false }
 assorted-debian-utils = { version = "0.8", path = "assorted-debian-utils" }
 clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.4"
-clap_mangen = "0.2"
+clap_mangen = "0.3"
 clap-verbosity-flag = "3"
 thiserror.workspace = true
 
