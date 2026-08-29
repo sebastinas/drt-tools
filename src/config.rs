@@ -109,7 +109,7 @@ impl Downloader {
         .send()
         .await
         .and_then(Response::error_for_status)
-        .with_context(|| format!("Failed to GET from '{}'", &url))?;
+        .with_context(|| format!("Failed to GET from '{}'", url))?;
 
         if !self.always_download && res.status() == StatusCode::NOT_MODIFIED {
             // this will only trigger if always_download is not set and the server reports that the
