@@ -40,7 +40,12 @@ indicatif = "0.18"
 itertools.workspace = true
 log = "0.4"
 openssh = { version = "0.11", features = ["native-mux"] }
-reqwest = { version = "0.13", features = ["stream"] }
+reqwest = { version = "0.13", default-features = false, features = [
+    "charset",
+    "http2",
+    "native-tls",
+    "stream"
+] }
 serde = { workspace = true, features = ["default"] }
 serde_yaml.workspace = true
 stderrlog = "0.6"
