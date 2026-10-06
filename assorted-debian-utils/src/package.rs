@@ -1,4 +1,4 @@
-// Copyright 2025 Sebastian Ramacher
+// Copyright 2025-2026 Sebastian Ramacher
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! # Helpers to handle Debian packages
@@ -18,6 +18,7 @@ use thiserror::Error;
 use crate::{
     ParseError,
     architectures::{Architecture, ArchitectureTuple},
+    build_profile::{ProfileFormula, ProfileName},
     utils::TryFromStrVisitor,
     version::PackageVersion,
 };
@@ -266,7 +267,7 @@ impl TryFrom<&str> for ArchitectureRestriction {
     }
 }
 
-/// Relationship (Depends, Recommends, Suggests, etc) on some package of the
+/// Relationship (Build-Depends, Depends, Recommends, Suggests, etc) on some package of the
 /// form `package (version) [arch] <profile>` whereas everything except the
 /// package is optional.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -277,9 +278,22 @@ pub struct PackageRelationship {
     pub version_relation: Option<VersionRelationship>,
     /// Architecture restrictions
     pub architecture_restrictions: Option<ArchitectureRestriction>,
-    /// Build profiles
-    // TODO: implement proper parsing
-    pub build_profiles: Option<String>,
+    /// Build profile clauses
+    pub build_profiles: Option<ProfileFormula>,
+}
+
+impl PackageRelationship {
+    pub fn valid_for_architecture(&self, architecture: Architecture) -> bool {
+        self.architecture_restrictions
+            .as_ref()
+            .is_none_or(|restriction| restriction.satisfied_by(architecture))
+    }
+
+    pub fn valid_for_build_profiles(&self, build_profiles: &[ProfileName]) -> bool {
+        self.build_profiles
+            .as_ref()
+            .is_none_or(|formula| formula.satisfied_by(build_profiles))
+    }
 }
 
 impl Display for PackageRelationship {
@@ -295,15 +309,17 @@ impl TryFrom<&str> for PackageRelationship {
     type Error = ParseError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let (value, profile) = if let Some((value, profile)) = value.split_once('<') {
-            if !profile.ends_with('>') {
+        // start from the end: build profile
+        let (value, build_profiles) = if let Some(index) = value.find('<') {
+            if !value.ends_with('>') {
                 return Err(ParseError::InvalidRelationship);
             }
-            // TODO: implement proper parsing
-            (value.trim_end(), Some(profile[..profile.len() - 1].into()))
+            let (value, profile) = value.split_at(index);
+            (value.trim_end(), Some(ProfileFormula::try_from(profile)?))
         } else {
             (value, None)
         };
+        // architecture restrictions
         let (value, architecture_restrictions) =
             if let Some((value, architecture_restriction)) = value.split_once('[') {
                 if !architecture_restriction.ends_with(']') {
@@ -318,6 +334,7 @@ impl TryFrom<&str> for PackageRelationship {
             } else {
                 (value, None)
             };
+        // package name and version relation
         let (package, version_relation) =
             if let Some((package, version_relation)) = value.split_once('(') {
                 if !version_relation.ends_with(')') {
@@ -337,7 +354,7 @@ impl TryFrom<&str> for PackageRelationship {
             package,
             version_relation,
             architecture_restrictions,
-            build_profiles: profile,
+            build_profiles,
         })
     }
 }
@@ -434,9 +451,19 @@ mod test {
                 relation: Relationship::GreaterEqual
             })
         );
+        assert!(package_relationship.valid_for_architecture(Architecture::Amd64));
+        assert!(!package_relationship.valid_for_architecture(Architecture::I386));
+        assert!(
+            package_relationship
+                .valid_for_build_profiles(&[ProfileName::try_from("nogir").unwrap()])
+        );
+        assert!(
+            !package_relationship
+                .valid_for_build_profiles(&[ProfileName::try_from("nocheck").unwrap()])
+        );
 
         let package_relationship = PackageRelationship::try_from(
-            "zathura (>= 1.0~) [amd64] <!nocheck> <!pkg.foo.1 pkg.foo2>",
+            "zathura (>= 1.0~) [amd64] <!nocheck> <!pkg.foo.1 pkg.foo.2>",
         )
         .unwrap();
         assert_eq!(package_relationship.package, "zathura");
@@ -447,5 +474,17 @@ mod test {
                 relation: Relationship::GreaterEqual
             })
         );
+        assert!(
+            package_relationship
+                .valid_for_build_profiles(&[ProfileName::try_from("pkg.foo.2").unwrap()])
+        );
+        assert!(
+            package_relationship
+                .valid_for_build_profiles(&[ProfileName::try_from("pkg.foo.1").unwrap(),])
+        );
+        assert!(!package_relationship.valid_for_build_profiles(&[
+            ProfileName::try_from("pkg.foo.1").unwrap(),
+            ProfileName::try_from("nocheck").unwrap()
+        ]));
     }
 }

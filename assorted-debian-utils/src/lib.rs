@@ -23,6 +23,7 @@ use thiserror::Error;
 pub mod architectures;
 pub mod archive;
 pub mod autoremovals;
+pub mod build_profile;
 pub mod buildinfo;
 pub mod excuses;
 pub mod package;
@@ -70,4 +71,7 @@ pub enum ParseError {
     #[error("invalid relationship")]
     /// Given string is not a valid relationship
     InvalidRelationship,
+    #[error("invalid build profile")]
+    /// Given build profile is not valid
+    InvalidProfile,
 }
