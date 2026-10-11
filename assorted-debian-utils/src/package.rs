@@ -283,12 +283,14 @@ pub struct PackageRelationship {
 }
 
 impl PackageRelationship {
+    /// Check if the package relationship applies to the given architecture.
     pub fn valid_for_architecture(&self, architecture: Architecture) -> bool {
         self.architecture_restrictions
             .as_ref()
             .is_none_or(|restriction| restriction.satisfied_by(architecture))
     }
 
+    /// Check if the packag erelationship applies under the given build profiles.
     pub fn valid_for_build_profiles(&self, build_profiles: &[ProfileName]) -> bool {
         self.build_profiles
             .as_ref()
