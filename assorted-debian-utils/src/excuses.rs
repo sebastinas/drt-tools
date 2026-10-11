@@ -235,14 +235,14 @@ impl ExcusesItem {
 }
 
 /// Result type
-pub type Result<T> = serde_yaml::Result<T>;
+pub type Result<T> = yaml_serde::Result<T>;
 
 /// Read excuses from a reader
 pub fn from_reader(reader: impl io::Read) -> Result<Excuses> {
-    serde_yaml::from_reader(reader)
+    yaml_serde::from_reader(reader)
 }
 
 /// Read excuses from a string
 pub fn from_str(data: &str) -> Result<Excuses> {
-    serde_yaml::from_str(data)
+    yaml_serde::from_str(data)
 }

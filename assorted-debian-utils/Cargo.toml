@@ -16,10 +16,10 @@ chrono = { workspace = true, features = ["serde"] }
 hex = { version = "0.4", features = ["std"], default-features = false }
 itertools.workspace = true
 serde.workspace = true
-serde_yaml.workspace = true
 rfc822-like = "0.2.1"
 smallvec = { version = "1", default-features = false, features = [
     "serde",
     "union",
 ] }
 thiserror.workspace = true
+yaml_serde.workspace = true

@@ -129,7 +129,7 @@ impl UDDBugs {
 }
 
 fn load_bugs_from_reader(reader: impl Read) -> Result<UDDBugs> {
-    serde_yaml::from_reader(reader)
+    yaml_serde::from_reader(reader)
         .map_err(Into::into)
         .map(UDDBugs::new)
 }
