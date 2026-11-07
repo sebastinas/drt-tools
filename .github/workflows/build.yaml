@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         toolchain:
-          - "1.90"
+          - "1.96"
           - stable
     name: Test with ${{matrix.toolchain}} toolchain
     steps:

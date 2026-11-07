@@ -17,7 +17,7 @@ members = ["assorted-debian-utils"]
 authors = ["Sebastian Ramacher <sebastian@ramacher.at>"]
 repository = "https://github.com/sebastinas/drt-tools"
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.96"
 
 [workspace.dependencies]
 chrono = { version = "0.4", default-features = false }
