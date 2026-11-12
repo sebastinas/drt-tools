@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.6 (2026-11-12)
+
+* Bump `assorted-debian-utils` to 0.9.4 to parse dependencies in `wb` commands.
+* Bump MSRV to 1.96.
+
 ## 0.3.5 (2025-12-18)
 
 * `nmu-eso`: Switch to `tempfile` for tests.
