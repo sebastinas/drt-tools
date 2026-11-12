@@ -28,7 +28,7 @@ yaml_serde = "0.10"
 
 [dependencies]
 anyhow = "1"
-assorted-debian-utils = { version = "0.8.4", path = "assorted-debian-utils" }
+assorted-debian-utils = { version = "0.9", path = "assorted-debian-utils" }
 async-trait = { version = "0.1", default-features = false }
 chrono.workspace = true
 clap = { version = "4", features = ["derive", "unicode", "wrap_help"] }
@@ -44,7 +44,7 @@ reqwest = { version = "0.13", default-features = false, features = [
     "charset",
     "http2",
     "native-tls",
-    "stream"
+    "stream",
 ] }
 serde = { workspace = true, features = ["default"] }
 stderrlog = "0.6"
@@ -59,7 +59,7 @@ xz2 = { version = "0.1", default-features = false }
 yaml_serde.workspace = true
 
 [build-dependencies]
-assorted-debian-utils = { version = "0.8", path = "assorted-debian-utils" }
+assorted-debian-utils = { version = "0.9", path = "assorted-debian-utils" }
 clap = { version = "4", features = ["cargo", "derive"] }
 clap_complete = "4.4"
 clap_mangen = "0.3"

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (2026-11-12)
+
+* Bump MSRV to 1.96.
+* `wb`: validate validity of dependencies in `dw` and `--extra-depends`.
+* `build_profiles`: Parse build profiles.
+
 ## 0.8.4 (2025-12-18)
 
 * `architectures`: Remove `arc` from architectures.
